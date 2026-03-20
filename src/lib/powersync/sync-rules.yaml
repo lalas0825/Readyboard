@@ -1,0 +1,95 @@
+# PowerSync Sync Rules for ReadyBoard
+#
+# These rules define WHAT data syncs to each mobile device.
+# PowerSync uses the authenticated user's token (from Supabase Auth)
+# to determine which rows to sync.
+#
+# IMPORTANT: These rules work WITH Supabase RLS, not instead of it.
+# - PowerSync sync rules: control what data DOWNLOADS to the device
+# - Supabase RLS: validates all WRITES (uploads) on the server
+#
+# Deploy these rules to your PowerSync Dashboard (powersync.journeyapps.com)
+
+bucket_definitions:
+  # Foreman: only sees areas assigned to them
+  foreman_data:
+    parameters:
+      - SELECT token_parameters.user_id as user_id
+
+    data:
+      # User's own profile
+      - SELECT id, email, phone, name, role, language, org_id
+        FROM users
+        WHERE id = bucket.user_id
+
+      # Areas assigned to this user
+      - SELECT a.id, a.name, a.floor, a.area_type, a.project_id, a.total_sqft, a.status, a.created_at
+        FROM areas a
+        INNER JOIN user_assignments ua ON ua.area_id = a.id
+        WHERE ua.user_id = bucket.user_id
+
+      # User's assignments
+      - SELECT id, user_id, area_id, trade_name
+        FROM user_assignments
+        WHERE user_id = bucket.user_id
+
+      # Trade sequences for assigned projects
+      - SELECT ts.id, ts.project_id, ts.area_type, ts.trade_name, ts.sequence_order
+        FROM trade_sequences ts
+        WHERE ts.project_id IN (
+          SELECT DISTINCT a.project_id FROM areas a
+          INNER JOIN user_assignments ua ON ua.area_id = a.id
+          WHERE ua.user_id = bucket.user_id
+        )
+
+      # Projects the user is assigned to
+      - SELECT p.id, p.name, p.address, p.labor_rate_per_hour, p.legal_jurisdiction, p.sha256_enabled, p.org_id, p.created_at
+        FROM projects p
+        WHERE p.id IN (
+          SELECT DISTINCT a.project_id FROM areas a
+          INNER JOIN user_assignments ua ON ua.area_id = a.id
+          WHERE ua.user_id = bucket.user_id
+        )
+
+      # Field reports for assigned areas (own + team for context)
+      - SELECT fr.id, fr.area_id, fr.user_id, fr.status, fr.progress, fr.reason_code,
+               fr.gps_lat, fr.gps_lng, fr.photo_url, fr.created_at, fr.offline_created_at, fr.device_id
+        FROM field_reports fr
+        WHERE fr.area_id IN (
+          SELECT ua.area_id FROM user_assignments ua
+          WHERE ua.user_id = bucket.user_id
+        )
+
+      # Delay logs for assigned areas
+      - SELECT dl.id, dl.area_id, dl.trade_name, dl.reason_code, dl.started_at,
+               dl.man_hours, dl.daily_cost, dl.cumulative_cost, dl.nod_draft_id, dl.rea_id, dl.receipt_confirmed
+        FROM delay_logs dl
+        WHERE dl.area_id IN (
+          SELECT ua.area_id FROM user_assignments ua
+          WHERE ua.user_id = bucket.user_id
+        )
+
+  # Superintendent/Sub PM: sees all areas for their org's trades
+  superintendent_data:
+    parameters:
+      - SELECT token_parameters.user_id as user_id
+
+    data:
+      # NOD drafts for their org's delay logs
+      - SELECT nd.id, nd.delay_log_id, nd.draft_content, nd.reminder_sent_at, nd.sent_at, nd.sent_by
+        FROM nod_drafts nd
+        INNER JOIN delay_logs dl ON dl.id = nd.delay_log_id
+        INNER JOIN areas a ON a.id = dl.area_id
+        WHERE a.project_id IN (
+          SELECT DISTINCT ua2.area_id FROM user_assignments ua2
+          INNER JOIN areas a2 ON a2.id = ua2.area_id
+          INNER JOIN users u ON u.id = ua2.user_id
+          WHERE u.org_id = (SELECT org_id FROM users WHERE id = bucket.user_id)
+        )
+
+      # Corrective actions assigned to their org
+      - SELECT ca.id, ca.delay_log_id, ca.assigned_to, ca.deadline, ca.note,
+               ca.created_at, ca.acknowledged_at, ca.in_resolution_at, ca.resolved_at, ca.created_by
+        FROM corrective_actions ca
+        INNER JOIN users u ON u.id = ca.assigned_to
+        WHERE u.org_id = (SELECT org_id FROM users WHERE id = bucket.user_id)
