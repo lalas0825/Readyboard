@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__list_tables"
     ]
   }
 }
