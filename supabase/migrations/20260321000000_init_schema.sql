@@ -12,6 +12,7 @@
 --   20260321000448 — create_functions_triggers
 --   20260321000701 — seed_383_madison
 --   20260321001042 — fix_function_search_paths
+--   20260321XXXXXX — fix_rls_circular_recursion
 --
 -- This file is the canonical reference for git.
 -- DO NOT re-run — migrations already applied via MCP.
