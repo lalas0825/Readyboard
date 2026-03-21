@@ -16,10 +16,10 @@
 - [ ] **PRODUCT:** Get real labor rates from current projects ($X/hr fully burdened)
 - [ ] **DESIGN:** Test foreman mobile in direct sunlight — high contrast light theme
 - [ ] **DESIGN:** Paper mockup of 3-step foreman flow (slider → blockers → reason codes)
-- [ ] **INFRA:** Set up Supabase project (readyboard-prod)
+- [x] **INFRA:** Set up Supabase project (readyboard-prod)
 - [ ] **INFRA:** Set up Expo project (readyboard-mobile)
-- [ ] **INFRA:** Set up Next.js project (readyboard-web)
-- [ ] **INFRA:** Set up Turborepo monorepo structure
+- [x] **INFRA:** Set up Next.js project (readyboard-web)
+- [x] **INFRA:** Set up Turborepo monorepo structure
 - [ ] **INFRA:** Set up Vercel project for web dashboard
 - [ ] **DEMO:** Show 1-Screen Dashboard artifact to Jantile PM. Ask: "If you had this at 7am, how many calls would you not make?" Listen. Write down exact words.
 
@@ -27,59 +27,81 @@
 
 ## Week 1 — Foundation + Data Model
 
-### Supabase Schema
+### Supabase Schema ✅
 
-- [ ] Create `organizations` table (name, type: GC|SUB, default_language, logo_url, legal_template_version)
-- [ ] Create `projects` table (name, address, labor_rate_per_hour, legal_jurisdiction, sha256_enabled DEFAULT true, gc_org_id, sub_org_id)
-- [ ] Create `users` table (email, phone, name, role, language, org_id)
-- [ ] Create `areas` table (name, floor, area_type, project_id, total_sqft, original_sqft)
-- [ ] Create `trade_sequences` table (project_id, area_type, trade_name, sequence_order)
-- [ ] Create `user_assignments` table (user_id, area_id, trade_name)
-- [ ] Create `production_benchmarks` table (project_id, trade_name, area_type, sqft_per_hour_per_person)
-- [ ] Create `area_trade_status` table (area_id, trade_type, reporting_mode DEFAULT 'percentage', manual_pct, calculated_pct, effective_pct, all_gates_passed DEFAULT false, gc_verification_pending, gc_verification_pending_since)
-- [ ] Create `field_reports` table (area_id, user_id, status, progress_pct, reason_code, gps_lat, gps_lng, photo_url, created_at, offline_created_at, device_id)
-- [ ] Create `delay_logs` table (area_id, trade_name, reason_code, started_at, man_hours, daily_cost, cumulative_cost, nod_draft_id, rea_id, receipt_confirmed)
-- [ ] Create `corrective_actions` table (delay_log_id, assigned_to, deadline, note, created_at, acknowledged_at, in_resolution_at, resolved_at, created_by)
-- [ ] Create `legal_documents` table (project_id, org_id, type: NOD|REA|EVIDENCE, sha256_hash, receipt_tracking_uuid, first_opened_at, open_count, sent_at, sent_by, signature_png_url, pdf_url)
-- [ ] Create `nod_drafts` table (delay_log_id, draft_content_jsonb, reminder_sent_at, sent_at, sent_by)
-- [ ] Create `receipt_events` table (document_id, event_type, ip_address, device_type, opened_at)
-- [ ] Create `schedule_items` table (project_id, area_name, trade_name, planned_start, planned_finish, p6_activity_id)
-- [ ] Create `scope_changes` table (area_id, delta_sqft, reason, change_order_ref, initiated_by, gc_initiated BOOLEAN, forecast_impact_days, created_at)
-- [ ] Create `forecast_snapshots` table (project_id, area_id, trade_type, snapshot_date, effective_pct, actual_rate, benchmark_rate, projected_date, scheduled_date, delta_days, recommendations JSONB)
-- [ ] Write RLS policies: foreman sees only assigned areas
-- [ ] Write RLS policies: sub PM sees all areas for their trade
-- [ ] Write RLS policies: GC PM sees all areas across all trades
-- [ ] Write RLS policies: legal_documents private to sub until published
-- [ ] Write RLS policies: organization isolation (GC A ≠ GC B)
-- [ ] Write RLS policies: SUB can only complete SUB tasks in area_tasks
-- [ ] Write RLS policies: GC can only complete GC tasks in area_tasks
-- [ ] Seed data: 383 Madison project, Tishman as GC, Jantile as sub, 5 floors, baths A-F
+- [x] Create `organizations` table (name, type: GC|SUB, default_language, logo_url, legal_template_version)
+- [x] Create `projects` table (name, address, labor_rate_per_hour, legal_jurisdiction, sha256_enabled DEFAULT true, gc_org_id, sub_org_id)
+- [x] Create `users` table (email, phone, name, role, language, org_id)
+- [x] Create `areas` table (name, floor, area_type, project_id, total_sqft, original_sqft)
+- [x] Create `trade_sequences` table (project_id, area_type, trade_name, sequence_order)
+- [x] Create `user_assignments` table (user_id, area_id, trade_name)
+- [x] Create `production_benchmarks` table (project_id, trade_name, area_type, sqft_per_hour_per_person)
+- [x] Create `area_trade_status` table (area_id, trade_type, reporting_mode DEFAULT 'percentage', manual_pct, calculated_pct, effective_pct, all_gates_passed DEFAULT false, gc_verification_pending, gc_verification_pending_since)
+- [x] Create `field_reports` table (area_id, user_id, status, progress_pct, reason_code, gps_lat, gps_lng, photo_url, created_at, offline_created_at, device_id)
+- [x] Create `delay_logs` table (area_id, trade_name, reason_code, started_at, man_hours, daily_cost, cumulative_cost, nod_draft_id, rea_id, receipt_confirmed)
+- [x] Create `corrective_actions` table (delay_log_id, assigned_to, deadline, note, created_at, acknowledged_at, in_resolution_at, resolved_at, created_by)
+- [x] Create `legal_documents` table (project_id, org_id, type: NOD|REA|EVIDENCE, sha256_hash, receipt_tracking_uuid, first_opened_at, open_count, sent_at, sent_by, signature_png_url, pdf_url)
+- [x] Create `nod_drafts` table (delay_log_id, draft_content_jsonb, reminder_sent_at, sent_at, sent_by)
+- [x] Create `receipt_events` table (document_id, event_type, ip_address, device_type, opened_at)
+- [x] Create `schedule_items` table (project_id, area_name, trade_name, planned_start, planned_finish, p6_activity_id)
+- [x] Create `scope_changes` table (area_id, delta_sqft, reason, change_order_ref, initiated_by, gc_initiated BOOLEAN, forecast_impact_days, created_at)
+- [x] Create `forecast_snapshots` table (project_id, area_id, trade_type, snapshot_date, effective_pct, actual_rate, benchmark_rate, projected_date, scheduled_date, delta_days, recommendations JSONB)
+- [x] Write RLS policies: foreman sees only assigned areas (33 policies + `get_accessible_area_ids()` SECURITY DEFINER fix)
+- [x] Write RLS policies: sub PM sees all areas for their trade
+- [x] Write RLS policies: GC PM sees all areas across all trades
+- [x] Write RLS policies: legal_documents private to sub until published
+- [x] Write RLS policies: organization isolation (GC A ≠ GC B)
+- [x] Write RLS policies: SUB can only complete SUB tasks in area_tasks
+- [x] Write RLS policies: GC can only complete GC tasks in area_tasks
+- [x] Seed data: 383 Madison project, Tishman as GC, Jantile as sub, 5 floors, baths A-F
+- [x] RLS security audit: 3 attack scenarios tested + scripts saved (scripts/test-rls.sql)
 
-### i18n Architecture
+### i18n Architecture ✅
 
-- [ ] Set up i18next in shared package
-- [ ] Create EN translation file — all UI strings (zero hardcoded strings in components)
-- [ ] Create ES translation file — all UI strings
-- [ ] Create reason_codes translations (EN + ES) — delay reasons + checklist correction reasons
-- [ ] Create notification_templates translations (EN + ES)
-- [ ] Set up next-i18next for web dashboard
+- [x] Set up next-intl for web dashboard (next-intl v4.8 + request.ts + middleware)
+- [x] Create EN translation file — all UI strings (`messages/en.json`)
+- [x] Create ES translation file — all UI strings (`messages/es.json`)
+- [x] Create reason_codes translations (EN + ES) — delay reasons + checklist correction reasons
+- [x] Create notification_templates translations (EN + ES)
+- [x] Auto-detect locale from browser Accept-Language header
 
-### SHA-256 Infrastructure
+### SHA-256 Infrastructure ✅
 
-- [ ] Create `packages/legal/hash.ts` — SHA-256 hash function for PDF buffers
-- [ ] Create `packages/legal/verify.ts` — hash verification endpoint logic
-- [ ] Confirm `sha256_hash` column in `legal_documents` (done in schema above)
+- [x] Create `src/lib/legal/hash.ts` — SHA-256 hash function for PDF buffers
+- [x] Create `src/lib/legal/verify.ts` — hash verification endpoint logic
+- [x] Create `GET /api/legal/verify?hash=[hash]` endpoint — tested 4 scenarios (valid, not_found, invalid_format, missing_param)
+- [x] Confirm `sha256_hash` column in `legal_documents` (done in schema above)
 
-### PowerSync Schema
+### PowerSync Schema ✅
 
-- [ ] Define PowerSync sync rules (which tables sync to mobile)
-- [ ] `field_reports`, `area_trade_status`, `user_assignments`, `nod_drafts` — sync to mobile
-- [ ] Define conflict resolution: last-write-wins with `offline_created_at`
-- [ ] Set up PowerSync project + connect to Supabase
+- [x] Define PowerSync sync rules (`packages/db/src/powersync/sync-rules.yaml` — v5.1, 5 bugs fixed)
+- [x] `field_reports`, `area_trade_status`, `area_tasks`, `user_assignments`, `nod_drafts` — sync to mobile
+- [x] Define conflict resolution: last-write-wins with `offline_created_at`
+- [x] Set up PowerSync project + connect to Supabase (PowerSync Cloud: `69bca667470f5291b29d919d`)
 
 ---
 
-## Week 2 — Foreman Mobile App (Offline-First)
+## Week 2 — Foreman Mobile Engine (Offline-First Data Pipeline)
+
+### Monorepo Turborepo ✅
+
+- [x] Restructure project to Turborepo monorepo (`apps/web`, `apps/mobile`, `packages/db`, `packages/shared`)
+- [x] Move Next.js app to `apps/web/` (git rename detection preserved history)
+- [x] Create root workspace `package.json` with npm workspaces
+- [x] Create `turbo.json` with dev/build/lint/typecheck tasks
+- [x] Update `apps/web/next.config.ts` with `transpilePackages`
+- [x] Update `apps/web/tsconfig.json` with paths to internal packages
+- [x] Upgrade Tailwind CSS v3.4 → v4 (`@tailwindcss/postcss`, removed `tailwind.config.ts`)
+- [x] Verify: `npm run dev:web` works, all routes functional, 0 TypeScript errors
+
+### PowerSync packages/db ✅
+
+- [x] Create `packages/db/` with `@powersync/common` v1.49 + `@supabase/supabase-js`
+- [x] `packages/db/src/powersync/schema.ts` — 11 synced tables using `column.text/integer/real` API
+- [x] `packages/db/src/powersync/sync-rules.yaml` — v5.1 with 5 bug fixes (org_id, progress_pct, status, area_trade_status, area_tasks, NOD join)
+- [x] `packages/db/src/powersync/SupabaseConnector.ts` — fetchCredentials (proactive refresh) + uploadData (PUT/PATCH/DELETE) with observability logging
+- [x] Barrel export `packages/db/src/index.ts`
+- [x] TypeScript clean: 0 errors across all 3 workspaces
 
 ### Expo Setup
 
@@ -520,25 +542,35 @@
 
 ```
 readyboard/
-├── apps/
-│   ├── mobile/                  Expo (Foreman + Sub PM)
-│   └── web/                     Next.js (GC Dashboard)
-├── packages/
-│   ├── shared/                  Types, Zod schemas, i18n, utils
-│   ├── db/
-│   │   ├── migrations/          SQL migrations
-│   │   ├── seed.sql             Demo data
-│   │   └── templates/           Checklist JSON seed files (V1.1)
-│   │       ├── bathroom-tasks.json
-│   │       ├── kitchen-tasks.json
-│   │       ├── corridor-tasks.json
-│   │       └── office-tasks.json
-│   └── legal/                   PDF generation, SHA-256
-├── supabase/
-│   ├── migrations/
-│   └── functions/               Edge Functions (forecast, NOD draft, receipt webhook)
+├── turbo.json                   Turborepo config
+├── package.json                 Workspace root (npm workspaces)
+├── tsconfig.json                Root TypeScript config
+├── .env.local                   Web env vars (Supabase URL + keys)
 ├── CLAUDE.md                    This project's AI context
 ├── BUSINESS_LOGIC.md            Status logic, RLS, notification chains
 ├── TASKS.md                     This file
-└── CHECKLIST_SYSTEM.md          Full checklist architecture spec
+├── apps/
+│   ├── mobile/                  Expo (Foreman + Sub PM) — placeholder
+│   └── web/                     Next.js 16 (GC Dashboard)
+│       ├── src/app/             App router pages
+│       ├── src/features/        Feature-based modules
+│       ├── src/lib/supabase/    SSR clients (client.ts, server.ts, service.ts)
+│       ├── src/lib/legal/       SHA-256 hash + verify
+│       ├── src/lib/i18n/        Locale utilities
+│       ├── src/i18n/            next-intl request config
+│       ├── messages/            EN + ES translations
+│       ├── next.config.ts       transpilePackages for internal pkgs
+│       └── package.json         @readyboard/web
+├── packages/
+│   ├── db/                      PowerSync + Supabase shared
+│   │   ├── src/powersync/schema.ts          11 synced tables
+│   │   ├── src/powersync/sync-rules.yaml    Bucket definitions v5.1
+│   │   ├── src/powersync/SupabaseConnector.ts  Auth + CRUD bridge
+│   │   └── package.json         @readyboard/db
+│   └── shared/                  Hooks, types (placeholder)
+│       └── package.json         @readyboard/shared
+├── scripts/
+│   └── test-rls.sql             RLS attack scenario tests
+└── supabase/
+    └── migrations/              19 SQL migration files
 ```

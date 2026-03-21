@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   experimental: {
     mcpServer: true,
   },
+  // Transpile internal monorepo packages
+  transpilePackages: ['@readyboard/db', '@readyboard/shared'],
 }
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')

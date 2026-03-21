@@ -1,0 +1,135 @@
+# PowerSync Sync Rules for ReadyBoard
+# v5.1 — Fixed column references + added area_trade_status + area_tasks
+#
+# These rules define WHAT data syncs to each mobile device.
+# PowerSync uses the authenticated user's token (from Supabase Auth)
+# to determine which rows to sync.
+#
+# IMPORTANT: These rules work WITH Supabase RLS, not instead of it.
+# - PowerSync sync rules: control what data DOWNLOADS to the device
+# - Supabase RLS: validates all WRITES (uploads) on the server
+#
+# Deploy these rules to your PowerSync Dashboard (powersync.journeyapps.com)
+#
+# BUGS FIXED (v5.1):
+# 1. projects: p.org_id → gc_org_id, sub_org_id (org_id doesn't exist)
+# 2. field_reports: fr.progress → fr.progress_pct, added fr.trade_name
+# 3. areas: removed a.status (column doesn't exist in schema)
+# 4. Added area_trade_status sync (was missing — universal status currency)
+# 5. Added area_tasks sync (was missing — checklist system)
+# 6. superintendent_data: fixed NOD drafts join path
+
+bucket_definitions:
+  # Foreman: only sees areas assigned to them
+  foreman_data:
+    parameters:
+      - SELECT token_parameters.user_id as user_id
+
+    data:
+      # User's own profile
+      - SELECT id, email, phone, name, role, language, org_id
+        FROM users
+        WHERE id = bucket.user_id
+
+      # Areas assigned to this user (no 'status' column — it's derived from area_trade_status)
+      - SELECT a.id, a.name, a.floor, a.area_type, a.project_id, a.total_sqft, a.original_sqft, a.created_at
+        FROM areas a
+        INNER JOIN user_assignments ua ON ua.area_id = a.id
+        WHERE ua.user_id = bucket.user_id
+
+      # User's assignments
+      - SELECT id, user_id, area_id, trade_name
+        FROM user_assignments
+        WHERE user_id = bucket.user_id
+
+      # Trade sequences for assigned projects
+      - SELECT ts.id, ts.project_id, ts.area_type, ts.trade_name, ts.sequence_order
+        FROM trade_sequences ts
+        WHERE ts.project_id IN (
+          SELECT DISTINCT a.project_id FROM areas a
+          INNER JOIN user_assignments ua ON ua.area_id = a.id
+          WHERE ua.user_id = bucket.user_id
+        )
+
+      # Projects the user is assigned to (gc_org_id + sub_org_id, NOT org_id)
+      - SELECT p.id, p.name, p.address, p.labor_rate_per_hour, p.legal_jurisdiction,
+               p.sha256_enabled, p.gc_org_id, p.sub_org_id, p.created_at
+        FROM projects p
+        WHERE p.id IN (
+          SELECT DISTINCT a.project_id FROM areas a
+          INNER JOIN user_assignments ua ON ua.area_id = a.id
+          WHERE ua.user_id = bucket.user_id
+        )
+
+      # Area trade status — THE universal status currency (effective_pct, gates, verification)
+      - SELECT ats.id, ats.area_id, ats.trade_type, ats.reporting_mode,
+               ats.manual_pct, ats.calculated_pct, ats.effective_pct,
+               ats.all_gates_passed, ats.gc_verification_pending,
+               ats.gc_verification_pending_since, ats.updated_at
+        FROM area_trade_status ats
+        WHERE ats.area_id IN (
+          SELECT ua.area_id FROM user_assignments ua
+          WHERE ua.user_id = bucket.user_id
+        )
+
+      # Field reports for assigned areas (progress_pct NOT progress, includes trade_name)
+      - SELECT fr.id, fr.area_id, fr.user_id, fr.trade_name, fr.status, fr.progress_pct,
+               fr.reason_code, fr.gps_lat, fr.gps_lng, fr.photo_url,
+               fr.device_id, fr.app_version, fr.offline_created_at, fr.created_at
+        FROM field_reports fr
+        WHERE fr.area_id IN (
+          SELECT ua.area_id FROM user_assignments ua
+          WHERE ua.user_id = bucket.user_id
+        )
+
+      # Area tasks — checklist system (sub + gc tasks for assigned areas)
+      - SELECT at.id, at.area_id, at.trade_type, at.task_template_id, at.task_order,
+               at.task_name_en, at.task_name_es, at.task_owner, at.is_gate, at.weight,
+               at.status, at.completed_at, at.completed_by, at.completed_by_role,
+               at.photo_url, at.notes, at.gps_lat, at.gps_lon,
+               at.verification_requested_at, at.notification_sent_at,
+               at.notification_opened_at, at.reminder_sent_at, at.escalation_flagged_at,
+               at.correction_reason, at.correction_note,
+               at.correction_requested_at, at.correction_requested_by,
+               at.correction_resolved_at, at.updated_at
+        FROM area_tasks at
+        WHERE at.area_id IN (
+          SELECT ua.area_id FROM user_assignments ua
+          WHERE ua.user_id = bucket.user_id
+        )
+
+      # Delay logs for assigned areas
+      - SELECT dl.id, dl.area_id, dl.trade_name, dl.reason_code, dl.started_at, dl.ended_at,
+               dl.man_hours, dl.daily_cost, dl.cumulative_cost, dl.crew_size,
+               dl.nod_draft_id, dl.rea_id, dl.receipt_confirmed
+        FROM delay_logs dl
+        WHERE dl.area_id IN (
+          SELECT ua.area_id FROM user_assignments ua
+          WHERE ua.user_id = bucket.user_id
+        )
+
+  # Superintendent/Sub PM: sees NOD drafts + corrective actions for their org
+  superintendent_data:
+    parameters:
+      - SELECT token_parameters.user_id as user_id
+
+    data:
+      # NOD drafts for delays in projects where user's org participates
+      # Fixed: join through delay_logs → areas → projects → match org_id
+      - SELECT nd.id, nd.delay_log_id, nd.draft_content, nd.reminder_sent_at, nd.sent_at, nd.sent_by
+        FROM nod_drafts nd
+        INNER JOIN delay_logs dl ON dl.id = nd.delay_log_id
+        INNER JOIN areas a ON a.id = dl.area_id
+        INNER JOIN projects p ON p.id = a.project_id
+        WHERE p.sub_org_id = (SELECT org_id FROM users WHERE id = bucket.user_id)
+           OR p.gc_org_id = (SELECT org_id FROM users WHERE id = bucket.user_id)
+
+      # Corrective actions for delays in org's projects
+      - SELECT ca.id, ca.delay_log_id, ca.assigned_to, ca.deadline, ca.note,
+               ca.created_at, ca.acknowledged_at, ca.in_resolution_at, ca.resolved_at, ca.created_by
+        FROM corrective_actions ca
+        INNER JOIN delay_logs dl ON dl.id = ca.delay_log_id
+        INNER JOIN areas a ON a.id = dl.area_id
+        INNER JOIN projects p ON p.id = a.project_id
+        WHERE p.sub_org_id = (SELECT org_id FROM users WHERE id = bucket.user_id)
+           OR p.gc_org_id = (SELECT org_id FROM users WHERE id = bucket.user_id)

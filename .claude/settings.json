@@ -3,7 +3,10 @@
     "allow": [
       "Bash(git init:*)",
       "mcp__supabase__execute_sql",
-      "mcp__supabase__list_tables"
+      "mcp__supabase__list_tables",
+      "mcp__next-devtools__init",
+      "Bash(curl:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
