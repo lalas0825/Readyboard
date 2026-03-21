@@ -103,14 +103,32 @@
 - [x] Barrel export `packages/db/src/index.ts`
 - [x] TypeScript clean: 0 errors across all 3 workspaces
 
-### Expo Setup
+### Shared Hooks (packages/shared) ✅
 
-- [ ] Initialize Expo project with TypeScript
+- [x] `PowerSyncProvider` — platform-agnostic context wrapping `AbstractPowerSyncDatabase` (createElement for React 18/19 compat)
+- [x] `usePowerSync()` hook — exposes `{ db, status }` with `connected`, `lastSyncedAt`, `hasSynced`
+- [x] `useFieldReport()` hook — `createReport()` INSERT local SQLite + `getReportsForArea()` SELECT
+- [x] Shared types: `FieldReportInput`, `PowerSyncStatus`, `ReasonCode`, `UserRole`
+- [x] Barrel export via `packages/shared/src/index.ts`
+- [x] Fix: `@types/react` dual version (18 mobile / 19 web) resolved via npm override + postinstall dedup
+
+### Expo Scaffold (apps/mobile) ✅
+
+- [x] Initialize Expo project (SDK 52, expo-router 4, TypeScript)
+- [x] `PowerSyncMobileProvider` — initializes `PowerSyncDatabase` (SQLite), connects PowerSync Cloud, syncStatus listener
+- [x] `AuthProvider` — Supabase Auth with `onAuthStateChange`, re-uses connector's Supabase client
+- [x] `app/_layout.tsx` — `AuthProvider → PowerSyncMobileProvider → Slot`
+- [x] `app/index.tsx` — Pipeline status placeholder (Auth + PowerSync connectivity indicators)
+- [x] `.env` — `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_POWERSYNC_URL`
+- [x] `package.json` — scripts include `prebuild`, `prebuild:clean` for native builds
+- [x] TypeScript clean: 0 errors across all 4 workspaces (db, shared, web, mobile)
+
+### Expo Setup (remaining — post-scaffold)
+
 - [ ] Configure expo-localization — auto language detection from device
 - [ ] Configure expo-camera — photo evidence
 - [ ] Configure expo-location — GPS capture
 - [ ] Configure expo-haptics — confirmation feedback
-- [ ] Set up PowerSync + SQLite in mobile app
 - [ ] Verify offline-first: ALL reads/writes go to local SQLite first
 
 ### Auth (SMS Magic Link)

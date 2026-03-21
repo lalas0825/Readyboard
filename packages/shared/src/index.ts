@@ -1,3 +1,20 @@
 // @readyboard/shared — shared hooks, types, utils
-// Placeholder — will be populated in Phase 3
-export {}
+
+// Types
+export type {
+  FieldReportStatus,
+  FieldReportInput,
+  ReasonCode,
+  UserRole,
+  PowerSyncStatus,
+} from './types';
+
+// Hooks
+export {
+  PowerSyncProvider,
+  PowerSyncContext,
+  usePowerSync,
+  type PowerSyncContextValue,
+} from './hooks/usePowerSync';
+
+export { useFieldReport } from './hooks/useFieldReport';

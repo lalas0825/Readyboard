@@ -11,10 +11,14 @@
     "dev:web": "turbo dev --filter=@readyboard/web",
     "build": "turbo build",
     "lint": "turbo lint",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "postinstall": "node -e \"require('fs').rmSync('apps/mobile/node_modules/@types/react',{recursive:true,force:true})\""
   },
   "devDependencies": {
     "turbo": "^2.4.0",
     "typescript": "^5.7.0"
+  },
+  "overrides": {
+    "@types/react": "^19.0.0"
   }
 }

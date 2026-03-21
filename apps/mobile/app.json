@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "ReadyBoard",
+    "slug": "readyboard",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "readyboard",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "com.readyboard.foreman",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.readyboard.foreman",
+      "adaptiveIcon": {
+        "backgroundColor": "#0f172a"
+      }
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
