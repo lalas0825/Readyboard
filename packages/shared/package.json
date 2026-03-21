@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@powersync/common": "^1.49.0"
+    "@powersync/common": "^1.49.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

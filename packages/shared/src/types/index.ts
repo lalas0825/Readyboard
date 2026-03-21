@@ -42,3 +42,37 @@ export type PowerSyncStatus = {
   lastSyncedAt: Date | null;
   hasSynced: boolean;
 };
+
+/** Derived area status for Foreman Home Screen */
+export type AreaStatus = 'ready' | 'almost' | 'working' | 'blocked' | 'held';
+
+/** Area with derived status for foreman display */
+export type AssignedArea = {
+  id: string;
+  name: string;
+  floor: string;
+  area_type: string;
+  project_id: string;
+  trade_name: string;
+  effective_pct: number;
+  all_gates_passed: boolean;
+  gc_verification_pending: boolean;
+  status: AreaStatus;
+  /** ISO timestamp of most recent field_report for this area+trade (null if none) */
+  last_report_at: string | null;
+};
+
+/** Input for creating a delay_log in local SQLite */
+export type DelayLogInput = {
+  area_id: string;
+  trade_name: string;
+  reason_code: ReasonCode;
+};
+
+/** Unsent NOD draft linked to a foreman's area */
+export type PendingNod = {
+  nod_id: string;
+  area_id: string;
+  area_name: string;
+  reason_code: string;
+};

@@ -6,7 +6,7 @@
  */
 
 import { usePowerSync } from './usePowerSync';
-import type { FieldReportInput } from '../types';
+import type { FieldReportInput, DelayLogInput } from '../types';
 
 /** Simple UUID v4 generator — works on all platforms without deps */
 function generateId(): string {
@@ -48,9 +48,6 @@ export function useFieldReport() {
       ]
     );
 
-    console.log(
-      `[FieldReport] Created: ${id} area=${input.area_id} status=${input.status} pct=${input.progress_pct}`
-    );
     return id;
   }
 
@@ -62,5 +59,36 @@ export function useFieldReport() {
     );
   }
 
-  return { createReport, getReportsForArea };
+  /** Insert a delay_log for a blocked area (started_at = now, ended_at = null) */
+  async function createDelayLog(input: DelayLogInput): Promise<string> {
+    const id = generateId();
+    const now = new Date().toISOString();
+
+    await db.execute(
+      `INSERT INTO delay_logs (
+        id, area_id, trade_name, reason_code, started_at,
+        ended_at, man_hours, daily_cost, cumulative_cost,
+        crew_size, nod_draft_id, rea_id, receipt_confirmed
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        input.area_id,
+        input.trade_name,
+        input.reason_code,
+        now,
+        null, // ended_at: delay is ongoing
+        null, // man_hours: calculated later
+        null, // daily_cost: calculated later
+        null, // cumulative_cost: calculated later
+        null, // crew_size: not captured in report flow
+        null, // nod_draft_id: created by server
+        null, // rea_id: created by server
+        0,    // receipt_confirmed: false
+      ]
+    );
+
+    return id;
+  }
+
+  return { createReport, createDelayLog, getReportsForArea };
 }

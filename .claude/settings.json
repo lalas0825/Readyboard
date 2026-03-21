@@ -6,7 +6,8 @@
       "mcp__supabase__list_tables",
       "mcp__next-devtools__init",
       "Bash(curl:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm run typecheck:*)"
     ]
   }
 }

@@ -8,16 +8,40 @@
     "platforms": ["ios", "android"],
     "ios": {
       "bundleIdentifier": "com.readyboard.foreman",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "ReadyBoard uses your camera to photograph work areas as legal evidence for delay documentation.",
+        "NSLocationWhenInUseUsageDescription": "ReadyBoard records your location to verify which work area you are reporting from.",
+        "NSPhotoLibraryUsageDescription": "ReadyBoard needs access to save site photos as evidence."
+      }
     },
     "android": {
       "package": "com.readyboard.foreman",
       "adaptiveIcon": {
         "backgroundColor": "#0f172a"
-      }
+      },
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "VIBRATE"
+      ]
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ReadyBoard uses your camera to photograph work areas as evidence."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ReadyBoard records your location to verify your work area."
+        }
+      ],
+      "expo-localization"
     ]
   }
 }

@@ -138,70 +138,116 @@
 - [x] `npm run typecheck` — 4/4 workspaces clean (db, shared, web, mobile)
 - [x] Added `packageManager` field to root `package.json` (required by Turbo 2.8+)
 
-### Expo Setup (remaining — post-scaffold)
+### Native Capabilities + i18n (Sprint A) ✅
 
-- [ ] Configure expo-localization — auto language detection from device
-- [ ] Configure expo-camera — photo evidence
-- [ ] Configure expo-location — GPS capture
-- [ ] Configure expo-haptics — confirmation feedback
-- [ ] Verify offline-first: ALL reads/writes go to local SQLite first
+- [x] Install + configure `expo-camera` (plugin + iOS NSCameraUsageDescription + Android CAMERA permission)
+- [x] Install + configure `expo-location` (plugin + iOS NSLocationWhenInUseUsageDescription + Android ACCESS_FINE/COARSE_LOCATION)
+- [x] Install + configure `expo-haptics` (Android VIBRATE permission)
+- [x] Install + configure `expo-localization` (plugin + auto language detection from device)
+- [x] Update `apps/mobile/app.json` with all plugins + iOS infoPlist + Android permissions
+- [x] `expo prebuild --clean` — regenerated Android native directory with correct permissions
+- [x] Install `i18next` + `react-i18next` in mobile
+- [x] Create `packages/shared/src/i18n/en.json` — 165+ keys (common, auth, dashboard, readyBoard, fieldReport, reasonCodes, legal, trades, etc.)
+- [x] Create `packages/shared/src/i18n/es.json` — full Spanish translations matching en.json
+- [x] Create `packages/shared/src/i18n/index.ts` — barrel export (translations, SupportedLocale, SUPPORTED_LOCALES, DEFAULT_LOCALE)
+- [x] Update `packages/shared/src/index.ts` — add i18n exports
+- [x] Create `apps/mobile/src/providers/I18nProvider.tsx` — i18next + expo-localization auto-detect + `changeLanguage()` export
+- [x] Update `apps/mobile/app/_layout.tsx` — provider chain: I18nProvider → AuthProvider → PowerSyncMobileProvider → Slot
+- [x] Verify offline-first: ALL reads/writes go to local SQLite first (22/22 pipeline assertions)
 
-### Auth (SMS Magic Link)
+### Auth SMS + Observability (Sprint A) ✅
 
-- [ ] Create SMS magic link flow in Supabase Auth
+- [x] Enhance `AuthProvider.tsx` with `signInWithPhone()`, `verifyOtp()`, `signOut()` — each returns `{ error: string | null }`
+- [x] Offline resilience: TOKEN_REFRESHED with null session → keep local session for PowerSync cached data
+- [x] Auth lifecycle logging: `[AuthProvider] EVENT | user=abc123 | expiresIn=3600s`
+- [x] Create `apps/mobile/app/login.tsx` — SMS OTP flow (phone input → verify code → redirect to /)
+- [x] Carlos Standard UX: 22px input, 56px+ buttons, dark bg, bilingual via `useTranslation()`
+- [x] Haptic feedback on success (`Haptics.NotificationFeedbackType.Success`) and error (`Error`)
+- [x] Auth gating on `app/index.tsx`: redirect to `/login` if no session
+- [x] Create `apps/mobile/src/components/DebugNav.tsx` — dev-only panel: Auth (userId, phone, expiry), i18n (locale + toggle EN/ES), PowerSync (connection dot, lastSynced, pending uploads)
+- [x] Create `apps/mobile/app/debug.tsx` — renders DebugNav only in `__DEV__`
+- [x] Triple-tap on title in index.tsx → navigates to `/debug` (500ms tap window)
+- [x] `npm run typecheck` — 4/4 workspaces clean (db, shared, web, mobile)
+
+### Foreman Home Screen ✅
+
+- [x] Build home screen showing ONLY areas assigned to this foreman (from `user_assignments` → `areas` → `area_trade_status`)
+- [x] Areas sorted by status priority: READY (green) → ALMOST (yellow) → WORKING (blue) → HELD (purple) → BLOCKED (red)
+- [x] Large color-coded cards: area name + status chip + progress bar + "Report Update" button
+- [x] 56px+ tap targets (Report Update button = 56px height), 20px+ area names
+- [x] Header: app name + sync status (green/amber dot) + logout button
+- [x] Language auto-detected from device via I18nProvider + expo-localization
+- [x] **NOD Reminder Banner:** Purple banner with haptic feedback when unsent NOD drafts exist. Shows area name + count
+- [x] "Report Update" button per card (blue, 56px) — opens 3-step report flow
+- [x] `useFocusEffect` — instant refresh when screen regains focus after report submit
+- [x] "Reported" badge (green checkmark) on cards with reports in last 2 hours
+- [x] Triple-tap on title → navigates to `/debug` (dev-only, 500ms tap window)
+- [x] Error state: differentiates "no areas" vs "query failed" with monospace error detail
+- [x] Null-safe: all SQLite LEFT JOIN columns nullable with fallbacks (`name ?? 'Unknown'`, `floor ?? '-'`)
+
+### Report Flow — Step 1: How Much Is Done? ✅
+
+- [x] Large percentage slider (0–100%, step 5%) via `@react-native-community/slider`
+- [x] Huge number display center screen: 96px font
+- [x] Progress indicator strip at top: 3 dots (blue active, gray inactive)
+
+### Report Flow — Step 2: Any Blockers? ✅
+
+- [x] Two full-width buttons: "No blockers" (green, 80px) / "Yes, blocked" (red, 80px)
+- [x] No blockers → `onReadyToSubmit()` → submit field_report (status=working)
+- [x] Has blockers → go to Step 3
+- [x] `isSubmitting` guard: buttons disabled + opacity 0.4 during submit
+
+### Report Flow — Step 3: Why Blocked? ✅
+
+- [x] 7 reason codes as large icon buttons (emoji + label, 56px+)
+- [x] One tap selects reason (highlighted blue border)
+- [ ] Optional: camera button to take photo (queued locally if offline) — **P1: camera capture pending**
+- [x] Submit button disabled until reason selected, shows ActivityIndicator during submit
+- [x] Submit → save `field_report` with reason_code via `useFieldReport`
+- [x] `isSubmitting` guard: reason selection + submit button locked during submit
+
+### Report Flow — Store + Navigator ✅
+
+- [x] `useReportStore` (Zustand): 3-step flow, formData in memory, no persistence middleware
+- [x] `ReportFlowNavigator`: step orchestrator with progress dots + cancel button
+- [x] `report.tsx` route: guard via useEffect, unmount cleanup resets store, double-tap guard, data integrity validation (blockers answered, reason_code if blocked)
+- [x] `router.replace('/(main)')` after submit — prevents gesture-back to empty report screen
+
+### Report Flow — Blindaje (Resilience Audit) ✅
+
+- [x] Memory: store resets on unmount (gesture back, hardware back) via useEffect cleanup
+- [x] Double-tap: `isSubmitting` blocks duplicate writes at route + step component level
+- [x] Data integrity: validates `has_blockers !== null` and `reason_code` if blocked before DB write
+- [x] Post-submit: `submittedRef` prevents double reset (submit reset + unmount cleanup)
+
+### RLS Security Fix ✅
+
+- [x] `field_reports` INSERT policy: added `area_id IN (SELECT area_id FROM user_assignments WHERE user_id = auth.uid())` — prevents inserting reports for unassigned areas
+
+### Confirmation Screen (P0) ✅
+
+- [x] SuccessView inside ReportFlowNavigator (isSubmitted state in store)
+- [x] Full-screen green background + large checkmark (80px) + area name + trade name
+- [x] Haptic feedback (expo-haptics NotificationFeedbackType.Success)
+- [x] i18n: `fieldReport.reportSent` / `fieldReport.reportSentSubtitle` (EN + ES)
+- [x] Close button (56px, Carlos Standard) → reset store + `router.replace('/(main)')`
+- [x] Guard fix: `submittedRef` prevents double navigation (guard useEffect vs handleClose)
+
+### Auto-create delay_log (P1) ✅
+
+- [x] On BLOCKED report submit: atomically create `delay_log` entry
+- [x] If delay_log fails, field_report persists (non-blocking inner try/catch)
+- [x] Links field_report to delay_log via area_id + trade_name + reason_code
+- [x] `createDelayLog()` in `useFieldReport.ts` + `DelayLogInput` type
+
+### Auth remaining (P2)
+
 - [ ] Superintendent sends invite → foreman receives SMS with link
-- [ ] Foreman taps link → authenticated → sees assigned areas immediately
 - [ ] **Zero form fields. Zero password. Zero onboarding screens.**
 - [ ] GC/Sub PM: email + password login (standard Supabase auth)
 
-### Foreman Home Screen
-
-- [ ] Build home screen showing ONLY areas assigned to this foreman (from `user_assignments`)
-- [ ] Areas grouped by status: READY (green) first, ALMOST (yellow), BLOCKED/HELD (red/purple)
-- [ ] Large color-coded cards: area name + status label + one-line description
-- [ ] 56px+ tap targets, readable in direct sunlight
-- [ ] Header: foreman name, trade, project name, sync status (green dot)
-- [ ] Language auto-detected from device. Hidden toggle in profile.
-- [ ] **NOD Reminder Banner:** When active BLOCKED area + pending NOD draft + not yet sent → purple banner top of screen: "⚖ [NOD draft ready — 24h window. Tap.]" → tapping opens NOD draft
-- [ ] Big orange "Report Update" button always visible at bottom
-
-### Report Flow — Step 1: How Much Is Done?
-
-- [ ] Large percentage slider (0–100%, step 5%)
-- [ ] Huge number display center screen: "75%"
-- [ ] Progress indicator strip at top: 3 steps
-
-### Report Flow — Step 2: Any Blockers?
-
-- [ ] Two full-width buttons: YES ✓ (green, large) / NO ✕ (red, large)
-- [ ] If YES → save `field_report` (status=WORKING, progress=slider value) → confirmation screen
-- [ ] If NO → go to Step 3
-
-### Report Flow — Step 3: Why Blocked? (only if NO on Step 2)
-
-- [ ] Reason codes as large icon buttons (56px+):
-     🌡 No Heat | 🔨 Prior Trade | 🚫 No Access | 📋 Inspection | 🔧 Plumbing | 📦 Material | 💧 Moisture
-- [ ] One tap selects reason (highlighted blue border)
-- [ ] Optional: camera button to take photo (queued locally if offline)
-- [ ] "📷 Take photo & submit" button (disabled until reason selected)
-- [ ] Submit → save `field_report` with reason_code + GPS + photo_url
-- [ ] Auto-create `delay_log` entry on first BLOCKED report for this area
-
-### Confirmation Screen
-
-- [ ] Full-screen green background
-- [ ] Large ✓ checkmark (88px)
-- [ ] Haptic feedback (expo-haptics)
-- [ ] Show: area name + status + "Syncing..." → "Synced ✓"
-- [ ] Auto-return to home after 2 seconds
-
-### Tablet Responsive Layout
-
-- [ ] Test all screens on iPad + Android tablet
-- [ ] Larger cards, adjusted spacing for bigger screens
-- [ ] Maintain single-column layout (no desktop-style grids on foreman tablet view)
-
-### Offline Testing
+### Offline Testing (P2)
 
 - [ ] Enable airplane mode
 - [ ] Submit 5 field reports with slider
@@ -210,6 +256,12 @@
 - [ ] Re-enable connectivity
 - [ ] Verify all synced to Supabase within 30 seconds
 - [ ] Verify GPS coordinates captured correctly without internet
+
+### Tablet Responsive Layout (P3)
+
+- [ ] Test all screens on iPad + Android tablet
+- [ ] Larger cards, adjusted spacing for bigger screens
+- [ ] Maintain single-column layout (no desktop-style grids on foreman tablet view)
 
 ---
 
@@ -583,7 +635,14 @@ readyboard/
 ├── BUSINESS_LOGIC.md            Status logic, RLS, notification chains
 ├── TASKS.md                     This file
 ├── apps/
-│   ├── mobile/                  Expo (Foreman + Sub PM) — placeholder
+│   ├── mobile/                  Expo (Foreman + Sub PM)
+│   │   ├── app/index.tsx        Pipeline status + auth gating + triple-tap debug
+│   │   ├── app/login.tsx        SMS OTP login (phone → verify → home)
+│   │   ├── app/debug.tsx        Dev-only debug panel route
+│   │   ├── app/_layout.tsx      I18n → Auth → PowerSync → Slot
+│   │   ├── src/providers/       AuthProvider, PowerSyncProvider, I18nProvider
+│   │   ├── src/components/      DebugNav (observability panel)
+│   │   └── app.json             Plugins + permissions (camera, location, haptics, i18n)
 │   └── web/                     Next.js 16 (GC Dashboard)
 │       ├── src/app/             App router pages
 │       ├── src/features/        Feature-based modules
@@ -600,9 +659,12 @@ readyboard/
 │   │   ├── src/powersync/sync-rules.yaml    Bucket definitions v5.1
 │   │   ├── src/powersync/SupabaseConnector.ts  Auth + CRUD bridge
 │   │   └── package.json         @readyboard/db
-│   └── shared/                  Hooks, types
+│   └── shared/                  Hooks, types, i18n
 │       ├── src/hooks/usePowerSync.tsx    Platform-agnostic PowerSync context + hook
 │       ├── src/hooks/useFieldReport.ts   Field report CRUD (offline-first)
+│       ├── src/i18n/en.json             EN translations (165+ keys)
+│       ├── src/i18n/es.json             ES translations (165+ keys)
+│       ├── src/i18n/index.ts            Barrel export (translations, locales)
 │       ├── src/types/index.ts            Shared types (roles, status, inputs)
 │       └── package.json         @readyboard/shared
 ├── scripts/
