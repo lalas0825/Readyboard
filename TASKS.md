@@ -123,6 +123,21 @@
 - [x] `package.json` — scripts include `prebuild`, `prebuild:clean` for native builds
 - [x] TypeScript clean: 0 errors across all 4 workspaces (db, shared, web, mobile)
 
+### Offline Sync Validation (Fase 4) ✅
+
+- [x] Enhanced `SupabaseConnector.uploadData` error logging: structured `{ message, code, details, hint, context }` per operation
+- [x] Enhanced `apps/mobile/app/index.tsx` with full observability: sync status (color-coded), pending upload count, local report count, error details, live log
+- [x] Added "Create Test Report" button using `createReport()` from shared hook for offline testing
+- [x] Created `scripts/test-offline-sync.ts` — server-side sync pipeline test (22/22 assertions passed):
+  - Auth user creation + `handle_new_user` trigger auto-creates profile
+  - Field report INSERT with `offline_created_at` (simulates PowerSync upload)
+  - All field values verified (area_id, user_id, trade_name, status, progress_pct, GPS, device_id, app_version)
+  - Conflict resolution invariant: `offline_created_at <= created_at` (30s delta confirmed)
+  - Cleanup verified (0 residual rows)
+- [x] `expo prebuild` — Android native directory generated successfully
+- [x] `npm run typecheck` — 4/4 workspaces clean (db, shared, web, mobile)
+- [x] Added `packageManager` field to root `package.json` (required by Turbo 2.8+)
+
 ### Expo Setup (remaining — post-scaffold)
 
 - [ ] Configure expo-localization — auto language detection from device
@@ -585,10 +600,14 @@ readyboard/
 │   │   ├── src/powersync/sync-rules.yaml    Bucket definitions v5.1
 │   │   ├── src/powersync/SupabaseConnector.ts  Auth + CRUD bridge
 │   │   └── package.json         @readyboard/db
-│   └── shared/                  Hooks, types (placeholder)
+│   └── shared/                  Hooks, types
+│       ├── src/hooks/usePowerSync.tsx    Platform-agnostic PowerSync context + hook
+│       ├── src/hooks/useFieldReport.ts   Field report CRUD (offline-first)
+│       ├── src/types/index.ts            Shared types (roles, status, inputs)
 │       └── package.json         @readyboard/shared
 ├── scripts/
-│   └── test-rls.sql             RLS attack scenario tests
+│   ├── test-rls.sql             RLS attack scenario tests
+│   └── test-offline-sync.ts     Offline sync pipeline test (22 assertions)
 └── supabase/
     └── migrations/              19 SQL migration files
 ```

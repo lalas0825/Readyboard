@@ -157,11 +157,20 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
       console.log(
         `[PowerSync] uploadData: batch complete — ${successCount}/${transaction.crud.length} ops`
       );
-    } catch (error) {
+    } catch (error: unknown) {
+      const err = error as { message?: string; code?: string; details?: string; hint?: string };
       console.error(
         `[PowerSync] uploadData: FAILED at op ${successCount + 1}/${transaction.crud.length}:`,
-        error
+        {
+          message: err.message ?? String(error),
+          code: err.code,
+          details: err.details,
+          hint: err.hint,
+          context: `batch=${transaction.crud.length} completed=${successCount}`,
+        }
       );
+      // Do NOT call transaction.complete() — record stays in pending queue
+      // PowerSync will retry automatically on next sync cycle
       throw error;
     }
   }
@@ -186,7 +195,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         const record = { ...op.opData, id: op.id };
         const { error } = await this.client.from(table).upsert(record);
         if (error) {
-          console.error(`[PowerSync] PUT ${table}/${op.id} failed:`, error.message);
+          console.error(`[PowerSync] PUT ${table}/${op.id} failed:`, { message: error.message, code: error.code, details: error.details });
           throw error;
         }
         break;
@@ -197,7 +206,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
           .update(op.opData!)
           .eq('id', op.id);
         if (error) {
-          console.error(`[PowerSync] PATCH ${table}/${op.id} failed:`, error.message);
+          console.error(`[PowerSync] PATCH ${table}/${op.id} failed:`, { message: error.message, code: error.code, details: error.details });
           throw error;
         }
         break;
@@ -208,7 +217,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
           .delete()
           .eq('id', op.id);
         if (error) {
-          console.error(`[PowerSync] DELETE ${table}/${op.id} failed:`, error.message);
+          console.error(`[PowerSync] DELETE ${table}/${op.id} failed:`, { message: error.message, code: error.code, details: error.details });
           throw error;
         }
         break;
