@@ -7,6 +7,7 @@ import { CorrectiveActionForm } from './CorrectiveActionForm';
 import { StatusTimeline, type TimelineEvent } from './StatusTimeline';
 import { useCellDetails } from '../hooks/useCellDetails';
 import { toggleSafetyBlock } from '../services/toggleSafetyBlock';
+import { REASON_LABELS } from '@/lib/constants';
 
 type GridDetailPanelProps = {
   cell: GridCellData;
@@ -18,17 +19,6 @@ type GridDetailPanelProps = {
   onOptimisticInsert: (action: CorrectiveActionData) => void;
   onInsertSuccess: (tempId: string, action: CorrectiveActionData) => void;
   onInsertRevert: (tempId: string, area_id: string, trade_name: string) => void;
-};
-
-const REASON_LABELS: Record<string, string> = {
-  no_heat: 'No Heat',
-  prior_trade: 'Prior Trade',
-  no_access: 'No Access',
-  inspection: 'Inspection',
-  plumbing: 'Plumbing',
-  material: 'Material',
-  moisture: 'Moisture',
-  safety: 'Safety Clearance',
 };
 
 const ACTION_STATUS_CONFIG: Record<CorrectiveActionStatus, { label: string; color: string; bg: string; border: string }> = {

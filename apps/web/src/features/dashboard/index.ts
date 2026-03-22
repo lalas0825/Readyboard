@@ -22,6 +22,7 @@ export type {
   ProjectForecast,
   TrendSnapshot,
   FinancialOverview,
+  ScheduleComparisonRow,
   LegalDoc,
   LegalDocType,
 } from './types';

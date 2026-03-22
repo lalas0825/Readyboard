@@ -3,6 +3,7 @@
 import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { writeAuditEntry } from '@/lib/audit';
 import type { CorrectiveActionData } from '../types';
 import { deriveActionStatus } from '../lib/deriveActionStatus';
 
@@ -78,6 +79,21 @@ export async function createCorrectiveAction(
     title: 'Nueva Acción Correctiva Asignada',
     body: input.note || 'Se te ha asignado una acción correctiva.',
     data: { corrective_action_id: inserted.id, delay_log_id: input.delay_log_id },
+  });
+
+  // Audit: CA created
+  await writeAuditEntry({
+    tableName: 'corrective_actions',
+    recordId: inserted.id as string,
+    action: 'ca_created',
+    changedBy: createdById,
+    newValue: {
+      delay_log_id: input.delay_log_id,
+      assigned_to: input.assigned_to,
+      deadline: input.deadline,
+      note: input.note || null,
+    },
+    reason: `Corrective action assigned to ${input.assigned_to}`,
   });
 
   const dl = inserted.delay_logs as unknown as Record<string, unknown>;

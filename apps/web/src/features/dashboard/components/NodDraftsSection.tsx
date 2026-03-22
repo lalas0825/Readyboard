@@ -6,17 +6,7 @@ import { approveNodDraft } from '@/features/legal/services/nodAutoGen';
 import { SignaturePad } from '@/features/legal/components/SignaturePad';
 import type { NodDraftRow } from '../services/fetchNodDrafts';
 import type { SignatureData } from '@/features/legal/components/SignaturePad';
-
-const REASON_LABELS: Record<string, string> = {
-  no_heat: 'No Heat',
-  prior_trade: 'Prior Trade',
-  no_access: 'No Access',
-  inspection: 'Inspection',
-  plumbing: 'Plumbing',
-  material: 'Material',
-  moisture: 'Moisture',
-  safety: 'Safety',
-};
+import { REASON_LABELS } from '@/lib/constants';
 
 type NodDraftsSectionProps = {
   projectId: string;

@@ -3,6 +3,7 @@
 import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { MS_PER_HOUR } from '@/lib/constants';
 
 // ─── Types ──────────────────────────────────────────
 
@@ -117,7 +118,7 @@ export async function scanThresholds(
     let cumulativeCost: number;
 
     if (isActive) {
-      durationHours = (now - new Date(log.started_at).getTime()) / 3_600_000;
+      durationHours = (now - new Date(log.started_at).getTime()) / MS_PER_HOUR;
       manHours = Math.round(durationHours * crewSize * 100) / 100;
       cumulativeCost = Math.round(manHours * laborRate * 100) / 100;
     } else {

@@ -1,17 +1,18 @@
 'use client';
 
 import { useAlertMetrics } from '../hooks/useAlertMetrics';
-import type { ProjectForecast } from '../types';
+import type { ProjectForecast, ScheduleComparisonRow } from '../types';
 
 type ForecastSectionProps = {
   forecast: ProjectForecast;
+  scheduleComparison?: ScheduleComparisonRow[];
 };
 
 /**
  * Section 3: "When does this end?"
- * Shows trend sparkline, scheduled vs projected dates, and system health from bus.
+ * Shows trend sparkline, scheduled vs projected dates, system health, and schedule comparison table.
  */
-export function ForecastSection({ forecast }: ForecastSectionProps) {
+export function ForecastSection({ forecast, scheduleComparison }: ForecastSectionProps) {
   const alertMetrics = useAlertMetrics();
 
   const hasTrend = forecast.trendData.length > 0;
@@ -19,7 +20,21 @@ export function ForecastSection({ forecast }: ForecastSectionProps) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">Forecast</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">Forecast</h2>
+        <div className="flex items-center gap-3">
+          {forecast.atRiskCount > 0 && (
+            <span className="rounded-full bg-red-950/50 px-2 py-0.5 text-[10px] font-medium text-red-400 border border-red-900/50">
+              {forecast.atRiskCount} at risk
+            </span>
+          )}
+          {forecast.criticalPathItems > 0 && (
+            <span className="text-[10px] text-zinc-500">
+              {forecast.criticalPathItems} critical path items
+            </span>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         {/* Schedule Delta */}
@@ -92,6 +107,60 @@ export function ForecastSection({ forecast }: ForecastSectionProps) {
             14-Day Trend
           </p>
           <TrendSparkline data={forecast.trendData.map((d) => d.effectivePct)} />
+        </div>
+      )}
+
+      {/* Schedule Comparison Table */}
+      {scheduleComparison && scheduleComparison.length > 0 && (
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+          <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+            Schedule vs Reality
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-500">
+                  <th className="pb-2 text-left font-medium">Area</th>
+                  <th className="pb-2 text-left font-medium">Trade</th>
+                  <th className="pb-2 text-right font-medium">Baseline</th>
+                  <th className="pb-2 text-right font-medium">Projected</th>
+                  <th className="pb-2 text-right font-medium">Delta</th>
+                  <th className="pb-2 text-right font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scheduleComparison.map((row, i) => {
+                  const delta = row.deltaDays ?? 0;
+                  const statusColor =
+                    delta > 3 ? 'text-red-400' : delta > 0 ? 'text-yellow-400' : 'text-green-400';
+                  const statusLabel =
+                    delta > 3 ? 'AT RISK' : delta > 0 ? 'WATCH' : 'ON TRACK';
+
+                  return (
+                    <tr key={i} className="border-b border-zinc-800/50">
+                      <td className="py-2 text-zinc-300">
+                        {row.isCritical && <span className="mr-1" title="Critical Path">&#9889;</span>}
+                        {row.areaName}
+                      </td>
+                      <td className="py-2 text-zinc-400">{row.tradeName}</td>
+                      <td className="py-2 text-right text-zinc-500">
+                        {row.baselineFinish ? new Date(row.baselineFinish).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="py-2 text-right text-zinc-400">
+                        {row.projectedDate ? new Date(row.projectedDate).toLocaleDateString() : '—'}
+                      </td>
+                      <td className={`py-2 text-right font-medium ${statusColor}`}>
+                        {row.deltaDays !== null ? `${delta > 0 ? '+' : ''}${delta}d` : '—'}
+                      </td>
+                      <td className={`py-2 text-right text-[10px] font-semibold ${statusColor}`}>
+                        {statusLabel}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

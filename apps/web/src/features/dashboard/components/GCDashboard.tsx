@@ -53,11 +53,15 @@ export function GCDashboard({ data, projectId }: GCDashboardProps) {
       </SectionErrorBoundary>
 
       <SectionErrorBoundary fallbackLabel="Alerts">
-        <AlertsSection alerts={data.alerts} projectId={projectId} />
+        <AlertsSection
+          alerts={data.alerts}
+          projectId={projectId}
+          scheduleRisks={data.scheduleComparison.filter((r) => (r.deltaDays ?? 0) > 3)}
+        />
       </SectionErrorBoundary>
 
       <SectionErrorBoundary fallbackLabel="Forecast">
-        <ForecastSection forecast={data.forecast} />
+        <ForecastSection forecast={data.forecast} scheduleComparison={data.scheduleComparison} />
       </SectionErrorBoundary>
 
       <SectionErrorBoundary fallbackLabel="Efficiency">

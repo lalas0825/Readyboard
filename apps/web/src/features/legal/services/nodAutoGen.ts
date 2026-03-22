@@ -6,6 +6,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { fetchDelayContext, buildPdf } from './pdfAssembler';
 import { uploadEvidence } from './evidenceStorage';
 import type { SignatureInput } from './evidenceStorage';
+import { writeAuditEntry } from '@/lib/audit';
 
 // ─── Types ──────────────────────────────────────────
 
@@ -132,6 +133,17 @@ export async function generateNodDraft(
     return { ok: false, error: `Draft PDF uploaded but status update failed: ${statusError.message}` };
   }
 
+  // Audit: NOD draft created (non-blocking — draft generation is auto-triggered)
+  await writeAuditEntry({
+    tableName: 'delay_logs',
+    recordId: delayLogId,
+    action: 'legal_draft_created',
+    changedBy: session.user.id,
+    oldValue: { legal_status: 'pending' },
+    newValue: { legal_status: 'draft', nod_draft_id: nodDraft.id },
+    reason: `NOD draft auto-generated for ${ctx.area.name} — ${ctx.delay.tradeName}`,
+  });
+
   return { ok: true, nodDraftId: nodDraft.id, draftPath };
 }
 
@@ -192,6 +204,23 @@ export async function approveNodDraft(
 
   if (statusError) {
     return { ok: false, error: `Evidence uploaded but status update failed: ${statusError.message}` };
+  }
+
+  // Audit: NOD sent (critical legal event — atomic)
+  const audit = await writeAuditEntry({
+    tableName: 'delay_logs',
+    recordId: delayLogId,
+    action: 'legal_doc_sent',
+    changedBy: session.user.id,
+    oldValue: { legal_status: 'draft' },
+    newValue: { legal_status: 'sent', sha256: uploadResult.hash },
+    reason: `NOD signed and sent — SHA-256: ${uploadResult.hash}`,
+  });
+
+  if (!audit.ok) {
+    // Legal doc sent without audit = unacceptable. Revert status.
+    await supabase.from('delay_logs').update({ legal_status: 'draft' }).eq('id', delayLogId);
+    return { ok: false, error: audit.error };
   }
 
   return {

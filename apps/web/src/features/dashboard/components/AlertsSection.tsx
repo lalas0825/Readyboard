@@ -1,20 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import type { DashboardAlert } from '../types';
+import type { DashboardAlert, ScheduleComparisonRow } from '../types';
 import { updateAlertNote } from '../services/updateAlertNote';
 import { convertToChangeOrder } from '@/features/finance/services/changeOrderEngine';
-
-const REASON_LABELS: Record<string, string> = {
-  no_heat: 'No Heat',
-  prior_trade: 'Prior Trade',
-  no_access: 'No Access',
-  inspection: 'Inspection',
-  plumbing: 'Plumbing',
-  material: 'Material',
-  moisture: 'Moisture',
-  safety: 'Safety Clearance',
-};
+import { REASON_LABELS } from '@/lib/constants';
 
 const CA_STATUS_COLORS: Record<string, { label: string; color: string }> = {
   open: { label: 'Open', color: 'text-amber-400 border-amber-900/50 bg-amber-950/30' },
@@ -26,6 +16,7 @@ const CA_STATUS_COLORS: Record<string, { label: string; color: string }> = {
 type AlertsSectionProps = {
   alerts: DashboardAlert[];
   projectId?: string;
+  scheduleRisks?: ScheduleComparisonRow[];
 };
 
 /**
@@ -33,7 +24,7 @@ type AlertsSectionProps = {
  * Up to 5 alerts ranked by daily cost of inaction.
  * Click to expand: detail grid + action note editor + CO conversion.
  */
-export function AlertsSection({ alerts }: AlertsSectionProps) {
+export function AlertsSection({ alerts, scheduleRisks }: AlertsSectionProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [convertedIds, setConvertedIds] = useState<Set<string>>(new Set());
 
@@ -71,6 +62,33 @@ export function AlertsSection({ alerts }: AlertsSectionProps) {
           />
         ))}
       </div>
+
+      {/* Schedule Risk Alerts */}
+      {scheduleRisks && scheduleRisks.length > 0 && (
+        <div className="mt-3 space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-orange-400">Schedule Risk</p>
+          {scheduleRisks.map((risk, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between rounded-lg border border-orange-900/30 bg-zinc-900 px-4 py-3"
+            >
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-orange-950/50 px-2 py-0.5 text-[10px] font-medium text-orange-400 border border-orange-900/50">
+                  SCHEDULE RISK
+                </span>
+                <span className="text-sm text-zinc-300">
+                  {risk.isCritical && <span className="mr-1" title="Critical Path">&#9889;</span>}
+                  {risk.areaName}
+                </span>
+                <span className="text-xs text-zinc-500">{risk.tradeName}</span>
+              </div>
+              <span className="text-sm font-bold text-orange-400">
+                +{risk.deltaDays}d behind baseline
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

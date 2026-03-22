@@ -3,6 +3,8 @@
 import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { writeAuditEntry } from '@/lib/audit';
+import { refreshProjectForecast } from '@/features/forecast/services/forecastEngine';
 
 // ─── Types ──────────────────────────────────────────
 
@@ -127,6 +129,29 @@ export async function convertToChangeOrder(
     return { ok: false, error: `Failed to link CO to delay_log: ${linkError.message}` };
   }
 
+  // Audit: CO created (atomicity — if audit fails, CO still exists but is logged)
+  const audit = await writeAuditEntry({
+    tableName: 'change_orders',
+    recordId: co.id,
+    action: 'change_order_created',
+    changedBy: session.user.id,
+    newValue: {
+      delay_log_id: input.delayLogId,
+      project_id: area.project_id,
+      amount: input.amount,
+      description: input.description,
+      status: 'pending',
+    },
+    reason: `CO created from NOD on delay_log ${input.delayLogId}`,
+  });
+
+  if (!audit.ok) {
+    // Rollback: CO without audit trail violates trazabilidad
+    await supabase.from('delay_logs').update({ is_change_order: false, change_order_id: null }).eq('id', input.delayLogId);
+    await supabase.from('change_orders').delete().eq('id', co.id);
+    return { ok: false, error: audit.error };
+  }
+
   return { ok: true, changeOrderId: co.id };
 }
 
@@ -151,10 +176,10 @@ export async function approveChangeOrder(
     ? createServiceClient()
     : await createClient();
 
-  // Verify current status
+  // Verify current status + fetch linked data for scope_changes
   const { data: co } = await supabase
     .from('change_orders')
-    .select('id, status')
+    .select('id, status, amount, project_id, delay_log_id, delay_logs!inner ( area_id, cumulative_cost )')
     .eq('id', changeOrderId)
     .single();
 
@@ -173,6 +198,40 @@ export async function approveChangeOrder(
     .eq('id', changeOrderId);
 
   if (error) return { ok: false, error: error.message };
+
+  // Audit: CO approved (atomic — must succeed)
+  const audit = await writeAuditEntry({
+    tableName: 'change_orders',
+    recordId: changeOrderId,
+    action: 'change_order_approved',
+    changedBy: session.user.id,
+    oldValue: { status: 'pending' },
+    newValue: { status: 'approved', approved_by: session.user.id },
+    reason: `CO $${Number(co.amount).toLocaleString()} approved`,
+  });
+
+  if (!audit.ok) {
+    // Revert: approval without audit trail is not acceptable
+    await supabase.from('change_orders').update({ status: 'pending', approved_by: null, approved_at: null }).eq('id', changeOrderId);
+    return { ok: false, error: audit.error };
+  }
+
+  // F-1: Write scope_change + trigger forecast refresh
+  const dl = co.delay_logs as unknown as { area_id: string; cumulative_cost: number };
+
+  // Write scope_change to connect CO → Forecast pipeline
+  await supabase.from('scope_changes').insert({
+    area_id: dl.area_id,
+    change_order_id: changeOrderId,
+    delta_sqft: 0, // COs don't change sqft — they represent cost impact
+    reason: `Change Order approved: $${Number(co.amount).toLocaleString()}`,
+    initiated_by: session.user.id,
+    forecast_impact_days: null, // Let forecast engine calculate
+  });
+
+  // Refresh forecast to reflect approved CO impact
+  await refreshProjectForecast(co.project_id);
+
   return { ok: true };
 }
 
@@ -180,10 +239,12 @@ export async function approveChangeOrder(
 
 /**
  * GC admin/owner rejects a change order, unlocking the delay_log.
- * Role check at service level.
+ * Soft-delete: status → 'rejected', never hard-deleted.
+ * Financial records are immutable — the rejection itself is evidence.
  */
 export async function rejectChangeOrder(
   changeOrderId: string,
+  rejectionReason?: string,
 ): Promise<RejectResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: 'Not authenticated' };
@@ -199,7 +260,7 @@ export async function rejectChangeOrder(
   // Verify current status
   const { data: co } = await supabase
     .from('change_orders')
-    .select('id, status, delay_log_id')
+    .select('id, status, delay_log_id, amount')
     .eq('id', changeOrderId)
     .single();
 
@@ -208,31 +269,37 @@ export async function rejectChangeOrder(
     return { ok: false, error: `Cannot reject: status is '${co.status}'` };
   }
 
-  // 1. Update CO status
+  // 1. Soft-delete: mark as rejected (record preserved for audit)
   const { error: coError } = await supabase
     .from('change_orders')
-    .update({ status: 'rejected' })
+    .update({
+      status: 'rejected',
+      rejected_at: new Date().toISOString(),
+      rejected_by: session.user.id,
+      rejection_reason: rejectionReason ?? null,
+    })
     .eq('id', changeOrderId);
 
   if (coError) return { ok: false, error: coError.message };
 
-  // 2. Unlock delay_log (remove CO link)
-  // Note: the immutability guard allows this only because we update
-  // via service role — the trigger checks is_change_order on OLD row
-  // and blocks, so we need to use a function or bypass.
-  // For V1, rejection deletes the CO record to cleanly unlock.
-  const { error: deleteError } = await supabase
-    .from('change_orders')
-    .delete()
-    .eq('id', changeOrderId);
+  // 2. Audit: CO rejected (atomic — must succeed)
+  const audit = await writeAuditEntry({
+    tableName: 'change_orders',
+    recordId: changeOrderId,
+    action: 'change_order_rejected',
+    changedBy: session.user.id,
+    oldValue: { status: 'pending', amount: Number(co.amount) },
+    newValue: { status: 'rejected', rejected_by: session.user.id },
+    reason: rejectionReason ?? 'No reason provided',
+  });
 
-  if (deleteError) {
-    return { ok: false, error: `CO rejected but cleanup failed: ${deleteError.message}` };
+  if (!audit.ok) {
+    // Revert: rejection without audit trail is not acceptable
+    await supabase.from('change_orders').update({ status: 'pending', rejected_at: null, rejected_by: null, rejection_reason: null }).eq('id', changeOrderId);
+    return { ok: false, error: audit.error };
   }
 
-  // Reset delay_log flags (trigger allows this because is_change_order
-  // references the OLD row value — after CO deletion, a separate
-  // manual reset via service client is needed)
+  // 3. Unlock delay_log (via service client to bypass immutability trigger)
   const serviceClient = createServiceClient();
   const { error: resetError } = await serviceClient
     .from('delay_logs')
@@ -277,6 +344,7 @@ export async function getProjectFinancialSummary(
       .from('change_orders')
       .select('id, delay_log_id, amount, description, status, proposed_by, approved_by, approved_at, created_at')
       .eq('project_id', projectId)
+      .neq('status', 'rejected')
       .order('created_at', { ascending: false }),
   ]);
 

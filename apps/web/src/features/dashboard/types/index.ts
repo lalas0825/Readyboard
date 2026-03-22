@@ -24,11 +24,14 @@ export type DashboardAlert = {
   correctiveActionStatus: string | null;
   correctiveActionId: string | null;
   correctiveActionNote: string | null;
+  source?: 'delay' | 'schedule';
 };
 
 export type TrendSnapshot = {
   date: string;
   effectivePct: number;
+  actualRate: number | null;
+  benchmarkRate: number | null;
 };
 
 export type ProjectForecast = {
@@ -36,6 +39,8 @@ export type ProjectForecast = {
   scheduledDate: string | null;
   projectedDate: string | null;
   deltaDays: number | null;
+  atRiskCount: number;
+  criticalPathItems: number;
 };
 
 export type FinancialOverview = {
@@ -45,11 +50,15 @@ export type FinancialOverview = {
   pendingCOs: number;
 };
 
+import type { ScheduleComparisonRow } from '@/features/forecast/types';
+export type { ScheduleComparisonRow };
+
 export type DashboardData = {
   metrics: ProjectMetrics;
   alerts: DashboardAlert[];
   forecast: ProjectForecast;
   financial: FinancialOverview;
+  scheduleComparison: ScheduleComparisonRow[];
 };
 
 /** Legal document types */

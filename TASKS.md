@@ -1,9 +1,9 @@
 # ReadyBoard — TASKS.md
 
-> Version 5.2 — 7-week V1 build + Week 8-9 Checklist System sprint
+> Version 5.3 — 7-week V1 build + Week 8-9 Checklist System sprint
 > AI is explicitly OUT of scope for V1.
 > Checklist System (V1.1) is Week 8-9, immediately post-launch.
-> Updated: 2026-03-22 — Week 4 COMPLETE (Delay Engine + Legal Infrastructure + NOD Auto-Gen + Change Orders)
+> Updated: 2026-03-22 — Week 6 COMPLETE (Forecast Engine + Schedule Import + Manual Override + Structural Integrity Audit)
 
 ---
 
@@ -443,30 +443,56 @@
 
 ---
 
-## Week 5 — Forecast Engine + Schedule Import
+## Week 5 — Forecast Engine + Schedule Import ✅
 
-### Schedule Import
+### DB Migrations ✅
 
-- [ ] Upload P6 export as CSV or XLSX
-- [ ] Parse: area name, trade, scheduled_start, scheduled_finish
-- [ ] Store in `schedule_items` table
-- [ ] Map imported areas to ReadyBoard areas (fuzzy match + manual override UI)
+- [x] `alter_schedule_items_add_columns` — `area_id`, `baseline_finish`, `actual_finish`, `is_critical`, unique constraint `(project_id, p6_activity_id)`
+- [x] `add_forecast_indexes` — 5 indexes: project, area, critical path, forecast date, unique daily snapshot
+- [x] `create_import_schedule_batch_rpc` — PL/pgSQL atomic batch import (all-or-nothing), `baseline_finish` write-once via COALESCE
+- [x] `schedule_items_rls_manage` — SELECT (project members), INSERT/UPDATE (gc_admin/owner only)
 
-### Forecast Calculation
+### Schedule Import ✅
 
-- [ ] For each area + trade: calculate actual production rate from field_reports
-- [ ] `completed_sqft = total_sqft × (effective_pct / 100)` — works for BOTH modes
-- [ ] `actual_rate = completed_sqft / hours_worked`
-- [ ] Project completion date based on actual_rate
-- [ ] Calculate delta_days vs p6 scheduled date
-- [ ] Generate daily `forecast_snapshots`
-- [ ] Handle scope changes: recalculate on any scope_changes insert
+- [x] `features/forecast/services/importP6.ts` — server action: parse CSV via PapaParse, Zod row validation, call `import_schedule_batch` RPC
+- [x] Column mapping: `activity_id, area_name, trade_name, planned_start, planned_finish, baseline_finish, is_critical`
+- [x] Atomic: single RPC call, entire batch reverts if any row fails
+- [x] Returns: `{ success, upserted, critical, unmappedAreas }` — unmapped areas are info only, not blocking
 
-### Schedule Delta Alerts
+### Forecast Calculation ✅
 
-- [ ] Alert when projected_date > scheduled_date by > 3 days
-- [ ] Content: area, trade, delta days, primary cause, recommended action
-- [ ] Display in GC Dashboard Section 3
+- [x] `features/forecast/services/forecastEngine.ts` — 3 pure functions + 1 orchestrator
+- [x] `calculateBurnRate(reports)` — 14-day moving average daily pct change, returns 0 if < 2 reports
+- [x] `calculateProjectedFinish(remainingPct, burnRate, today)` — null if stalled (burnRate ≤ 0)
+- [x] `getScheduleDelta(baseline, projected)` — positive = behind, negative = ahead
+- [x] `refreshProjectForecast(projectId)` — orchestrator: queries schedule_items + field_reports, computes per-area + project-level rollup, UPSERTs to `forecast_snapshots`
+- [x] Project-level rollup: MAX projected date (worst case drives project, construction-standard critical path method)
+- [x] `features/forecast/services/fetchSchedule.ts` — `fetchScheduleItems()` + `fetchCriticalPath()`
+
+### Schedule Delta Alerts ✅
+
+- [x] At-risk threshold: >3 days behind baseline (configurable constant `AT_RISK_THRESHOLD_DAYS`)
+- [x] At-risk alerts appear in `AlertsSection` with orange "SCHEDULE RISK" badge
+- [x] `ForecastSection` — Schedule Comparison table: area, trade, baseline, projected, delta, status (color-coded)
+- [x] Critical path items marked with indicator, sorted by delta DESC (worst first)
+
+### Schedule Comparison ✅
+
+- [x] `fetchScheduleComparison()` inline in `fetchDashboardData.ts` — forecast_snapshots JOIN schedule_items JOIN areas
+- [x] `ScheduleComparisonRow` type: areaName, tradeName, baselineFinish, projectedDate, deltaDays, isCritical
+- [x] ForecastSection renders comparison table below existing cards
+
+### Executive Report ✅
+
+- [x] `features/reports/services/generateExecutiveReport.ts` — aggregates metrics, delays, forecasts, financials into executive summary
+- [x] `features/reports/services/exportExecutivePdf.ts` — PDF generation via pdf-lib
+- [x] `features/reports/types.ts` + `features/reports/index.ts` — barrel exports
+
+### Tests ✅
+
+- [x] `features/forecast/__tests__/calculateForecast.test.ts` — 9 tests: burn rate (3), projected finish (3), schedule delta (3)
+- [x] Vitest configured with Supabase mock stubs (`__mocks__/client.ts`, `__mocks__/server.ts`)
+- [x] 50/50 tests passing across 4 test files
 
 ### REA Threshold Triggers (Partially complete — thresholds built in Week 4)
 
@@ -477,7 +503,36 @@
 
 ---
 
-## Week 6 — Legal Document Generation (Partially complete — PDF engine built in Week 4)
+## Week 6 — Legal Document Generation + Manual Override + Structural Integrity Audit
+
+### Manual Override + Audit Log ✅
+
+- [x] `add_manual_override_and_audit_log` migration — `manual_override_date`, `manual_override_by`, `manual_override_reason` columns on `schedule_items` + `audit_log` table
+- [x] `features/forecast/services/scheduleOverride.ts` — `applyManualScheduleOverride()` + `clearManualScheduleOverride()` server actions
+- [x] Audit trail: all overrides logged to `audit_log` table
+
+### Structural Integrity Audit ✅
+
+Three-phase audit of all code written Weeks 1-6. Full report: `.claude/AUDIT_REPORT.md`
+
+**Phase 1 — Security (16 findings):**
+- [x] Foreman leak fix: `security_phase1_foreman_leak_fix` migration — RLS policies for `delay_logs`, `corrective_actions`, `nod_drafts` scoped via `areas.project_id` + `user_assignments`
+- [x] `is_sub_management()` helper function — reusable RLS predicate for sub org membership
+- [x] All `delay_logs` queries scoped to project via `areas!inner` join
+
+**Phase 2 — Flow Integrity (9 findings):**
+- [x] `flow_integrity_phase2` migration — `upsert_forecast_snapshots()` PL/pgSQL RPC (atomic, replaces race-prone DELETE+INSERT)
+- [x] `lib/audit.ts` — shared `writeAuditEntry()` helper using service client
+- [x] Audit writes added to: `changeOrderEngine` (convert/approve/reject/soft-delete), `nodAutoGen` (draft/sent), `publishLegalDoc`, `createCorrectiveAction`
+- [x] Atomicity: primary operations revert if audit write fails
+- [x] Soft-delete pattern: `changeOrderEngine.rejectChangeOrder()` uses `status='rejected'` instead of hard DELETE
+
+**Phase 3 — Technical Debt (20 findings):**
+- [x] Constants consolidation: `lib/constants.ts` — `MS_PER_DAY`, `MS_PER_HOUR`, `AT_RISK_THRESHOLD_DAYS`, `BURN_RATE_WINDOW_DAYS`, `REASON_LABELS` (eliminated 15+ duplications across 9 files)
+- [x] Type consolidation: `ScheduleComparisonRow` single source in `forecast/types.ts`, re-exported from `dashboard/types/`
+- [x] Dead code removed: `BurnRateData` type (never consumed), `fetchScheduleComparison.ts` standalone (never imported)
+- [x] Vitest alias resolution: mock stubs for Supabase client/server, monorepo aliases for `@readyboard/db` + `@readyboard/shared`
+- [x] Final: 0 TypeScript errors, 50/50 tests green across 4 test files
 
 ### PDF Generation Engine (Partially complete)
 
@@ -761,7 +816,16 @@ readyboard/
 │       │   │   ├── components/  GCDashboard, DashboardTabs, MetricsSection, AlertsSection, ForecastSection, NodDraftsSection, SectionErrorBoundary
 │       │   │   ├── hooks/       useAlertMetrics (bus subscriber)
 │       │   │   ├── services/    fetchDashboardData, fetchNodDrafts, delayEngine, createArea, createLegalDoc
-│       │   │   └── types/       ProjectMetrics, DashboardAlert, ProjectForecast, FinancialOverview
+│       │   │   └── types/       ProjectMetrics, DashboardAlert, ProjectForecast, FinancialOverview, ScheduleComparisonRow
+│       │   ├── forecast/        Forecast Engine + Schedule Import (Week 5)
+│       │   │   ├── services/    importP6, forecastEngine, fetchSchedule, scheduleOverride
+│       │   │   ├── __tests__/   9 tests (burn rate, projected finish, schedule delta)
+│       │   │   ├── types.ts     ScheduleItemRow, ImportResult, RefreshResult, ScheduleComparisonRow
+│       │   │   └── index.ts     Barrel exports
+│       │   ├── reports/         Executive Reports (Week 5)
+│       │   │   ├── services/    generateExecutiveReport, exportExecutivePdf
+│       │   │   ├── types.ts     ExecutiveReportData
+│       │   │   └── index.ts     Barrel exports
 │       │   ├── legal/           Legal Infrastructure (Week 4)
 │       │   │   ├── components/  SignaturePad (canvas-based, pointer events)
 │       │   │   ├── services/    thresholdEngine, evidenceStorage, pdfAssembler, nodAutoGen
@@ -769,8 +833,10 @@ readyboard/
 │       │   └── finance/         Change Order Engine (Week 4)
 │       │       ├── services/    changeOrderEngine
 │       │       └── index.ts     Barrel exports
+│       ├── src/lib/audit.ts     Shared writeAuditEntry() helper (service client)
+│       ├── src/lib/constants.ts Central constants (MS_PER_DAY, REASON_LABELS, thresholds)
 │       ├── src/lib/auth/        getSession (dev bypass), getUserRole
-│       ├── src/lib/supabase/    SSR clients (client.ts, server.ts, service.ts)
+│       ├── src/lib/supabase/    SSR clients (client.ts, server.ts, service.ts) + __mocks__/
 │       ├── src/lib/legal/       SHA-256 hash + verify
 │       ├── src/lib/i18n/        Locale utilities
 │       ├── src/i18n/            next-intl request config
@@ -795,6 +861,7 @@ readyboard/
 │   ├── test-rls.sql             RLS attack scenario tests
 │   ├── test-offline-sync.ts     Offline sync pipeline test (22 assertions)
 │   └── audit-delay-logs.ts      Delay log integrity audit (7 checks per log)
+├── vitest.config.ts            Vitest config (Supabase stubs, monorepo aliases)
 └── supabase/
-    └── migrations/              30 SQL migration files
+    └── migrations/              37 SQL migration files
 ```

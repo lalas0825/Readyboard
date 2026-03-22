@@ -3,6 +3,7 @@
 import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { MS_PER_HOUR } from '@/lib/constants';
 
 // ─── Types ──────────────────────────────────────────
 
@@ -71,7 +72,7 @@ export async function fetchNodDrafts(
         cumulativeCost: Number(log.cumulative_cost ?? 0),
         draftPdfPath: d.draft_pdf_path,
         createdAt: d.created_at,
-        hoursSinceCreation: Math.round((now - new Date(d.created_at).getTime()) / 3_600_000),
+        hoursSinceCreation: Math.round((now - new Date(d.created_at).getTime()) / MS_PER_HOUR),
       };
     });
 }

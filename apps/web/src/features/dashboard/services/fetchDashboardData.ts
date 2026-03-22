@@ -3,14 +3,16 @@
 import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import type { DashboardData, ProjectMetrics, DashboardAlert, ProjectForecast, TrendSnapshot, FinancialOverview } from '../types';
+import type { DashboardData, ProjectMetrics, DashboardAlert, ProjectForecast, TrendSnapshot, FinancialOverview, ScheduleComparisonRow } from '../types';
+import { AT_RISK_THRESHOLD_DAYS, BURN_RATE_WINDOW_DAYS, MS_PER_DAY } from '@/lib/constants';
 
 function emptyDashboardData(): DashboardData {
   return {
     metrics: { projectId: '', projectName: '', overallPct: 0, totalAreas: 0, onTrack: 0, attention: 0, actionRequired: 0 },
     alerts: [],
-    forecast: { trendData: [], scheduledDate: null, projectedDate: null, deltaDays: null },
+    forecast: { trendData: [], scheduledDate: null, projectedDate: null, deltaDays: null, atRiskCount: 0, criticalPathItems: 0 },
     financial: { totalDelayCost: 0, totalChangeOrderAmount: 0, totalFinancialImpact: 0, pendingCOs: 0 },
+    scheduleComparison: [],
   };
 }
 
@@ -41,11 +43,12 @@ export async function fetchDashboardData(
   if (!pid) return emptyDashboardData();
 
   // Run all queries in parallel — each wrapped for resilience
-  const [metrics, alerts, forecast, financial, projectInfo] = await Promise.all([
+  const [metrics, alerts, forecast, financial, scheduleComparison, projectInfo] = await Promise.all([
     fetchMetrics(supabase, pid),
     fetchAlerts(supabase, pid),
     fetchForecast(supabase, pid),
     fetchFinancial(supabase, pid),
+    fetchScheduleComparison(supabase, pid),
     supabase.from('projects').select('name').eq('id', pid).single(),
   ]);
 
@@ -54,6 +57,7 @@ export async function fetchDashboardData(
     alerts,
     forecast,
     financial,
+    scheduleComparison,
   };
 }
 
@@ -188,7 +192,7 @@ async function fetchAlerts(
         reasonCode: d.reason_code,
         dailyCost: Number(d.daily_cost),
         cumulativeCost: Number(d.cumulative_cost),
-        daysBlocked: Math.ceil((Date.now() - new Date(d.started_at).getTime()) / 86_400_000),
+        daysBlocked: Math.ceil((Date.now() - new Date(d.started_at).getTime()) / MS_PER_DAY),
         legalStatus: (d.legal_status as string) ?? null,
         isChangeOrder: !!(d.is_change_order),
         hasCorrectiveAction: !!caInfo,
@@ -217,7 +221,8 @@ async function fetchFinancial(
       supabase
         .from('change_orders')
         .select('amount, status')
-        .eq('project_id', projectId),
+        .eq('project_id', projectId)
+        .neq('status', 'rejected'),
     ]);
 
     const totalDelayCost = (delayResult.data ?? []).reduce(
@@ -250,22 +255,41 @@ async function fetchForecast(
   projectId: string,
 ): Promise<ProjectForecast> {
   try {
-    // Last 14 days of forecast snapshots (project-level)
-    const fourteenDaysAgo = new Date(Date.now() - 14 * 86_400_000).toISOString().split('T')[0];
-    const { data: snapshots } = await supabase
-      .from('forecast_snapshots')
-      .select('snapshot_date, effective_pct, projected_date, scheduled_date')
-      .eq('project_id', projectId)
-      .gte('snapshot_date', fourteenDaysAgo)
-      .order('snapshot_date');
+    const fourteenDaysAgo = new Date(Date.now() - BURN_RATE_WINDOW_DAYS * MS_PER_DAY).toISOString().split('T')[0];
 
-    const trendData: TrendSnapshot[] = (snapshots ?? []).map((s) => ({
+    // Parallel: project-level snapshots + at_risk count + critical path count
+    const [snapshotResult, atRiskResult, criticalResult] = await Promise.all([
+      supabase
+        .from('forecast_snapshots')
+        .select('snapshot_date, effective_pct, actual_rate, benchmark_rate, projected_date, scheduled_date')
+        .eq('project_id', projectId)
+        .eq('trade_type', 'PROJECT')
+        .is('area_id', null)
+        .gte('snapshot_date', fourteenDaysAgo)
+        .order('snapshot_date'),
+      supabase
+        .from('forecast_snapshots')
+        .select('id', { count: 'exact', head: true })
+        .eq('project_id', projectId)
+        .not('area_id', 'is', null)
+        .gt('delta_days', AT_RISK_THRESHOLD_DAYS),
+      supabase
+        .from('schedule_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('project_id', projectId)
+        .eq('is_critical', true),
+    ]);
+
+    const snapshots = snapshotResult.data ?? [];
+
+    const trendData: TrendSnapshot[] = snapshots.map((s) => ({
       date: s.snapshot_date,
       effectivePct: Number(s.effective_pct),
+      actualRate: s.actual_rate != null ? Number(s.actual_rate) : null,
+      benchmarkRate: s.benchmark_rate != null ? Number(s.benchmark_rate) : null,
     }));
 
-    // Latest forecast for delta calculation
-    const latest = snapshots && snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
+    const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
     const scheduledDate = (latest?.scheduled_date as string) ?? null;
     const projectedDate = (latest?.projected_date as string) ?? null;
 
@@ -273,11 +297,82 @@ async function fetchForecast(
     if (scheduledDate && projectedDate) {
       const scheduled = new Date(scheduledDate).getTime();
       const projected = new Date(projectedDate).getTime();
-      deltaDays = Math.round((projected - scheduled) / 86_400_000);
+      deltaDays = Math.round((projected - scheduled) / MS_PER_DAY);
     }
 
-    return { trendData, scheduledDate, projectedDate, deltaDays };
+    return {
+      trendData,
+      scheduledDate,
+      projectedDate,
+      deltaDays,
+      atRiskCount: atRiskResult.count ?? 0,
+      criticalPathItems: criticalResult.count ?? 0,
+    };
   } catch {
-    return { trendData: [], scheduledDate: null, projectedDate: null, deltaDays: null };
+    return { trendData: [], scheduledDate: null, projectedDate: null, deltaDays: null, atRiskCount: 0, criticalPathItems: 0 };
+  }
+}
+
+// ─── Schedule Comparison (Section 5) ─────────────────
+
+async function fetchScheduleComparison(
+  supabase: SupabaseClient,
+  projectId: string,
+): Promise<ScheduleComparisonRow[]> {
+  try {
+    // Get latest snapshot date for area-level rows
+    const { data: latestRow } = await supabase
+      .from('forecast_snapshots')
+      .select('snapshot_date')
+      .eq('project_id', projectId)
+      .not('area_id', 'is', null)
+      .order('snapshot_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!latestRow) return [];
+
+    // Area-level snapshots for latest date, sorted by delta DESC (worst first)
+    const { data: snapshots } = await supabase
+      .from('forecast_snapshots')
+      .select('area_id, trade_type, projected_date, scheduled_date, delta_days')
+      .eq('project_id', projectId)
+      .eq('snapshot_date', latestRow.snapshot_date)
+      .not('area_id', 'is', null)
+      .order('delta_days', { ascending: false })
+      .limit(10);
+
+    if (!snapshots?.length) return [];
+
+    // Resolve area names + critical path flag from schedule_items
+    const areaIds = [...new Set(snapshots.map((s) => s.area_id))];
+    const { data: scheduleInfo } = await supabase
+      .from('schedule_items')
+      .select('area_id, area_name, trade_name, baseline_finish, is_critical')
+      .eq('project_id', projectId)
+      .in('area_id', areaIds);
+
+    const infoMap = new Map<string, { areaName: string; baselineFinish: string | null; isCritical: boolean }>();
+    for (const s of scheduleInfo ?? []) {
+      infoMap.set(`${s.area_id}:${s.trade_name}`, {
+        areaName: s.area_name,
+        baselineFinish: s.baseline_finish,
+        isCritical: s.is_critical ?? false,
+      });
+    }
+
+    return snapshots.map((snap) => {
+      const info = infoMap.get(`${snap.area_id}:${snap.trade_type}`);
+      return {
+        areaName: info?.areaName ?? 'Unknown',
+        tradeName: snap.trade_type,
+        baselineFinish: info?.baselineFinish ?? snap.scheduled_date,
+        projectedDate: snap.projected_date,
+        deltaDays: snap.delta_days,
+        isCritical: info?.isCritical ?? false,
+      };
+    });
+  } catch {
+    return [];
   }
 }
