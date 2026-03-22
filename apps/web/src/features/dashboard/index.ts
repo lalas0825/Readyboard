@@ -7,6 +7,12 @@ export { publishLegalDoc } from './services/publishLegalDoc';
 export { updateAlertNote } from './services/updateAlertNote';
 export { createArea } from './services/createArea';
 export { createLegalDoc } from './services/createLegalDoc';
+export { getDelayLogSummary } from './services/delayEngine';
+export type {
+  DelayLogSummary,
+  DelayEngineResult,
+  DelayLegalStatus,
+} from './services/delayEngine';
 export type {
   DashboardData,
   ProjectMetrics,

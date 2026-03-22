@@ -3,7 +3,7 @@
 > Version 5.2 — 7-week V1 build + Week 8-9 Checklist System sprint
 > AI is explicitly OUT of scope for V1.
 > Checklist System (V1.1) is Week 8-9, immediately post-launch.
-> Updated: 2026-03-21 — Week 3 complete (Core + Polish + Consolidation + Data Entry Points)
+> Updated: 2026-03-22 — Week 4 in progress (Delay Engine + Legal Infrastructure)
 
 ---
 
@@ -345,34 +345,76 @@
 
 ---
 
-## Week 4 — Delay Logging + Legal Triggers
+## Week 4 — Delay Logging + Legal Infrastructure
 
-### Delay Log Engine
+### Delay Log Engine ✅
 
-- [ ] Auto-create `delay_log` on first BLOCKED/HELD field_report per area
-- [ ] Calculate `man_hours`: crew_size × hours since blocked
-- [ ] Calculate `daily_cost`: man_hours × project.labor_rate_per_hour
-- [ ] Accumulate `cumulative_cost` across days
-- [ ] Attach GPS evidence from field_report
-- [ ] Link photo evidence from field_report
+- [x] `delayEngine.ts` server action: `getDelayLogSummary(projectId)` — fetches all delay_logs with area/project context
+- [x] Real-time cost recalculation for active delays (crew_size × hours × labor_rate)
+- [x] Legally locked delays (draft/sent/signed) return frozen DB values — no recalculation
+- [x] DB integrity constraints migration: `chk_delay_logs_costs_non_negative`, `chk_delay_logs_end_after_start`, `chk_delay_logs_crew_size_positive`, `chk_delay_logs_man_hours_consistent`
+- [x] DB trigger: `recalculate_delay_costs` — auto-computes man_hours, daily_cost, cumulative_cost on INSERT/UPDATE
+- [x] `scripts/audit-delay-logs.ts` — 7 integrity checks per log (costs, timestamps, consistency) — 3/3 logs passed, 0 errors
+- [x] Dashboard exports: `getDelayLogSummary`, `DelayLogSummary`, `DelayEngineResult`, `DelayLegalStatus`
 
-### NOD Draft Auto-Generation
+### Legal Trigger / Threshold Engine ✅
 
-- [ ] Trigger: first BLOCKED status on any area
-- [ ] Generate draft within 60 seconds (Supabase Edge Function)
-- [ ] Draft content JSONB: project info, area, date, cause, exhibits list, AIA contract references
+- [x] `legal_status` column on `delay_logs` — CHECK constraint: `pending`, `draft`, `sent`, `signed`
+- [x] Configurable thresholds per project: `nod_threshold_hours` (default 24), `rea_threshold_cost` (default 5000), `rea_threshold_crew_days` (default 3)
+- [x] `guard_legal_immutability()` DB trigger — fires BEFORE cost recalc (`trg_00_` prefix for alphabetical ordering)
+  - Blocks data modifications when status ≥ `draft` (man_hours, costs, crew_size, timestamps frozen)
+  - Enforces forward-only progression: NULL→pending→draft→sent→signed (no backwards movement)
+  - Allows first-time evidence write (evidence_hash/evidence_path) but blocks overwrites
+- [x] `recalculate_delay_costs` updated — skips locked rows (draft/sent/signed)
+- [x] `thresholdEngine.ts`: `scanThresholds(projectId)` — evaluates all delay_logs against project thresholds, marks qualifying ones as `pending`
+- [x] `thresholdEngine.ts`: `authorizeDraft(delayLogId)` — GC authorizes progression to `draft`, returns cost snapshot + storage path
+- [x] Verified: NULL→pending ✓, pending→draft ✓, draft+modify BLOCKED ✓, draft→pending BLOCKED ✓, draft→sent ✓
+
+### Evidence Storage Layer ✅
+
+- [x] `legal-docs` Supabase Storage bucket — private, 50MB limit, PDF + PNG + JSON mime types
+- [x] `evidence_path` + `evidence_hash` columns on `delay_logs` with pair constraint (both or neither)
+- [x] Storage RLS: SELECT policy (project members via org_id), INSERT policy (delay_log in draft+, no duplicates, project membership)
+- [x] No UPDATE/DELETE policies — documents are immutable by design
+- [x] `evidenceStorage.ts`: `uploadEvidence(delayLogId, fileContent, signature?)` — SHA-256 hash before upload, stores hash in DB
+- [x] `evidenceStorage.ts`: `getEvidenceInfo(delayLogId)` — signed download URL (1hr expiry) + evidence metadata
+- [x] `evidenceStorage.ts`: `verifyEvidenceIntegrity(delayLogId)` — downloads file, recomputes SHA-256, compares against stored hash
+- [x] Evidence package convention: `{project_id}/{delay_log_id}/evidence.pdf` + `signature.png` + `audit.json`
+- [x] Audit JSON: delayLogId, evidenceHash, signature metadata, delay context, uploadedAt, uploadedBy
+
+### Signature Pad Component ✅
+
+- [x] `SignaturePad.tsx` — canvas-based, pointer events (unified touch + mouse), `touchAction: 'none'`
+- [x] Output: `SignatureData` = base64 PNG (`imageBase64`) + `SignatureMetadata` (audit trail)
+- [x] Metadata: capturedAt, deviceInfo, canvasWidth/Height, strokeCount, totalPoints, coordPath (full coordinate path per stroke)
+- [x] Validation: MIN_POINTS = 20, visual border feedback (zinc → amber → green)
+- [x] Carlos Standard UX: 56px button heights, high contrast, large targets
+- [x] Clear button, "Confirm Signature" enabled only when valid, "Saving..." disabled state
+- [x] Security: signature data never logged to console (documented as audit-only)
+
+### PDF Document Assembler ✅
+
+- [x] `pdfAssembler.ts`: `assembleAndUpload(input)` — server action, full pipeline
+- [x] `fetchDelayContext()` — nested Supabase joins (delay_log → area → project → org)
+- [x] `buildPdf()` — Letter-size PDF via pdf-lib:
+  - Header: "NOTICE OF DELAY" + org name + amber divider
+  - Project info: name, address, jurisdiction
+  - Delay Details: area, trade, reason code, crew size, start/end times, duration
+  - Cost Impact: labor rate, man-hours, daily cost, cumulative cost (amber emphasis)
+  - Authorized By: embedded signature PNG + signer name + timestamp + stroke metadata
+  - Footer: document ID, generated timestamp, SHA-256 tamper-evident note
+- [x] Atomicity: upload evidence first → progress status to `sent` only on success
+- [x] Reason code formatter: 9 codes → human-readable labels
+- [x] `pdf-lib` dependency added to apps/web
+
+### NOD Draft Auto-Generation (Deferred)
+
+- [ ] Trigger: first BLOCKED status on any area → auto-generate draft (Edge Function)
+- [ ] Draft content JSONB: project info, area, date, cause, exhibits, AIA contract references
 - [ ] Push notification to superintendent + purple banner on foreman home
 - [ ] 20-hour reminder push if not sent
 
-### Finger Signature Component
-
-- [ ] Canvas-based signature capture (mobile + tablet + web)
-- [ ] Saves as PNG with timestamp + GPS + device_id
-- [ ] Stores in Supabase Storage
-- [ ] Links to `legal_document.signature_png_url`
-- [ ] Clear button, visual confirmation when signed
-
-### Change Order Engine
+### Change Order Engine (Deferred)
 
 - [ ] Log scope changes: new_sqft, reason, change_order_ref, gc_initiated boolean
 - [ ] Trigger recalculation of all downstream forecasts on save
@@ -405,25 +447,26 @@
 - [ ] Content: area, trade, delta days, primary cause, recommended action
 - [ ] Display in GC Dashboard Section 3
 
-### REA Threshold Triggers
+### REA Threshold Triggers (Partially complete — thresholds built in Week 4)
 
-- [ ] Monitor cumulative delay cost per area per cause
-- [ ] Trigger at $5,000 OR 3 crew-days: auto-generate REA draft
-- [ ] REA references all NODs already sent for this cause
+- [x] Monitor cumulative delay cost per area per cause — `scanThresholds()` in thresholdEngine.ts
+- [x] Trigger at $5,000 OR 3 crew-days — configurable per project (Week 4)
+- [ ] Auto-generate REA draft referencing all NODs for this cause
 - [ ] Notify Sub PM via push + web
 
 ---
 
-## Week 6 — Legal Document Generation
+## Week 6 — Legal Document Generation (Partially complete — PDF engine built in Week 4)
 
-### PDF Generation Engine
+### PDF Generation Engine (Partially complete)
 
-- [ ] NOD PDF template (AIA A201 §8.3.1 / ConsensusDocs 200 §6.3)
-- [ ] Fields: project, contract no., date, delay start, cause, area, exhibits list
-- [ ] Include finger signature PNG overlay
-- [ ] Include SHA-256 hash in footer (monospace, small)
-- [ ] Include receipt tracking UUID
-- [ ] PDF generated in user's language (EN or ES via react-pdf + i18n)
+- [x] NOD PDF template — built in `pdfAssembler.ts` (Week 4): project header, delay details, cost impact, signature, footer
+- [x] Fields: project, area, delay dates, cause, cost breakdown, crew size
+- [x] Include finger signature PNG overlay — embedded via `doc.embedPng()`
+- [x] Include SHA-256 tamper-evident note in footer
+- [ ] AIA A201 §8.3.1 / ConsensusDocs 200 §6.3 contract references — needs attorney review
+- [ ] Include receipt tracking UUID in PDF
+- [ ] PDF generated in user's language (EN or ES via i18n)
 - [ ] **DO NOT FINALIZE TEMPLATE before attorney review in Week 5-6**
 
 ### REA PDF Template
@@ -431,7 +474,7 @@
 - [ ] Itemized cost table: date × crew × rate + overhead percentage
 - [ ] Reference all related NODs with sent timestamps
 - [ ] Total claim amount (auto-calculated)
-- [ ] SHA-256 hash in footer
+- [x] SHA-256 hash infrastructure ready (Week 4)
 
 ### Evidence Package PDF
 
@@ -442,7 +485,7 @@
 - [ ] Photo exhibits numbered sequentially (Exhibit A, B, C...)
 - [ ] Corrective action history with GC response times
 - [ ] GC verification timeline (if checklist mode delays involved) — placeholder for V1.1
-- [ ] SHA-256 integrity verification appendix
+- [x] SHA-256 integrity verification — `verifyEvidenceIntegrity()` (Week 4)
 - [ ] Financial summary by cause and responsible party
 
 ### Receipt Tracking System
@@ -454,13 +497,13 @@
 - [ ] Update `legal_documents.first_opened_at` + `open_count`
 - [ ] 48h timer: if no corrective action after GC opens → alert to sub
 
-### SHA-256 Verification
+### SHA-256 Verification (Partially complete — core engine built in Week 4)
 
-- [ ] Compute SHA-256 hash on PDF buffer before storage
-- [ ] Store in `legal_documents.sha256_hash` with `generated_at`
-- [ ] Print hash in PDF footer
-- [ ] Public verification endpoint: `GET /api/legal/verify?hash=[hash]`
-- [ ] Returns: `{ valid, generated_at, project_id }`
+- [x] Compute SHA-256 hash on PDF buffer before storage — `computeHash()` in evidenceStorage.ts
+- [x] Store hash in `delay_logs.evidence_hash` (immutable after write)
+- [x] Tamper-evident verification: `verifyEvidenceIntegrity()` downloads + recomputes + compares
+- [x] Public verification endpoint: `GET /api/legal/verify?hash=[hash]` (built in Week 1)
+- [ ] Print hash in PDF footer (currently shows note, not actual hash)
 - [ ] All hashes included in Evidence Package appendix as "Document Integrity Log"
 
 ---
@@ -693,11 +736,15 @@ readyboard/
 │       │   │   ├── lib/         ActionEventBus, subscribers, deriveStatus, actionReducer
 │       │   │   ├── services/    fetchGridData, createCorrectiveAction, orchestrateAction
 │       │   │   └── __tests__/   35 tests (reducer, bus, orchestrator)
-│       │   └── dashboard/       1-Screen GC Dashboard
-│       │       ├── components/  GCDashboard, DashboardTabs, MetricsSection, AlertsSection, ForecastSection, SectionErrorBoundary
-│       │       ├── hooks/       useAlertMetrics (bus subscriber)
-│       │       ├── services/    fetchDashboardData (4 parallel resilient queries)
-│       │       └── types/       ProjectMetrics, DashboardAlert, ProjectForecast
+│       │   ├── dashboard/       1-Screen GC Dashboard
+│       │   │   ├── components/  GCDashboard, DashboardTabs, MetricsSection, AlertsSection, ForecastSection, SectionErrorBoundary
+│       │   │   ├── hooks/       useAlertMetrics (bus subscriber)
+│       │   │   ├── services/    fetchDashboardData, delayEngine, createArea, createLegalDoc
+│       │   │   └── types/       ProjectMetrics, DashboardAlert, ProjectForecast
+│       │   └── legal/           Legal Infrastructure (Week 4)
+│       │       ├── components/  SignaturePad (canvas-based, pointer events)
+│       │       ├── services/    thresholdEngine, evidenceStorage, pdfAssembler
+│       │       └── index.ts     Barrel exports
 │       ├── src/lib/auth/        getSession (dev bypass), getUserRole
 │       ├── src/lib/supabase/    SSR clients (client.ts, server.ts, service.ts)
 │       ├── src/lib/legal/       SHA-256 hash + verify
@@ -722,7 +769,8 @@ readyboard/
 │       └── package.json         @readyboard/shared
 ├── scripts/
 │   ├── test-rls.sql             RLS attack scenario tests
-│   └── test-offline-sync.ts     Offline sync pipeline test (22 assertions)
+│   ├── test-offline-sync.ts     Offline sync pipeline test (22 assertions)
+│   └── audit-delay-logs.ts      Delay log integrity audit (7 checks per log)
 └── supabase/
-    └── migrations/              19 SQL migration files
+    └── migrations/              27 SQL migration files
 ```
