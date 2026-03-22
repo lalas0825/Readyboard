@@ -20,6 +20,13 @@ export type {
   AssembleDocResult,
 } from './services/pdfAssembler';
 
+export { generateNodDraft, approveNodDraft } from './services/nodAutoGen';
+export type {
+  GenerateDraftResult,
+  ApproveNodResult,
+  NodDraftContent,
+} from './services/nodAutoGen';
+
 export { SignaturePad } from './components/SignaturePad';
 export type {
   SignatureData,

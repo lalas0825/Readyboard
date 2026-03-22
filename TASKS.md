@@ -3,7 +3,7 @@
 > Version 5.2 — 7-week V1 build + Week 8-9 Checklist System sprint
 > AI is explicitly OUT of scope for V1.
 > Checklist System (V1.1) is Week 8-9, immediately post-launch.
-> Updated: 2026-03-22 — Week 4 in progress (Delay Engine + Legal Infrastructure)
+> Updated: 2026-03-22 — Week 4 COMPLETE (Delay Engine + Legal Infrastructure + NOD Auto-Gen + Change Orders)
 
 ---
 
@@ -407,18 +407,39 @@
 - [x] Reason code formatter: 9 codes → human-readable labels
 - [x] `pdf-lib` dependency added to apps/web
 
-### NOD Draft Auto-Generation (Deferred)
+### NOD Draft Auto-Generation ✅
 
-- [ ] Trigger: first BLOCKED status on any area → auto-generate draft (Edge Function)
-- [ ] Draft content JSONB: project info, area, date, cause, exhibits, AIA contract references
-- [ ] Push notification to superintendent + purple banner on foreman home
-- [ ] 20-hour reminder push if not sent
+- [x] `nodAutoGen.ts`: `generateNodDraft(delayLogId)` — pending → generate draft PDF → upload to /drafts/ → create nod_draft record → advance to 'draft'
+- [x] `nodAutoGen.ts`: `approveNodDraft(delayLogId, signature)` — draft → final PDF with signature → uploadEvidence → nod_drafts.sent_at → advance to 'sent'
+- [x] Reconciliation pattern: DB status only advances after verified file upload to Supabase Storage
+- [x] `pdfAssembler.ts` refactored: `buildPdf()` supports `isDraft` mode (no signature, red "DRAFT — PENDING APPROVAL" watermark)
+- [x] `fetchDelayContext()` — new `allowedStatuses` parameter (defaults to ['draft'], nodAutoGen passes ['pending'] for draft gen)
+- [x] `thresholdEngine.ts` — auto-generates NOD drafts for newly flagged delays (fire-and-forget, failure doesn't block scan)
+- [x] `draftsGenerated: number` added to `ThresholdScanResult`
+- [x] DB migration: `draft_pdf_path TEXT` column on `nod_drafts` + `idx_nod_drafts_unsent` index
+- [x] Dashboard: `NodDraftsSection` — "Action Required: NOD Drafts" with count badge, amber styling
+- [x] Dashboard: each draft row shows area/floor/trade/reason/cost/hours, "Review PDF" + "Approve & Sign" buttons
+- [x] Dashboard: inline `SignaturePad` modal → `approveNodDraft()` → row removed on success
+- [x] `fetchNodDrafts.ts` — queries nod_drafts JOIN delay_logs JOIN areas WHERE sent_at IS NULL
+- [ ] Push notification to superintendent + purple banner on foreman home — **deferred to Week 7 (push infra)**
+- [ ] 20-hour reminder push if not sent — **deferred to Week 7 (push infra)**
 
-### Change Order Engine (Deferred)
+### Change Order Engine ✅
 
-- [ ] Log scope changes: new_sqft, reason, change_order_ref, gc_initiated boolean
-- [ ] Trigger recalculation of all downstream forecasts on save
-- [ ] Flag GC-initiated changes as evidence — appears in REA cost table
+- [x] DB migration: `change_orders` table (id, delay_log_id, project_id, amount, description, status CHECK pending/approved/rejected, proposed_by, approved_by, approved_at, UNIQUE delay_log_id)
+- [x] DB migration: `is_change_order BOOLEAN` + `change_order_id UUID` columns on `delay_logs`
+- [x] RLS: SELECT (project members), INSERT (project members), UPDATE (gc_admin/owner only) — 3 policies + 3 indexes
+- [x] DB trigger: `guard_legal_immutability()` updated — total freeze when `is_change_order = true`, allows first-time CO assignment only on `legal_status = 'sent'`
+- [x] `changeOrderEngine.ts`: `convertToChangeOrder(input)` — validates legal_status='sent', creates CO, links delay_log. Rollback on link failure.
+- [x] `changeOrderEngine.ts`: `approveChangeOrder(changeOrderId)` — role-gated (gc_admin/owner only at service level)
+- [x] `changeOrderEngine.ts`: `rejectChangeOrder(changeOrderId)` — role-gated, deletes CO, unlocks delay_log via service client
+- [x] `changeOrderEngine.ts`: `getProjectFinancialSummary(projectId)` — aggregates delay costs + approved CO amounts
+- [x] AlertsSection: "Convert to Change Order" button on alerts where legal_status='sent' + not already CO
+- [x] AlertsSection: inline CO form pre-fills `cumulative_cost` (Carlos Standard UX), purple CO badge on converted alerts
+- [x] MetricsSection: Financial Impact row — Delay Cost + Approved COs + Total Impact (conditionally rendered)
+- [x] `fetchDashboardData.ts`: `fetchFinancial()` parallel query + `legalStatus`/`isChangeOrder` fields on alerts
+- [x] `features/finance/` directory with barrel exports (`index.ts`)
+- [x] Dashboard types updated: `FinancialOverview`, `legalStatus`, `isChangeOrder` on `DashboardAlert`
 
 ---
 
@@ -737,13 +758,16 @@ readyboard/
 │       │   │   ├── services/    fetchGridData, createCorrectiveAction, orchestrateAction
 │       │   │   └── __tests__/   35 tests (reducer, bus, orchestrator)
 │       │   ├── dashboard/       1-Screen GC Dashboard
-│       │   │   ├── components/  GCDashboard, DashboardTabs, MetricsSection, AlertsSection, ForecastSection, SectionErrorBoundary
+│       │   │   ├── components/  GCDashboard, DashboardTabs, MetricsSection, AlertsSection, ForecastSection, NodDraftsSection, SectionErrorBoundary
 │       │   │   ├── hooks/       useAlertMetrics (bus subscriber)
-│       │   │   ├── services/    fetchDashboardData, delayEngine, createArea, createLegalDoc
-│       │   │   └── types/       ProjectMetrics, DashboardAlert, ProjectForecast
-│       │   └── legal/           Legal Infrastructure (Week 4)
-│       │       ├── components/  SignaturePad (canvas-based, pointer events)
-│       │       ├── services/    thresholdEngine, evidenceStorage, pdfAssembler
+│       │   │   ├── services/    fetchDashboardData, fetchNodDrafts, delayEngine, createArea, createLegalDoc
+│       │   │   └── types/       ProjectMetrics, DashboardAlert, ProjectForecast, FinancialOverview
+│       │   ├── legal/           Legal Infrastructure (Week 4)
+│       │   │   ├── components/  SignaturePad (canvas-based, pointer events)
+│       │   │   ├── services/    thresholdEngine, evidenceStorage, pdfAssembler, nodAutoGen
+│       │   │   └── index.ts     Barrel exports
+│       │   └── finance/         Change Order Engine (Week 4)
+│       │       ├── services/    changeOrderEngine
 │       │       └── index.ts     Barrel exports
 │       ├── src/lib/auth/        getSession (dev bypass), getUserRole
 │       ├── src/lib/supabase/    SSR clients (client.ts, server.ts, service.ts)
@@ -772,5 +796,5 @@ readyboard/
 │   ├── test-offline-sync.ts     Offline sync pipeline test (22 assertions)
 │   └── audit-delay-logs.ts      Delay log integrity audit (7 checks per log)
 └── supabase/
-    └── migrations/              27 SQL migration files
+    └── migrations/              30 SQL migration files
 ```

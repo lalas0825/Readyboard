@@ -13,12 +13,15 @@ export type {
   DelayEngineResult,
   DelayLegalStatus,
 } from './services/delayEngine';
+export { fetchNodDrafts } from './services/fetchNodDrafts';
+export type { NodDraftRow } from './services/fetchNodDrafts';
 export type {
   DashboardData,
   ProjectMetrics,
   DashboardAlert,
   ProjectForecast,
   TrendSnapshot,
+  FinancialOverview,
   LegalDoc,
   LegalDocType,
 } from './types';

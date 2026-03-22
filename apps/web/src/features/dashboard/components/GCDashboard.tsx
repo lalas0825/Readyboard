@@ -5,6 +5,7 @@ import { EfficiencyDashboard } from '@/features/ready-board';
 import { SectionErrorBoundary } from './SectionErrorBoundary';
 import { MetricsSection } from './MetricsSection';
 import { AlertsSection } from './AlertsSection';
+import { NodDraftsSection } from './NodDraftsSection';
 import { ForecastSection } from './ForecastSection';
 import { CreateAreaModal } from './CreateAreaModal';
 import type { DashboardData } from '../types';
@@ -26,6 +27,7 @@ export function GCDashboard({ data, projectId }: GCDashboardProps) {
       <SectionErrorBoundary fallbackLabel="Metrics">
         <MetricsSection
           metrics={data.metrics}
+          financial={data.financial}
           onAddArea={() => setShowCreateArea(true)}
         />
       </SectionErrorBoundary>
@@ -46,8 +48,12 @@ export function GCDashboard({ data, projectId }: GCDashboardProps) {
         </div>
       )}
 
+      <SectionErrorBoundary fallbackLabel="NOD Drafts">
+        <NodDraftsSection projectId={projectId} />
+      </SectionErrorBoundary>
+
       <SectionErrorBoundary fallbackLabel="Alerts">
-        <AlertsSection alerts={data.alerts} />
+        <AlertsSection alerts={data.alerts} projectId={projectId} />
       </SectionErrorBoundary>
 
       <SectionErrorBoundary fallbackLabel="Forecast">

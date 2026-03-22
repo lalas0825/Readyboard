@@ -3,13 +3,14 @@
 import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import type { DashboardData, ProjectMetrics, DashboardAlert, ProjectForecast, TrendSnapshot } from '../types';
+import type { DashboardData, ProjectMetrics, DashboardAlert, ProjectForecast, TrendSnapshot, FinancialOverview } from '../types';
 
 function emptyDashboardData(): DashboardData {
   return {
     metrics: { projectId: '', projectName: '', overallPct: 0, totalAreas: 0, onTrack: 0, attention: 0, actionRequired: 0 },
     alerts: [],
     forecast: { trendData: [], scheduledDate: null, projectedDate: null, deltaDays: null },
+    financial: { totalDelayCost: 0, totalChangeOrderAmount: 0, totalFinancialImpact: 0, pendingCOs: 0 },
   };
 }
 
@@ -40,10 +41,11 @@ export async function fetchDashboardData(
   if (!pid) return emptyDashboardData();
 
   // Run all queries in parallel — each wrapped for resilience
-  const [metrics, alerts, forecast, projectInfo] = await Promise.all([
+  const [metrics, alerts, forecast, financial, projectInfo] = await Promise.all([
     fetchMetrics(supabase, pid),
     fetchAlerts(supabase, pid),
     fetchForecast(supabase, pid),
+    fetchFinancial(supabase, pid),
     supabase.from('projects').select('name').eq('id', pid).single(),
   ]);
 
@@ -51,6 +53,7 @@ export async function fetchDashboardData(
     metrics: { ...metrics, projectId: pid, projectName: projectInfo.data?.name ?? '' },
     alerts,
     forecast,
+    financial,
   };
 }
 
@@ -143,6 +146,8 @@ async function fetchAlerts(
         daily_cost,
         cumulative_cost,
         started_at,
+        legal_status,
+        is_change_order,
         areas!inner ( name, floor, project_id )
       `)
       .eq('areas.project_id', projectId)
@@ -184,6 +189,8 @@ async function fetchAlerts(
         dailyCost: Number(d.daily_cost),
         cumulativeCost: Number(d.cumulative_cost),
         daysBlocked: Math.ceil((Date.now() - new Date(d.started_at).getTime()) / 86_400_000),
+        legalStatus: (d.legal_status as string) ?? null,
+        isChangeOrder: !!(d.is_change_order),
         hasCorrectiveAction: !!caInfo,
         correctiveActionStatus: caInfo?.status ?? null,
         correctiveActionId: caInfo?.id ?? null,
@@ -192,6 +199,47 @@ async function fetchAlerts(
     });
   } catch {
     return [];
+  }
+}
+
+// ─── Financial (Section 4) ───────────────────────────
+
+async function fetchFinancial(
+  supabase: SupabaseClient,
+  projectId: string,
+): Promise<FinancialOverview> {
+  try {
+    const [delayResult, coResult] = await Promise.all([
+      supabase
+        .from('delay_logs')
+        .select('cumulative_cost, areas!inner ( project_id )')
+        .eq('areas.project_id', projectId),
+      supabase
+        .from('change_orders')
+        .select('amount, status')
+        .eq('project_id', projectId),
+    ]);
+
+    const totalDelayCost = (delayResult.data ?? []).reduce(
+      (sum, d) => sum + Number(d.cumulative_cost ?? 0),
+      0,
+    );
+
+    const cos = coResult.data ?? [];
+    const totalChangeOrderAmount = cos
+      .filter((co) => co.status === 'approved')
+      .reduce((sum, co) => sum + Number(co.amount), 0);
+
+    const pendingCOs = cos.filter((co) => co.status === 'pending').length;
+
+    return {
+      totalDelayCost: Math.round(totalDelayCost * 100) / 100,
+      totalChangeOrderAmount: Math.round(totalChangeOrderAmount * 100) / 100,
+      totalFinancialImpact: Math.round((totalDelayCost + totalChangeOrderAmount) * 100) / 100,
+      pendingCOs,
+    };
+  } catch {
+    return { totalDelayCost: 0, totalChangeOrderAmount: 0, totalFinancialImpact: 0, pendingCOs: 0 };
   }
 }
 

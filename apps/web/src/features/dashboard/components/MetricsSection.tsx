@@ -1,7 +1,8 @@
-import type { ProjectMetrics } from '../types';
+import type { ProjectMetrics, FinancialOverview } from '../types';
 
 type MetricsSectionProps = {
   metrics: ProjectMetrics;
+  financial?: FinancialOverview;
   onAddArea?: () => void;
 };
 
@@ -9,7 +10,7 @@ type MetricsSectionProps = {
  * Section 1: "What's happening right now?"
  * 4 KPI cards showing project health at a glance.
  */
-export function MetricsSection({ metrics, onAddArea }: MetricsSectionProps) {
+export function MetricsSection({ metrics, financial, onAddArea }: MetricsSectionProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -66,6 +67,27 @@ export function MetricsSection({ metrics, onAddArea }: MetricsSectionProps) {
           style={{ width: `${Math.min(metrics.overallPct, 100)}%` }}
         />
       </div>
+
+      {/* Financial Impact — only shows when there's cost data */}
+      {financial && financial.totalFinancialImpact > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <MetricCard
+            label="Delay Cost"
+            value={`$${financial.totalDelayCost.toLocaleString()}`}
+            color="text-red-400"
+          />
+          <MetricCard
+            label="Approved COs"
+            value={`$${financial.totalChangeOrderAmount.toLocaleString()}`}
+            color="text-purple-400"
+          />
+          <MetricCard
+            label="Total Impact"
+            value={`$${financial.totalFinancialImpact.toLocaleString()}`}
+            color={financial.totalFinancialImpact > 0 ? 'text-red-400' : 'text-zinc-500'}
+          />
+        </div>
+      )}
     </div>
   );
 }

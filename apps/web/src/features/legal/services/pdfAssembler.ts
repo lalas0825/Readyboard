@@ -19,7 +19,7 @@ export type AssembleDocResult =
   | { ok: true; path: string; hash: string; signaturePath: string }
   | { ok: false; error: string };
 
-type DelayContext = {
+export type DelayContext = {
   project: {
     name: string;
     address: string;
@@ -89,7 +89,7 @@ export async function assembleAndUpload(
   if (!context.ok) return { ok: false, error: context.error };
 
   // 2. Generate the PDF
-  const pdfBytes = await buildPdf(context.data, input.signature);
+  const pdfBytes = await buildPdf(context.data, { signature: input.signature });
 
   // 3. Upload evidence (PDF + signature PNG + audit JSON)
   // uploadEvidence handles: hash computation, storage upload, DB update
@@ -121,10 +121,11 @@ export async function assembleAndUpload(
 
 // ─── Data Fetching ──────────────────────────────────
 
-async function fetchDelayContext(
+export async function fetchDelayContext(
   supabase: ReturnType<typeof createServiceClient>,
   delayLogId: string,
   user: { name: string },
+  allowedStatuses: string[] = ['draft'],
 ): Promise<{ ok: true; data: DelayContext } | { ok: false; error: string }> {
   const { data: log } = await supabase
     .from('delay_logs')
@@ -144,8 +145,8 @@ async function fetchDelayContext(
     .single();
 
   if (!log) return { ok: false, error: 'Delay log not found' };
-  if (log.legal_status !== 'draft') {
-    return { ok: false, error: `Cannot assemble: delay_log status is '${log.legal_status}', expected 'draft'` };
+  if (!allowedStatuses.includes(log.legal_status ?? '')) {
+    return { ok: false, error: `Cannot assemble: delay_log status is '${log.legal_status}', expected one of: ${allowedStatuses.join(', ')}` };
   }
 
   const area = log.areas as unknown as Record<string, unknown>;
@@ -188,10 +189,22 @@ async function fetchDelayContext(
 
 // ─── PDF Builder ────────────────────────────────────
 
-async function buildPdf(
+export type BuildPdfOptions = {
+  isDraft?: boolean;
+  signature?: SignatureInput;
+};
+
+export async function buildPdf(
   ctx: DelayContext,
-  signature: SignatureInput,
+  signatureOrOptions?: SignatureInput | BuildPdfOptions,
 ): Promise<Uint8Array> {
+  // Backwards-compatible: if SignatureInput passed directly, wrap it
+  const options: BuildPdfOptions =
+    signatureOrOptions && 'imageBase64' in signatureOrOptions
+      ? { signature: signatureOrOptions }
+      : (signatureOrOptions as BuildPdfOptions) ?? {};
+
+  const { isDraft = false, signature } = options;
   const doc = await PDFDocument.create();
 
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -329,68 +342,97 @@ async function buildPdf(
   });
   y -= 20;
 
-  // ─── Signature Section ──────────────────────────
+  // ─── Signature / Draft Section ──────────────────
 
-  page.drawText('AUTHORIZED BY', {
-    x: MARGIN,
-    y,
-    size: 11,
-    font: fontBold,
-    color: COLOR.black,
-  });
-  y -= 16;
+  if (isDraft) {
+    // Draft watermark
+    page.drawText('DRAFT — PENDING APPROVAL', {
+      x: MARGIN,
+      y,
+      size: 16,
+      font: fontBold,
+      color: rgb(0.8, 0.2, 0.2),
+    });
+    y -= 24;
 
-  // Embed signature image
-  const sigBase64 = signature.imageBase64.split(',')[1];
-  const sigBytes = Uint8Array.from(atob(sigBase64), (c) => c.charCodeAt(0));
-  const sigImage = await doc.embedPng(sigBytes);
+    page.drawText('This document requires GC authorization before it becomes a legal instrument.', {
+      x: MARGIN,
+      y,
+      size: 9,
+      font: fontRegular,
+      color: COLOR.mid,
+    });
+    y -= 14;
 
-  const sigMaxWidth = 200;
-  const sigAspect = sigImage.width / sigImage.height;
-  const sigDisplayWidth = Math.min(sigMaxWidth, sigImage.width);
-  const sigDisplayHeight = sigDisplayWidth / sigAspect;
+    page.drawText(`Prepared for: ${ctx.user.name}`, {
+      x: MARGIN,
+      y,
+      size: 9,
+      font: fontRegular,
+      color: COLOR.dark,
+    });
+  } else if (signature) {
+    page.drawText('AUTHORIZED BY', {
+      x: MARGIN,
+      y,
+      size: 11,
+      font: fontBold,
+      color: COLOR.black,
+    });
+    y -= 16;
 
-  page.drawImage(sigImage, {
-    x: MARGIN,
-    y: y - sigDisplayHeight,
-    width: sigDisplayWidth,
-    height: sigDisplayHeight,
-  });
-  y -= sigDisplayHeight + 4;
+    // Embed signature image
+    const sigBase64 = signature.imageBase64.split(',')[1];
+    const sigBytes = Uint8Array.from(atob(sigBase64), (c) => c.charCodeAt(0));
+    const sigImage = await doc.embedPng(sigBytes);
 
-  // Signature line
-  page.drawLine({
-    start: { x: MARGIN, y },
-    end: { x: MARGIN + sigMaxWidth, y },
-    thickness: 0.5,
-    color: COLOR.dark,
-  });
-  y -= 14;
+    const sigMaxWidth = 200;
+    const sigAspect = sigImage.width / sigImage.height;
+    const sigDisplayWidth = Math.min(sigMaxWidth, sigImage.width);
+    const sigDisplayHeight = sigDisplayWidth / sigAspect;
 
-  page.drawText(ctx.user.name, {
-    x: MARGIN,
-    y,
-    size: 9,
-    font: fontRegular,
-    color: COLOR.dark,
-  });
+    page.drawImage(sigImage, {
+      x: MARGIN,
+      y: y - sigDisplayHeight,
+      width: sigDisplayWidth,
+      height: sigDisplayHeight,
+    });
+    y -= sigDisplayHeight + 4;
 
-  page.drawText(`Signed: ${formatDate(signature.metadata.capturedAt)}`, {
-    x: MARGIN + sigMaxWidth + 20,
-    y,
-    size: 8,
-    font: fontRegular,
-    color: COLOR.mid,
-  });
-  y -= 14;
+    // Signature line
+    page.drawLine({
+      start: { x: MARGIN, y },
+      end: { x: MARGIN + sigMaxWidth, y },
+      thickness: 0.5,
+      color: COLOR.dark,
+    });
+    y -= 14;
 
-  page.drawText(`${signature.metadata.strokeCount} strokes, ${signature.metadata.totalPoints} points captured`, {
-    x: MARGIN,
-    y,
-    size: 7,
-    font: fontRegular,
-    color: COLOR.light,
-  });
+    page.drawText(ctx.user.name, {
+      x: MARGIN,
+      y,
+      size: 9,
+      font: fontRegular,
+      color: COLOR.dark,
+    });
+
+    page.drawText(`Signed: ${formatDate(signature.metadata.capturedAt)}`, {
+      x: MARGIN + sigMaxWidth + 20,
+      y,
+      size: 8,
+      font: fontRegular,
+      color: COLOR.mid,
+    });
+    y -= 14;
+
+    page.drawText(`${signature.metadata.strokeCount} strokes, ${signature.metadata.totalPoints} points captured`, {
+      x: MARGIN,
+      y,
+      size: 7,
+      font: fontRegular,
+      color: COLOR.light,
+    });
+  }
 
   // ─── Footer ─────────────────────────────────────
 

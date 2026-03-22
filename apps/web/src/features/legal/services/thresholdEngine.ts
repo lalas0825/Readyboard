@@ -33,6 +33,8 @@ export type ThresholdScanResult = {
   newlyFlagged: ThresholdResult[];
   /** Delays that are legally locked (draft/sent/signed) */
   locked: { delayLogId: string; legalStatus: LegalStatus }[];
+  /** Number of draft NODs auto-generated in this scan */
+  draftsGenerated: number;
 };
 
 // ─── Engine ─────────────────────────────────────────
@@ -52,7 +54,7 @@ export async function scanThresholds(
 ): Promise<ThresholdScanResult> {
   const session = await getSession();
   if (!session) {
-    return { pendingReview: [], newlyFlagged: [], locked: [] };
+    return { pendingReview: [], newlyFlagged: [], locked: [], draftsGenerated: 0 };
   }
 
   const supabase = session.isDevBypass
@@ -67,7 +69,7 @@ export async function scanThresholds(
     .single();
 
   if (!project) {
-    return { pendingReview: [], newlyFlagged: [], locked: [] };
+    return { pendingReview: [], newlyFlagged: [], locked: [], draftsGenerated: 0 };
   }
 
   const nodThresholdHours = Number(project.nod_threshold_hours ?? 24);
@@ -87,7 +89,7 @@ export async function scanThresholds(
     .order('started_at', { ascending: false });
 
   if (error || !logs) {
-    return { pendingReview: [], newlyFlagged: [], locked: [] };
+    return { pendingReview: [], newlyFlagged: [], locked: [], draftsGenerated: 0 };
   }
 
   const pendingReview: ThresholdResult[] = [];
@@ -187,7 +189,21 @@ export async function scanThresholds(
       .in('id', toMarkPending);
   }
 
-  return { pendingReview, newlyFlagged, locked };
+  // Auto-generate draft NODs for newly flagged delays (fire-and-forget)
+  let draftsGenerated = 0;
+  if (newlyFlagged.length > 0) {
+    const { generateNodDraft } = await import('./nodAutoGen');
+    for (const flagged of newlyFlagged) {
+      try {
+        const result = await generateNodDraft(flagged.delayLogId);
+        if (result.ok) draftsGenerated++;
+      } catch {
+        // Draft generation failure does NOT block scan results
+      }
+    }
+  }
+
+  return { pendingReview, newlyFlagged, locked, draftsGenerated };
 }
 
 export type AuthorizeDraftResult =

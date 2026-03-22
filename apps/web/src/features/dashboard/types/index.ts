@@ -18,6 +18,8 @@ export type DashboardAlert = {
   dailyCost: number;
   cumulativeCost: number;
   daysBlocked: number;
+  legalStatus: string | null;
+  isChangeOrder: boolean;
   hasCorrectiveAction: boolean;
   correctiveActionStatus: string | null;
   correctiveActionId: string | null;
@@ -36,10 +38,18 @@ export type ProjectForecast = {
   deltaDays: number | null;
 };
 
+export type FinancialOverview = {
+  totalDelayCost: number;
+  totalChangeOrderAmount: number;
+  totalFinancialImpact: number;
+  pendingCOs: number;
+};
+
 export type DashboardData = {
   metrics: ProjectMetrics;
   alerts: DashboardAlert[];
   forecast: ProjectForecast;
+  financial: FinancialOverview;
 };
 
 /** Legal document types */
