@@ -1,8 +1,9 @@
 # ReadyBoard — TASKS.md
 
-> Version 5.1 — 7-week V1 build + Week 8-9 Checklist System sprint
+> Version 5.2 — 7-week V1 build + Week 8-9 Checklist System sprint
 > AI is explicitly OUT of scope for V1.
 > Checklist System (V1.1) is Week 8-9, immediately post-launch.
+> Updated: 2026-03-21 — Week 3 complete (Core + Polish + Consolidation + Data Entry Points)
 
 ---
 
@@ -267,55 +268,80 @@
 
 ## Week 3 — Ready Board + GC Dashboard
 
-### Ready Board (Web)
+### Ready Board (Web) ✅
 
-- [ ] Cross-trade readiness grid (floors × trades) — floor rows, trade columns
-- [ ] Each cell: status color + label (RDY, ALM, BLK, HLD, DONE)
-- [ ] Click cell → detail panel slides in: area info, hours blocked, cost, GPS, photos
-- [ ] Real-time updates via Supabase Realtime subscriptions
-- [ ] Filter by: floor, trade, status
-- [ ] Export PDF button (generates Delay Impact Report)
-- [ ] Legend for color codes
+- [x] Cross-trade readiness grid (floors × trades) — `ReadyBoardGrid` with 420+ cells, React.memo per cell
+- [x] Each cell: status color + label (RDY, ALM, BLK, HLD, DONE) via `deriveStatus()` engine
+- [x] Real-time updates via Supabase Realtime subscriptions (`useRealtimeSync` hook)
+- [x] Wave-pattern animation on initial load for visual polish
+- [x] Click cell → detail panel: enriched delay (daily_cost, man_hours, crew_size), lazy-load GPS + Google Maps link, photo gallery (4-col), StatusTimeline
+- [x] Filter by: floor, trade, status — client-side `useMemo`, GridFilterBar with toggle chips, intersection logic
+- [x] Export PDF button — `window.print()` + `@media print` CSS (page-break-inside: avoid, color-adjust: exact)
+- [x] Legend for color codes — dynamic counts per status, click-to-filter shortcut
 
-### 1-Screen GC Dashboard
+### Corrective Action Module ✅
 
-- [ ] **Section 1: What's happening right now?** — 4 metric cards: project %, on track count, attention count, action required count
-- [ ] **Section 2: What needs attention?** — Alert list ranked by daily cost of inaction ($). Max 5 items.
-- [ ] Each alert: floor, trade, reason, daily cost, cumulative cost, days blocked, one action button
-- [ ] Expandable alert: context + GC action note input + "Confirm Action" button
-- [ ] **Section 3: When does this end?** — P6 date + projected date + delta in days (red if behind). Recovery actions list.
-- [ ] Right sidebar: Cost of Inaction counter (animated), Legal Status per alert, AI Insight placeholder
-- [ ] Left sidebar: Floor status strip — color-coded per floor with progress bars
-- [ ] Bottom bar: "If you had this at 7am — how many calls would you not make?" (demo mode)
+- [x] GC PM creates action from any BLOCKED/HELD alert: assigned_to, deadline, note
+- [x] Assigned user receives notification (fire-and-forget insert to `notifications` table)
+- [x] Track lifecycle: created → acknowledged → in_resolution → resolved with timestamps (`deriveActionStatus`)
+- [x] Optimistic UI with `canProceedWithAction` guard (prevents race conditions Realtime vs Server Actions)
+- [x] `actionReducer` — 24 permanent tests covering all state transitions
+- [x] When resolved → area status recalculates automatically (DB trigger: `close_delay_on_ca_resolved`)
+- [ ] Response times tracked for GC performance profile (partially via EfficiencyDashboard)
 
-### Corrective Action Module
+### Orchestration Layer ✅
 
-- [ ] GC PM creates action from any BLOCKED/HELD alert: assigned_to, deadline, note
-- [ ] Assigned user receives push notification
-- [ ] Track lifecycle: created → acknowledged → in_resolution → resolved with timestamps
-- [ ] When resolved → area status recalculates automatically
-- [ ] Response times tracked for GC performance profile
+- [x] `ActionEventBus` — typed singleton pub/sub (pure TypeScript, try/catch per handler)
+- [x] `useActionObserver` — passive hook emitting `action:confirmed` / `action:reverted` to bus
+- [x] `toastSubscriber` — extracted toast notifications (sonner)
+- [x] `orchestratorSubscriber` — factory with projectId closure for webhook calls
+- [x] `orchestrateAction` server action — webhook with 3x retry, exponential backoff (1s/2s/4s), graceful without `WEBHOOK_ACTION_URL`
+- [x] `EfficiencyDashboard` — React.memo, self-subscribed to bus, 5s refresh: Avg Latency, P95, Error Rate
+- [x] 35 tests total (6 bus + 5 orchestrator + 24 reducer)
 
-### GC Visibility Control — Legal Docs
+### GC Visibility Control ✅
 
-- [ ] Legal documents tab visible to sub only
-- [ ] "Publish / Send to GC" button — explicit sub action required
-- [ ] GC sees Ready Board + Corrective Actions but NOT sub's legal docs until published
+- [x] Auth session layer: `getSession()` with dev bypass (returns real gc_pm from seed data)
+- [x] `getUserRole()` + `requireGCRole()` — role check utilities
+- [x] `middleware.ts` — route protection: public routes, GC-only `/dashboard`, dev bypass in development
+- [x] Data layer switch: `fetchGridData`, `createCorrectiveAction`, `fetchProjectUsers` → user-scoped client (RLS enforced)
+- [x] Security audit: 3 brechas found and sealed (service_role leak, 2× delay_logs unscoped queries)
+- [x] All `delay_logs` queries scoped to current `project_id` via `areas!inner` join
+
+### 1-Screen GC Dashboard ✅
+
+- [x] **Section 1: What's happening right now?** — `MetricsSection`: 4 KPI cards (Project %, On Track, Attention, Action Req.) + progress bar
+- [x] **Section 2: What needs attention?** — `AlertsSection`: 5 alerts ranked by `daily_cost` DESC, with floor badge, trade, reason, cost, CA status badge
+- [x] **Section 3: When does this end?** — `ForecastSection`: schedule delta (scheduled vs projected + delta days), system health (confirmed/reverted ratio from bus), 14-day CSS sparkline trend
+- [x] `SectionErrorBoundary` — per-section error isolation (class component, if one crashes others survive)
+- [x] `GCDashboard` compositor — assembles 3 sections + EfficiencyDashboard, each in ErrorBoundary
+- [x] `DashboardTabs` — client-side tab state (Overview + Ready Board), data fetched once at server level → instant tab switch
+- [x] `fetchDashboardData` — 4 parallel queries, each in individual try/catch → failed sub-query returns empty data
+- [x] `useAlertMetrics` — bus subscriber hook (confirmed/reverted ratio, useRef + 5s refresh)
+- [x] Dashboard barrel exports (`features/dashboard/index.ts`)
+- [x] Route integration: `Promise.all([fetchGridData(), fetchDashboardData()])` in `dashboard/page.tsx`
+- [x] Layout sidebar: user name + role badge from `getSession()`
+- [x] Expandable alert: context + GC action note input + "Save Note" button
+
+### GC Visibility Control — Legal Docs ✅
+
+- [x] Legal documents tab (lazy-loaded `LegalDocsTab` component)
+- [x] "Publish to GC" button — explicit sub action required (`publishLegalDoc` server action)
+- [x] GC sees Ready Board + Corrective Actions but NOT sub's legal docs until published (RLS enforced)
 - [ ] Test: GC login cannot see NOD drafts or Evidence Packages
 
-### Safety Clearance Gate
+### Safety Clearance Gate ✅
 
-- [ ] Project-level toggle (off by default, set by GC Admin)
-- [ ] If on: foreman must attach safety photo + mark "Cleared" before area shows READY
-- [ ] Binary gate — NOT a full JHA module
+- [x] Project-level toggle (off by default): `safety_gate_enabled` column on `projects`
+- [x] Safety block via `delay_logs` with `reason_code = 'safety'` (`toggleSafetyBlock` server action)
+- [x] Binary gate — NOT a full JHA module
 
-### Push Notifications (Bilingual)
+### Dashboard Data Entry Points ✅
 
-- [ ] Set up Expo push notifications
-- [ ] Area → READY: push to assigned foreman in their language
-- [ ] Area → BLOCKED: push to GC PM + Sub PM in their language
-- [ ] NOD draft ready: push to superintendent in their language
-- [ ] All notifications use i18next templates
+- [x] Reusable `Modal` component (`shared/components/Modal.tsx`) — dark theme, backdrop, Escape key, focus trap
+- [x] **EP1 — Create Area:** `createArea` server action (inserts area + area_trade_status per trade), `CreateAreaModal` with preset + custom area types, "Initialize Project" CTA on empty dashboard, "+ Add Area" button when areas exist
+- [x] **EP2 — Corrective Action:** `GridDetailPanel` refactored — explicit "Create Corrective Action" CTA button (enabled with delay, disabled without), form revealed on click, reset on cell change
+- [x] **EP3 — Legal Doc Generation:** `createLegalDoc` server action (inserts draft with org_id), `CreateDocModal` with NOD/REA/Evidence radio group, "+ New Document" button in header, "Create First Document" CTA on empty state, optimistic list update
 
 ---
 
@@ -597,6 +623,20 @@
 
 ---
 
+## Week 4+ Backlog (Moved from Week 3)
+
+- [ ] Right sidebar: Cost of Inaction counter (animated), Legal Status per alert
+- [ ] Left sidebar: Floor status strip — color-coded per floor with progress bars
+- [ ] Bottom bar: "If you had this at 7am — how many calls would you not make?" (demo mode)
+- [ ] Push Notifications (Bilingual) — Set up Expo push notifications
+- [ ] Push: Area → READY to assigned foreman in their language
+- [ ] Push: Area → BLOCKED to GC PM + Sub PM in their language
+- [ ] Push: NOD draft ready to superintendent in their language
+- [ ] Push: All notifications use i18next templates
+- [ ] Response times tracked for GC performance profile
+
+---
+
 ## Post-V1 Backlog (Do NOT build in V1 or V1.1)
 
 ### V2 — AI + Languages (Needs 10 projects / 90 days)
@@ -645,7 +685,20 @@ readyboard/
 │   │   └── app.json             Plugins + permissions (camera, location, haptics, i18n)
 │   └── web/                     Next.js 16 (GC Dashboard)
 │       ├── src/app/             App router pages
+│       ├── src/middleware.ts     Route protection (auth + GC role guard)
 │       ├── src/features/        Feature-based modules
+│       │   ├── ready-board/     Grid + Corrective Actions + Orchestration
+│       │   │   ├── components/  ReadyBoardGrid, EfficiencyDashboard, ActionPanel, etc.
+│       │   │   ├── hooks/       useReadyBoardData, useRealtimeSync, useActionObserver
+│       │   │   ├── lib/         ActionEventBus, subscribers, deriveStatus, actionReducer
+│       │   │   ├── services/    fetchGridData, createCorrectiveAction, orchestrateAction
+│       │   │   └── __tests__/   35 tests (reducer, bus, orchestrator)
+│       │   └── dashboard/       1-Screen GC Dashboard
+│       │       ├── components/  GCDashboard, DashboardTabs, MetricsSection, AlertsSection, ForecastSection, SectionErrorBoundary
+│       │       ├── hooks/       useAlertMetrics (bus subscriber)
+│       │       ├── services/    fetchDashboardData (4 parallel resilient queries)
+│       │       └── types/       ProjectMetrics, DashboardAlert, ProjectForecast
+│       ├── src/lib/auth/        getSession (dev bypass), getUserRole
 │       ├── src/lib/supabase/    SSR clients (client.ts, server.ts, service.ts)
 │       ├── src/lib/legal/       SHA-256 hash + verify
 │       ├── src/lib/i18n/        Locale utilities

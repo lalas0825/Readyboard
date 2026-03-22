@@ -1,11 +1,15 @@
 import type { Metadata } from 'next'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
+import { Toaster } from 'sonner'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'ReadyBoard',
   description: 'Legal infrastructure for commercial construction',
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default async function RootLayout({
@@ -21,6 +25,7 @@ export default async function RootLayout({
       <body>
         <NextIntlClientProvider messages={messages} locale={locale}>
           {children}
+          <Toaster theme="dark" position="bottom-right" richColors />
         </NextIntlClientProvider>
       </body>
     </html>

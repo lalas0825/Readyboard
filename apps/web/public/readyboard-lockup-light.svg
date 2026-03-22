@@ -1,0 +1,15 @@
+<svg width="320" height="60" viewBox="0 0 320 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Icon -->
+  <g transform="translate(4, 6)">
+    <rect x="2" y="2" width="44" height="44" rx="10" fill="#0D1B2A"/>
+    <rect x="8.4" y="7.2" width="31.2" height="5.4" rx="2.4" fill="#4ADE80"/>
+    <rect x="8.4" y="15.6" width="31.2" height="5.4" rx="2.4" fill="#4ADE80"/>
+    <rect x="8.4" y="24" width="22.8" height="5.4" rx="2.4" fill="#FBBF24"/>
+    <rect x="8.4" y="32.4" width="14.4" height="5.4" rx="2.4" fill="#E67E22"/>
+    <rect x="25.2" y="32.4" width="14.4" height="5.4" rx="2.4" fill="#E67E22" opacity="0.2"/>
+    <circle cx="39.6" cy="35.1" r="2.4" fill="#E67E22"/>
+  </g>
+  <!-- Text -->
+  <text x="68" y="40" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="32" font-weight="800" fill="#0F1D2F" letter-spacing="-0.5">Ready</text>
+  <text x="172" y="40" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="32" font-weight="300" fill="#999999" letter-spacing="-0.5">Board</text>
+</svg>

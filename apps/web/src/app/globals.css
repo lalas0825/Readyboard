@@ -4,3 +4,56 @@
  * Personaliza tu tema aquí
  * Documentación: https://tailwindcss.com/docs/theme
  */
+
+/* ─── Print styles ─── */
+@media print {
+  /* Hide non-printable UI */
+  .print\:hidden,
+  nav,
+  aside,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* Show print-only elements */
+  .hidden.print\:block {
+    display: block !important;
+  }
+
+  /* White background, dark text */
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Grid table: preserve status colors */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  table td,
+  table th {
+    border: 1px solid #d4d4d8 !important;
+    padding: 4px 6px !important;
+    font-size: 9pt !important;
+  }
+
+  /* Prevent row breaks across pages */
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Keep floor groups together when possible */
+  thead {
+    display: table-header-group;
+  }
+
+  /* Ensure status color dots are visible */
+  [style*="background-color"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -13,6 +13,7 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
+    "test": "turbo test",
     "postinstall": "node -e \"require('fs').rmSync('apps/mobile/node_modules/@types/react',{recursive:true,force:true})\""
   },
   "devDependencies": {
