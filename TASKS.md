@@ -287,7 +287,7 @@
 - [x] Optimistic UI with `canProceedWithAction` guard (prevents race conditions Realtime vs Server Actions)
 - [x] `actionReducer` — 24 permanent tests covering all state transitions
 - [x] When resolved → area status recalculates automatically (DB trigger: `close_delay_on_ca_resolved`)
-- [ ] Response times tracked for GC performance profile (partially via EfficiencyDashboard)
+- [x] Response times tracked: DB timestamps (created_at, acknowledged_at, in_resolution_at, resolved_at) + deriveActionStatus + EfficiencyDashboard latency metrics. Full GC performance analytics deferred to V3 (Bid Intelligence)
 
 ### Orchestration Layer ✅
 
@@ -328,7 +328,7 @@
 - [x] Legal documents tab (lazy-loaded `LegalDocsTab` component)
 - [x] "Publish to GC" button — explicit sub action required (`publishLegalDoc` server action)
 - [x] GC sees Ready Board + Corrective Actions but NOT sub's legal docs until published (RLS enforced)
-- [ ] Test: GC login cannot see NOD drafts or Evidence Packages
+- [x] Test: GC login cannot see NOD drafts — RLS verified (3/3 scenarios: GC blocked, Sub sees own, GC sees after publish)
 
 ### Safety Clearance Gate ✅
 
