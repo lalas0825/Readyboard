@@ -67,6 +67,12 @@ export function CreateDocModal({ projectId, open, onClose, onCreated }: CreateDo
       pdfUrl: null,
       openCount: 0,
       createdAt: result.createdAt,
+      firstOpenedAt: null,
+      receiptTrackingUuid: null,
+      totalClaimAmount: null,
+      areaName: null,
+      tradeName: null,
+      locale: 'en',
     };
 
     onCreated(newDoc);

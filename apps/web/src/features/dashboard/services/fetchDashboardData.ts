@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import type { DashboardData, ProjectMetrics, DashboardAlert, ProjectForecast, TrendSnapshot, FinancialOverview, ScheduleComparisonRow } from '../types';
 import { AT_RISK_THRESHOLD_DAYS, BURN_RATE_WINDOW_DAYS, MS_PER_DAY } from '@/lib/constants';
+import { notificationTrigger } from './notificationTrigger';
 
 function emptyDashboardData(): DashboardData {
   return {
@@ -51,6 +52,9 @@ export async function fetchDashboardData(
     fetchScheduleComparison(supabase, pid),
     supabase.from('projects').select('name').eq('id', pid).single(),
   ]);
+
+  // Non-blocking side effect — notifications never block dashboard rendering
+  notificationTrigger(pid).catch(() => {/* silent */});
 
   return {
     metrics: { ...metrics, projectId: pid, projectName: projectInfo.data?.name ?? '' },

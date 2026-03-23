@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ReadyBoardGrid, type ReadyBoardInitialData } from '@/features/ready-board';
 import { GCDashboard } from './GCDashboard';
 import { LegalDocsTab } from './LegalDocsTab';
+import { fetchUnreadNotificationCount } from '../services/fetchNotifications';
 import type { DashboardData } from '../types';
 
 type Tab = 'overview' | 'readyboard' | 'legal';
@@ -26,6 +27,11 @@ const TABS: { key: Tab; label: string }[] = [
  */
 export function DashboardTabs({ gridData, dashboardData }: DashboardTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetchUnreadNotificationCount().then(setUnreadCount).catch(() => {/* silent */});
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -35,13 +41,18 @@ export function DashboardTabs({ gridData, dashboardData }: DashboardTabsProps) {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            className={`relative flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === tab.key
                 ? 'bg-zinc-800 text-zinc-100'
                 : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
             {tab.label}
+            {tab.key === 'legal' && unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
         ))}
       </div>

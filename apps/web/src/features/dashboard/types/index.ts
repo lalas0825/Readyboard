@@ -74,4 +74,10 @@ export type LegalDoc = {
   pdfUrl: string | null;
   openCount: number;
   createdAt: string;
+  firstOpenedAt: string | null;
+  receiptTrackingUuid: string | null;
+  totalClaimAmount: number | null;
+  areaName: string | null;
+  tradeName: string | null;
+  locale: string;
 };
