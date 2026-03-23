@@ -18,7 +18,10 @@ export type AuditAction =
   | 'change_order_rejected'
   | 'ca_created'
   | 'ca_acknowledged'
-  | 'ca_resolved';
+  | 'ca_resolved'
+  | 'rea_generated'
+  | 'evidence_package_generated'
+  | 'receipt_opened';
 
 // ─── Write Audit Entry ──────────────────────────────────────
 
