@@ -12,7 +12,7 @@ const ANTI_SPAM_WINDOW_MS = 24 * 3_600_000;
  *
  * 1. Checks delay_logs > 20h old with no nod_draft → inserts 'nod_reminder'
  * 2. Delegates 48h/72h escalation to checkEscalations() from Week 6
- * 3. Anti-spam: skips if notification for same entity exists within 24h
+ * 3. Anti-spam: batched check — skips if notification exists within 24h
  */
 export async function notificationTrigger(projectId: string): Promise<void> {
   const session = await getSession();
@@ -24,6 +24,7 @@ export async function notificationTrigger(projectId: string): Promise<void> {
   // ── 1. NOD Reminder (20h) ──────────────────────────
   try {
     const reminderCutoff = new Date(now.getTime() - NOD_REMINDER_HOURS * 3_600_000).toISOString();
+    const antiSpamCutoff = new Date(now.getTime() - ANTI_SPAM_WINDOW_MS).toISOString();
 
     const { data: staleDelays } = await supabase
       .from('delay_logs')
@@ -37,19 +38,26 @@ export async function notificationTrigger(projectId: string): Promise<void> {
       .lt('started_at', reminderCutoff);
 
     if (staleDelays && staleDelays.length > 0) {
-      for (const delay of staleDelays) {
-        // Anti-spam: check if we already notified about this delay in 24h
-        const { count } = await supabase
-          .from('notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', session.user.id)
-          .eq('type', 'nod_reminder')
-          .contains('data', { delayLogId: delay.id })
-          .gte('created_at', new Date(now.getTime() - ANTI_SPAM_WINDOW_MS).toISOString());
+      // Batch anti-spam: fetch ALL recent nod_reminder notifications in one query
+      const { data: recentNotifs } = await supabase
+        .from('notifications')
+        .select('data')
+        .eq('user_id', session.user.id)
+        .eq('type', 'nod_reminder')
+        .gte('created_at', antiSpamCutoff);
 
-        if ((count ?? 0) === 0) {
+      const notifiedDelayIds = new Set(
+        (recentNotifs ?? []).map((n) => (n.data as Record<string, unknown>)?.delayLogId),
+      );
+
+      // Filter to only delays not already notified
+      const delaysToNotify = staleDelays.filter((d) => !notifiedDelayIds.has(d.id));
+
+      if (delaysToNotify.length > 0) {
+        // Batch insert all notifications at once
+        const records = delaysToNotify.map((delay) => {
           const area = delay.areas as unknown as Record<string, unknown>;
-          await supabase.from('notifications').insert({
+          return {
             user_id: session.user.id,
             type: 'nod_reminder',
             title: `NOD pending — ${(area.name as string) ?? 'Unknown'} · ${delay.trade_name}`,
@@ -59,8 +67,10 @@ export async function notificationTrigger(projectId: string): Promise<void> {
               areaId: delay.area_id,
               tradeName: delay.trade_name,
             },
-          });
-        }
+          };
+        });
+
+        await supabase.from('notifications').insert(records);
       }
     }
   } catch {

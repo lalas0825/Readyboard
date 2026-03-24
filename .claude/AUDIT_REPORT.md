@@ -228,3 +228,110 @@ This fixes S-1 through S-4 and S-6 through S-8 by replacing org-only checks with
 ---
 
 *Audit complete. 45 findings across 3 domains. Awaiting approval to proceed with fixes.*
+
+---
+---
+
+# Hardening Sprint — Post-Week 7 Audit
+
+**Date:** 2026-03-23
+**Scope:** Weeks 1-7 (data integrity, RLS, N+1 queries, types)
+**Result:** 5 issues found, 5 fixed. Build + tests green.
+
+---
+
+## 1. SHA-256 & Audit Log Integrity
+
+**Status:** PASS
+
+| Check | Result |
+|-------|--------|
+| `generateNodPdf` writes SHA-256 hash | `crypto.createHash('sha256')` stored in `legal_documents.sha256_hash` |
+| `generateRea` writes SHA-256 hash | Same pattern |
+| `generateEvidencePackage` writes SHA-256 hash | Same pattern + hash printed in PDF footer |
+| `audit_log` entry on NOD send | `writeAuditEntry('nod_sent', ...)` in `sendNod.ts` |
+| `audit_log` entry on REA generation | `writeAuditEntry('rea_generated', ...)` in `generateRea.ts` |
+| `audit_log` entry on Evidence Package | `writeAuditEntry('evidence_package_generated', ...)` |
+| `audit_log` entry on corrective action | `writeAuditEntry('ca_created', ...)` in `createCorrectiveAction.ts` |
+| `receipt_tracking_uuid` linked correctly | Tracking pixel route queries by UUID, creates event |
+| `delay_logs.evidence_hash` + `evidence_path` | Both columns exist and populated |
+| `/api/legal/verify` endpoint | Public SHA-256 verification works |
+
+**No anomalies.**
+
+---
+
+## 2. RLS Stress Test — 51 Policies, 23 Tables
+
+**3 issues found, 3 fixed via migration.**
+
+### 2a. receipt_events INSERT `WITH CHECK(true)` — HIGH
+
+- **Risk:** Any authenticated user could fabricate receipt open events
+- **Fix:** Dropped policy. Tracking pixel uses `createServiceClient()` (bypasses RLS).
+
+### 2b. audit_log SELECT cross-org leak — HIGH
+
+- **Before:** `USING (is_gc_role() OR is_sub_management())` — no org scoping
+- **Fix:** `AND changed_by IN (SELECT id FROM users WHERE org_id = get_user_org_id())`
+
+### 2c. legal_documents duplicate GC SELECT — MEDIUM
+
+- **Before:** Two GC SELECT policies, one missing `is_gc_role()` check
+- **Fix:** Dropped `"GC sees published legal docs only"`. Kept `"GC sees published legal docs"`.
+
+### Migration: `20260323_harden_rls_receipt_events_audit_log_legal_docs.sql`
+
+---
+
+## 3. N+1 Query Audit
+
+**2 critical issues found, 2 fixed.**
+
+### 3a. notificationTrigger.ts — CRITICAL
+
+- **Before:** Per-delay anti-spam check (N queries) + per-delay INSERT (N queries)
+- **After:** 1 batch anti-spam query + Set-based filtering + 1 batch INSERT
+- **Reduction:** 2N+1 → 3 queries
+
+### 3b. escalationCheck.ts — CRITICAL
+
+- **Before:** Per-doc CA check + per-notification anti-spam + per-notification INSERT
+- **After:** 1 batch CA count + 1 batch anti-spam + Set-based filtering + 1 batch INSERT
+- **Reduction:** ~3N → ~5 queries
+
+### Other queries (no issues)
+
+| File | Pattern | Status |
+|------|---------|--------|
+| `fetchDashboardData.ts` | 4 parallel queries | OK |
+| `fetchLegalDocs.ts` | Single query with areas join | OK |
+| `fetchDelayLogsForRea.ts` | Single query with areas join | OK |
+| `fetchPreflightData.ts` | 4 parallel count queries | OK |
+| `fetchNotifications.ts` | Single query | OK |
+
+---
+
+## 4. TypeScript + Build + Tests
+
+**Status:** PASS
+
+| Check | Result |
+|-------|--------|
+| `tsc --noEmit` | 0 errors |
+| `next build` | Clean — 7 routes |
+| `vitest run` | 50/50 pass |
+
+---
+
+## Files Changed (Hardening Sprint)
+
+| File | Change |
+|------|--------|
+| `features/dashboard/services/notificationTrigger.ts` | Batched anti-spam + batch INSERT |
+| `features/legal/services/escalationCheck.ts` | Batched CA check + anti-spam + batch INSERT |
+| `supabase/migrations/20260323_harden_...sql` | 3 RLS policy fixes |
+
+---
+
+*Hardening Sprint complete. Core is arbitration-ready.*
