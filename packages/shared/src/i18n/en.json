@@ -164,6 +164,8 @@
     "title": "Checklist",
     "awaitingGC": "Awaiting GC Verification",
     "gateTask": "Gate — Must pass before next trade",
+    "gateBlocked": "Complete previous gate tasks first",
+    "gcNotified": "GC has been notified for verification",
     "approve": "Approve — Unblock Next Trade",
     "requestCorrection": "Request Correction",
     "correctionReasons": {
@@ -173,6 +175,31 @@
       "failed_test": "Failed test — redo required",
       "safety": "Safety concern",
       "other": "Other (see notes)"
-    }
+    },
+    "verificationQueue": "Verification Queue",
+    "pendingVerifications": "Pending Verifications",
+    "noVerificationsPending": "All verifications are up to date",
+    "noVerificationsDescription": "When a sub completes all their tasks, verification items will appear here.",
+    "approveAll": "Approve — Unblock Next Trade",
+    "selectForCorrection": "Select tasks for correction",
+    "correctionSummary": "{{count}} task(s) will be sent back for correction",
+    "correctionRequested": "Correction requested — sub has been notified",
+    "verificationApproved": "Verified — trade unblocked",
+    "noteRequiredForOther": "Note is required when reason is 'Other'",
+    "correctionBannerTitle": "{{count}} task(s) need correction",
+    "correctionBannerAction": "Tap corrected tasks to re-submit",
+    "tapToResubmit": "Tap to re-submit"
+  },
+  "settings": {
+    "tradeConfig": "Trade Configuration",
+    "tradeConfigDescription": "Set reporting mode per trade. Checklist requires task-by-task verification.",
+    "checklistMode": "Checklist",
+    "percentageMode": "Percentage",
+    "switchToChecklist": "Switch to Checklist mode",
+    "switchToPercentage": "Switch to Percentage mode",
+    "lockedActiveTasks": "Cannot switch: active tasks exist",
+    "modeUpdated": "Mode updated — {{count}} areas affected",
+    "completed": "completed",
+    "active": "active"
   }
 }

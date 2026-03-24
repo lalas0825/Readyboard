@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ReadyBoardGrid, type ReadyBoardInitialData } from '@/features/ready-board';
 import { GCDashboard } from './GCDashboard';
 import { LegalDocsTab } from './LegalDocsTab';
 import { fetchUnreadNotificationCount } from '../services/fetchNotifications';
+import { GCVerificationQueue } from '@/features/checklist';
+import { fetchVerificationCount } from '@/features/checklist/services/fetchVerificationCount';
+import { TradeConfig } from '@/features/settings';
 import type { DashboardData } from '../types';
 
-type Tab = 'overview' | 'readyboard' | 'legal';
+type Tab = 'overview' | 'readyboard' | 'verifications' | 'legal' | 'settings';
 
 type DashboardTabsProps = {
   gridData: ReadyBoardInitialData;
@@ -17,20 +20,28 @@ type DashboardTabsProps = {
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'readyboard', label: 'Ready Board' },
+  { key: 'verifications', label: 'Verifications' },
   { key: 'legal', label: 'Legal Docs' },
+  { key: 'settings', label: 'Settings' },
 ];
 
 /**
  * Client component with local tab state.
  * Data fetched once at server level, passed down — tab switch is instant.
- * Legal tab lazy-loads its own data independently.
+ * Legal tab and Verification queue lazy-load their own data independently.
  */
 export function DashboardTabs({ gridData, dashboardData }: DashboardTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [verifyCount, setVerifyCount] = useState(0);
 
   useEffect(() => {
     fetchUnreadNotificationCount().then(setUnreadCount).catch(() => {/* silent */});
+    fetchVerificationCount().then(setVerifyCount).catch(() => {/* silent */});
+  }, []);
+
+  const handleVerificationCountChange = useCallback((count: number) => {
+    setVerifyCount(count);
   }, []);
 
   return (
@@ -53,6 +64,11 @@ export function DashboardTabs({ gridData, dashboardData }: DashboardTabsProps) {
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
+            {tab.key === 'verifications' && verifyCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white">
+                {verifyCount > 9 ? '9+' : verifyCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -60,7 +76,14 @@ export function DashboardTabs({ gridData, dashboardData }: DashboardTabsProps) {
       {/* Tab content */}
       {activeTab === 'overview' && <GCDashboard data={dashboardData} projectId={gridData.projectId} />}
       {activeTab === 'readyboard' && <ReadyBoardGrid initialData={gridData} />}
+      {activeTab === 'verifications' && (
+        <GCVerificationQueue
+          projectId={gridData.projectId}
+          onCountChange={handleVerificationCountChange}
+        />
+      )}
       {activeTab === 'legal' && <LegalDocsTab projectId={gridData.projectId} />}
+      {activeTab === 'settings' && <TradeConfig projectId={gridData.projectId} />}
     </div>
   );
 }

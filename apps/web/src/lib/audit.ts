@@ -21,7 +21,9 @@ export type AuditAction =
   | 'ca_resolved'
   | 'rea_generated'
   | 'evidence_package_generated'
-  | 'receipt_opened';
+  | 'receipt_opened'
+  | 'gc_verification_approved'
+  | 'gc_correction_requested';
 
 // ─── Write Audit Entry ──────────────────────────────────────
 

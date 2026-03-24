@@ -17,7 +17,7 @@
  */
 
 import { create } from 'zustand';
-import type { ReasonCode, FieldReportStatus } from '../types';
+import type { ReasonCode, FieldReportStatus, ReportingMode } from '../types';
 
 export type ReportStep = 1 | 2 | 3;
 
@@ -28,6 +28,8 @@ export type ReportContext = {
   floor: string;
   trade_name: string;
   user_id: string;
+  /** 'percentage' = slider, 'checklist' = task checklist (V1.1) */
+  reporting_mode: ReportingMode;
 };
 
 /** Accumulated form data across all steps */

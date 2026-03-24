@@ -1,5 +1,3 @@
-'use server';
-
 import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -88,6 +86,7 @@ export function getScheduleDelta(baselineFinish: Date, projectedFinish: Date): n
  * Also writes a project-level rollup row (area_id = NULL, trade_type = 'PROJECT').
  */
 export async function refreshProjectForecast(projectId: string): Promise<RefreshResult> {
+  'use server';
   const session = await getSession();
   if (!session) return { success: false, snapshotsWritten: 0, atRiskCount: 0 };
 

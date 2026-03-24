@@ -70,6 +70,7 @@ export default function ForemanHome() {
       floor: area.floor,
       trade_name: area.trade_name,
       user_id: session!.user.id,
+      reporting_mode: area.reporting_mode,
     });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push('/report');

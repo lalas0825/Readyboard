@@ -8,6 +8,7 @@ export type {
   UserRole,
   PowerSyncStatus,
   AreaStatus,
+  ReportingMode,
   AssignedArea,
   PendingNod,
 } from './types';
@@ -22,6 +23,12 @@ export {
 
 export { useFieldReport } from './hooks/useFieldReport';
 export { useAreas } from './hooks/useAreas';
+export {
+  useChecklist,
+  type ChecklistTask,
+  type TradeProgress,
+  type TaskStatus,
+} from './hooks/useChecklist';
 
 // Stores
 export {

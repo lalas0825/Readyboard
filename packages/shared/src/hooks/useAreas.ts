@@ -16,7 +16,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { usePowerSync } from './usePowerSync';
-import type { AssignedArea, AreaStatus, PendingNod } from '../types';
+import type { AssignedArea, AreaStatus, PendingNod, ReportingMode } from '../types';
 
 type RawAreaRow = {
   id: string;
@@ -28,6 +28,7 @@ type RawAreaRow = {
   effective_pct: number | null;
   all_gates_passed: number | null;
   gc_verification_pending: number | null;
+  reporting_mode: string | null;
 };
 
 type RawDelayRow = {
@@ -96,7 +97,8 @@ export function useAreas(userId: string | undefined) {
           ua.trade_name,
           ats.effective_pct,
           ats.all_gates_passed,
-          ats.gc_verification_pending
+          ats.gc_verification_pending,
+          ats.reporting_mode
         FROM user_assignments ua
         JOIN areas a ON a.id = ua.area_id
         LEFT JOIN area_trade_status ats
@@ -148,6 +150,8 @@ export function useAreas(userId: string | undefined) {
           const tradeName = row.trade_name ?? 'unknown';
           const hasDelay = delaySet.has(`${row.id}:${tradeName}`);
 
+          const reportingMode = (row.reporting_mode === 'checklist' ? 'checklist' : 'percentage') as ReportingMode;
+
           return {
             id: row.id,
             name: row.name ?? 'Unknown',
@@ -158,6 +162,7 @@ export function useAreas(userId: string | undefined) {
             effective_pct: effectivePct,
             all_gates_passed: allGatesPassed,
             gc_verification_pending: gcPending,
+            reporting_mode: reportingMode,
             status: deriveStatus(effectivePct, allGatesPassed, gcPending, hasDelay),
             last_report_at: reportMap.get(`${row.id}:${tradeName}`) ?? null,
           };

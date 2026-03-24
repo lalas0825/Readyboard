@@ -46,6 +46,9 @@ export type PowerSyncStatus = {
 /** Derived area status for Foreman Home Screen */
 export type AreaStatus = 'ready' | 'almost' | 'working' | 'blocked' | 'held';
 
+/** Reporting mode: percentage slider or granular checklist */
+export type ReportingMode = 'percentage' | 'checklist';
+
 /** Area with derived status for foreman display */
 export type AssignedArea = {
   id: string;
@@ -57,6 +60,7 @@ export type AssignedArea = {
   effective_pct: number;
   all_gates_passed: boolean;
   gc_verification_pending: boolean;
+  reporting_mode: ReportingMode;
   status: AreaStatus;
   /** ISO timestamp of most recent field_report for this area+trade (null if none) */
   last_report_at: string | null;

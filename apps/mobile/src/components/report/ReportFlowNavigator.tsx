@@ -15,6 +15,7 @@ import { useReportStore } from '@readyboard/shared';
 import Step1Progress from './Step1Progress';
 import Step2Blockers from './Step2Blockers';
 import Step3Reason from './Step3Reason';
+import TaskChecklist from '../checklist/TaskChecklist';
 
 type Props = {
   /** Called when the flow is ready to submit */
@@ -88,8 +89,10 @@ export default function ReportFlowNavigator({ onSubmit, onClose }: Props) {
         <View style={styles.spacer} />
       </View>
 
-      {/* Step content */}
-      {currentStep === 1 && <Step1Progress />}
+      {/* Step content — checklist replaces slider when reporting_mode = 'checklist' */}
+      {currentStep === 1 && (
+        context?.reporting_mode === 'checklist' ? <TaskChecklist /> : <Step1Progress />
+      )}
       {currentStep === 2 && <Step2Blockers onReadyToSubmit={onSubmit} />}
       {currentStep === 3 && <Step3Reason onReadyToSubmit={onSubmit} />}
     </SafeAreaView>

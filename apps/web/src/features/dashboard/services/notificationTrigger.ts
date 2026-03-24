@@ -5,6 +5,8 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { checkEscalations } from '@/features/legal/services/escalationCheck';
 
 const NOD_REMINDER_HOURS = 20;
+const VERIFICATION_REMINDER_HOURS = 4;
+const VERIFICATION_ESCALATION_HOURS = 24;
 const ANTI_SPAM_WINDOW_MS = 24 * 3_600_000;
 
 /**
@@ -82,5 +84,109 @@ export async function notificationTrigger(projectId: string): Promise<void> {
     await checkEscalations(projectId);
   } catch {
     // Silent
+  }
+
+  // ── 3. GC Verification Reminders (4h + 24h) ──────
+  try {
+    const reminderCutoff4h = new Date(
+      now.getTime() - VERIFICATION_REMINDER_HOURS * 3_600_000,
+    ).toISOString();
+    const escalationCutoff24h = new Date(
+      now.getTime() - VERIFICATION_ESCALATION_HOURS * 3_600_000,
+    ).toISOString();
+    const antiSpamCutoff = new Date(now.getTime() - ANTI_SPAM_WINDOW_MS).toISOString();
+
+    // Fetch all area/trade pairs with pending GC verification for this project
+    const { data: pendingVerifications } = await supabase
+      .from('area_trade_status')
+      .select(`
+        id, area_id, trade_type, gc_verification_pending_since, last_notification_sent_at,
+        areas!inner ( name, project_id )
+      `)
+      .eq('areas.project_id', projectId)
+      .eq('gc_verification_pending', true)
+      .not('gc_verification_pending_since', 'is', null);
+
+    if (pendingVerifications && pendingVerifications.length > 0) {
+      const notifications: Array<{
+        user_id: string;
+        type: string;
+        title: string;
+        body: string;
+        data: Record<string, unknown>;
+      }> = [];
+      const atsIdsToStamp: string[] = [];
+
+      for (const pv of pendingVerifications) {
+        const pendingSince = pv.gc_verification_pending_since as string;
+        const lastNotified = pv.last_notification_sent_at as string | null;
+        const area = pv.areas as unknown as Record<string, unknown>;
+        const areaName = (area.name as string) ?? 'Unknown';
+
+        // Anti-spam: skip if already notified within window
+        if (lastNotified && lastNotified > antiSpamCutoff) continue;
+
+        // Look up assigned foremen for this area/trade
+        const { data: assignments } = await supabase
+          .from('user_assignments')
+          .select('user_id')
+          .eq('area_id', pv.area_id)
+          .eq('trade_name', pv.trade_type);
+
+        const foremanIds = [...new Set((assignments ?? []).map((a) => a.user_id))];
+        if (foremanIds.length === 0) continue;
+
+        // 24h escalation (higher priority — check first)
+        if (pendingSince < escalationCutoff24h) {
+          for (const fid of foremanIds) {
+            notifications.push({
+              user_id: fid,
+              type: 'gc_verification_escalation',
+              title: `Verificación pendiente 24h+ — ${areaName}`,
+              body: `${pv.trade_type}: GC no ha verificado en más de 24 horas. Documenta la demora.`,
+              data: {
+                area_id: pv.area_id,
+                trade_type: pv.trade_type,
+                pending_since: pendingSince,
+                escalation_level: '24h',
+              },
+            });
+          }
+          atsIdsToStamp.push(pv.id);
+        }
+        // 4h reminder
+        else if (pendingSince < reminderCutoff4h) {
+          for (const fid of foremanIds) {
+            notifications.push({
+              user_id: fid,
+              type: 'gc_verification_reminder',
+              title: `Recordatorio: verificación pendiente — ${areaName}`,
+              body: `${pv.trade_type}: verificación solicitada hace 4h+. GC ha sido notificado.`,
+              data: {
+                area_id: pv.area_id,
+                trade_type: pv.trade_type,
+                pending_since: pendingSince,
+                escalation_level: '4h',
+              },
+            });
+          }
+          atsIdsToStamp.push(pv.id);
+        }
+      }
+
+      if (notifications.length > 0) {
+        await supabase.from('notifications').insert(notifications);
+      }
+
+      // Stamp anti-spam timestamps
+      if (atsIdsToStamp.length > 0) {
+        await supabase
+          .from('area_trade_status')
+          .update({ last_notification_sent_at: now.toISOString() })
+          .in('id', atsIdsToStamp);
+      }
+    }
+  } catch {
+    // Silent — verification reminders never block dashboard
   }
 }

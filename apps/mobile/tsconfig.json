@@ -3,9 +3,16 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@readyboard/db": ["../../packages/db/src/index.ts"],
-      "@readyboard/shared": ["../../packages/shared/src/index.ts"]
+      "@readyboard/db": [
+        "../../packages/db/src/index.ts"
+      ],
+      "@readyboard/shared": [
+        "../../packages/shared/src/index.ts"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ]
 }

@@ -164,6 +164,8 @@
     "title": "Lista de Verificación",
     "awaitingGC": "Esperando Verificación del GC",
     "gateTask": "Compuerta — Debe pasar antes del siguiente oficio",
+    "gateBlocked": "Completa las tareas previas primero",
+    "gcNotified": "Se ha notificado al GC para verificación",
     "approve": "Aprobar — Desbloquear Siguiente Oficio",
     "requestCorrection": "Solicitar Corrección",
     "correctionReasons": {
@@ -173,6 +175,31 @@
       "failed_test": "Prueba fallida — rehacer requerido",
       "safety": "Preocupación de seguridad",
       "other": "Otro (ver notas)"
-    }
+    },
+    "verificationQueue": "Cola de Verificación",
+    "pendingVerifications": "Verificaciones Pendientes",
+    "noVerificationsPending": "Todas las verificaciones están al día",
+    "noVerificationsDescription": "Cuando un subcontratista complete todas sus tareas, los elementos de verificación aparecerán aquí.",
+    "approveAll": "Aprobar — Desbloquear Siguiente Oficio",
+    "selectForCorrection": "Seleccionar tareas para corrección",
+    "correctionSummary": "{{count}} tarea(s) serán devueltas para corrección",
+    "correctionRequested": "Corrección solicitada — el subcontratista ha sido notificado",
+    "verificationApproved": "Verificado — oficio desbloqueado",
+    "noteRequiredForOther": "La nota es requerida cuando el motivo es 'Otro'",
+    "correctionBannerTitle": "{{count}} tarea(s) necesitan corrección",
+    "correctionBannerAction": "Toca las tareas corregidas para re-enviar",
+    "tapToResubmit": "Toca para re-enviar"
+  },
+  "settings": {
+    "tradeConfig": "Configuración de Oficios",
+    "tradeConfigDescription": "Configura el modo de reporte por oficio. Checklist requiere verificación tarea por tarea.",
+    "checklistMode": "Checklist",
+    "percentageMode": "Porcentaje",
+    "switchToChecklist": "Cambiar a modo Checklist",
+    "switchToPercentage": "Cambiar a modo Porcentaje",
+    "lockedActiveTasks": "No se puede cambiar: existen tareas activas",
+    "modeUpdated": "Modo actualizado — {{count}} áreas afectadas",
+    "completed": "completadas",
+    "active": "activas"
   }
 }
