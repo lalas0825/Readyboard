@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import type { GridCellData, CorrectiveActionData, CorrectiveActionStatus, DelayData } from '../types';
 import { STATUS_CONFIG } from '../types';
 import { CorrectiveActionForm } from './CorrectiveActionForm';
 import { StatusTimeline, type TimelineEvent } from './StatusTimeline';
 import { useCellDetails } from '../hooks/useCellDetails';
 import { toggleSafetyBlock } from '../services/toggleSafetyBlock';
+import { acknowledgeCA } from '../services/acknowledgeCA';
+import { resolveCA } from '../services/resolveCA';
 import { REASON_LABELS } from '@/lib/constants';
 
 type GridDetailPanelProps = {
@@ -19,6 +22,7 @@ type GridDetailPanelProps = {
   onOptimisticInsert: (action: CorrectiveActionData) => void;
   onInsertSuccess: (tempId: string, action: CorrectiveActionData) => void;
   onInsertRevert: (tempId: string, area_id: string, trade_name: string) => void;
+  onActionUpdate?: () => void;
 };
 
 const ACTION_STATUS_CONFIG: Record<CorrectiveActionStatus, { label: string; color: string; bg: string; border: string }> = {
@@ -45,8 +49,34 @@ function derivePanelState(
 
 // ─── Action Card (read-only Ticket Unico) ─────────────
 
-function ActionCard({ action }: { action: CorrectiveActionData }) {
+function ActionCard({ action, onUpdate }: { action: CorrectiveActionData; onUpdate?: () => void }) {
   const cfg = ACTION_STATUS_CONFIG[action.status];
+  const [processing, setProcessing] = useState(false);
+
+  const handleAcknowledge = async () => {
+    setProcessing(true);
+    const result = await acknowledgeCA(action.id);
+    setProcessing(false);
+    if (result.ok) {
+      toast.success('Corrective Action acknowledged');
+      onUpdate?.();
+    } else {
+      toast.error(result.error);
+    }
+  };
+
+  const handleResolve = async () => {
+    setProcessing(true);
+    const result = await resolveCA(action.id);
+    setProcessing(false);
+    if (result.ok) {
+      toast.success('Corrective Action resolved');
+      onUpdate?.();
+    } else {
+      toast.error(result.error);
+    }
+  };
+
   return (
     <div className={`rounded-lg border ${cfg.border} ${cfg.bg} p-3 space-y-2`}>
       <div className="flex items-center justify-between">
@@ -77,6 +107,26 @@ function ActionCard({ action }: { action: CorrectiveActionData }) {
           </div>
         )}
       </div>
+
+      {/* Lifecycle buttons */}
+      {action.status === 'open' && (
+        <button
+          disabled={processing}
+          onClick={handleAcknowledge}
+          className="w-full rounded-md border border-blue-700 bg-blue-950/50 px-3 py-1.5 text-xs font-medium text-blue-400 transition-colors hover:bg-blue-950 disabled:opacity-50"
+        >
+          {processing ? 'Processing...' : 'Acknowledge'}
+        </button>
+      )}
+      {action.status === 'acknowledged' && (
+        <button
+          disabled={processing}
+          onClick={handleResolve}
+          className="w-full rounded-md border border-green-700 bg-green-950/50 px-3 py-1.5 text-xs font-medium text-green-400 transition-colors hover:bg-green-950 disabled:opacity-50"
+        >
+          {processing ? 'Processing...' : 'Resolve'}
+        </button>
+      )}
     </div>
   );
 }
@@ -93,6 +143,7 @@ export function GridDetailPanel({
   onOptimisticInsert,
   onInsertSuccess,
   onInsertRevert,
+  onActionUpdate,
 }: GridDetailPanelProps) {
   const config = STATUS_CONFIG[cell.status];
   const panelState = derivePanelState(cell, existingAction);
@@ -237,7 +288,7 @@ export function GridDetailPanel({
           {isBlockedOrHeld && (
             <div className="border-t border-zinc-800 pt-4">
               {panelState === 'READ_ONLY' && existingAction && (
-                <ActionCard action={existingAction} />
+                <ActionCard action={existingAction} onUpdate={onActionUpdate} />
               )}
 
               {panelState !== 'READ_ONLY' && !showCAForm && (

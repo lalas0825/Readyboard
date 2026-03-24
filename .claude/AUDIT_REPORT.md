@@ -335,3 +335,41 @@ This fixes S-1 through S-4 and S-6 through S-8 by replacing org-only checks with
 ---
 
 *Hardening Sprint complete. Core is arbitration-ready.*
+
+---
+---
+
+# F-2 Closure — CA Lifecycle Server Actions
+
+**Date:** 2026-03-23
+**Scope:** Last remaining HIGH from Week 5-6 audit
+**Result:** F-2 CLOSED. All 10 HIGHs now resolved.
+
+## What was missing
+
+CA state transitions (`acknowledge`, `resolve`) had no server actions and no audit trail.
+The DB columns existed (`acknowledged_at`, `resolved_at`), the trigger existed (`close_delay_on_ca_resolved`), but no code path wrote to them.
+
+## What was built
+
+| File | Purpose |
+|------|---------|
+| `ready-board/services/acknowledgeCA.ts` | Session + role validation, sets `acknowledged_at`, writes `ca_acknowledged` audit |
+| `ready-board/services/resolveCA.ts` | GC role gate, sets `resolved_at`, writes `ca_resolved` audit, triggers delay close |
+| `dashboard/services/updateAlertNote.ts` | Added `writeAuditEntry('status_change')` after note update |
+| `ready-board/components/GridDetailPanel.tsx` | Acknowledge (open→acknowledged) + Resolve (acknowledged→resolved) buttons with atomicity |
+| `ready-board/components/ReadyBoardGrid.tsx` | Wired `onActionUpdate={refresh}` to re-fetch grid after CA state change |
+
+## Verification
+
+| Check | Result |
+|-------|--------|
+| `tsc --noEmit` | 0 errors |
+| `next build` | Clean — 7 routes |
+| `vitest run` | 50/50 pass |
+| `close_delay_on_ca_resolved` trigger | Confirmed: sets `delay_logs.ended_at` on resolve |
+| Audit trail coverage | `ca_created` + `ca_acknowledged` + `ca_resolved` + note changes — complete |
+
+---
+
+*All 10 HIGH findings from Week 5-6 audit are now RESOLVED. Ready for Week 8-9 Checklists.*

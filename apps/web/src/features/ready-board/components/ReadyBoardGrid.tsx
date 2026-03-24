@@ -247,6 +247,7 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
           onOptimisticInsert={optimisticInsertAction}
           onInsertSuccess={confirmInsertAction}
           onInsertRevert={revertInsertAction}
+          onActionUpdate={refresh}
         />
       )}
     </div>
