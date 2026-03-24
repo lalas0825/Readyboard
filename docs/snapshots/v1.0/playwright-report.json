@@ -1,0 +1,599 @@
+{
+  "config": {
+    "configFile": "C:\\Users\\lalas\\OneDrive\\Desktop\\Developer\\AI\\Projects\\ReadyBoard\\apps\\web\\playwright.config.ts",
+    "rootDir": "C:/Users/lalas/OneDrive/Desktop/Developer/AI/Projects/ReadyBoard/apps/web/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/lalas/OneDrive/Desktop/Developer/AI/Projects/ReadyBoard/apps/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/lalas/OneDrive/Desktop/Developer/AI/Projects/ReadyBoard/apps/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "e2e\\golden-path.spec.ts",
+      "file": "e2e/golden-path.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Golden Path — Checklist Lifecycle",
+          "file": "e2e/golden-path.spec.ts",
+          "line": 29,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "Verification Queue Flow",
+              "file": "e2e/golden-path.spec.ts",
+              "line": 33,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "DB: gc_verification_pending is true after SUB completes all tasks",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 120,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:17.207Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-61e5a1a5d905122aa369",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 58,
+                  "column": 9
+                },
+                {
+                  "title": "UI: Verification queue shows the pending item",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 2713,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:20.122Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-50ab845485cfb6b9d268",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 65,
+                  "column": 9
+                },
+                {
+                  "title": "UI: Detail view shows tasks when queue item clicked",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 2836,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:22.941Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-592e2b95545a0b8c01ea",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 80,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Approve Flow",
+              "file": "e2e/golden-path.spec.ts",
+              "line": 104,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "UI: GC approves → toast success → item disappears",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4857,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:26.148Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-fa6ad8ceefe13793712f",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 123,
+                  "column": 9
+                },
+                {
+                  "title": "DB: gc_verification_pending is false after approval",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 128,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:32.891Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-f34164e384825fa780be",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 143,
+                  "column": 9
+                },
+                {
+                  "title": "DB: GC tasks are marked complete after approval",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 87,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:33.031Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-c31f601a18494942e07d",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 149,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Correction Flow",
+              "file": "e2e/golden-path.spec.ts",
+              "line": 159,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "UI: GC requests correction → selects tasks → submits reason",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 3599,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:33.493Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-dfec2e950b3c9a2a5fb1",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 179,
+                  "column": 9
+                },
+                {
+                  "title": "DB: tasks have correction_requested status after GC rejection",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 169,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:39.027Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-76946fdd88a99b6ef10f",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 219,
+                  "column": 9
+                },
+                {
+                  "title": "DB: gc_verification_pending is false after correction request",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 92,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:39.204Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-b9f76d63b8f65f8534f0",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 233,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Trade Config Lock",
+              "file": "e2e/golden-path.spec.ts",
+              "line": 241,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "DB: switch_trade_mode RPC rejects mode change with active tasks",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 71,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:39.608Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-cdedf48b21a73f3e8872",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 272,
+                  "column": 9
+                },
+                {
+                  "title": "UI: Settings tab shows trade config with lock indicator",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 2877,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:40.229Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-a04a8bd6dc62e4113c2e",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 286,
+                  "column": 9
+                },
+                {
+                  "title": "DB: mode switch succeeds after clearing all active tasks",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 738,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:43.115Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-d7a10461a6d4eae8d51b",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 303,
+                  "column": 9
+                },
+                {
+                  "title": "DB: area_trade_status reflects new mode after switch",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 67,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:43.862Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-a10f29be1483b629a943",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 324,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Audit Trail",
+              "file": "e2e/golden-path.spec.ts",
+              "line": 332,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "DB: audit_log contains verification and config entries",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 60000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 74,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-03-24T22:45:44.305Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "5f7762dbad88543df1a7-fda8c935e3ab2ac8a643",
+                  "file": "e2e/golden-path.spec.ts",
+                  "line": 333,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-03-24T22:45:15.864Z",
+    "duration": 28600.199,
+    "expected": 14,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

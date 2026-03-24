@@ -368,5 +368,103 @@ Colombia opportunistic only (4 conditions must be met simultaneously — see Pro
 
 ---
 
+## Golden Snapshot: v1.0 (Stable Release)
+
+> Fecha: 2026-03-24 | Commit: `8d1577a` | Branch: `main`
+
+### Estado del Sistema
+
+Version estable. **14/14 tests E2E pasando** (Playwright, Chromium). Arquitectura Feature-First validada con 43 archivos nuevos en el sprint final. Build limpio (`next build` — 7/7 paginas, 0 errores TS). Listo para piloto.
+
+### Arquitectura de Datos
+
+Integridad garantizada mediante **transacciones atomicas en RPCs** (`gc_approve_verification`, `gc_request_correction`, `switch_trade_mode`) y logica de bloqueo a nivel de base de datos. El trigger `calculate_effective_pct` encadena con `propagate_task_change` para recalcular progreso, gates, y estado de verificacion en cada cambio de tarea. `switch_trade_mode` rechaza cambios cuando existen tareas activas — bloqueo a nivel DB, no UI.
+
+| Metrica | Valor |
+|---------|-------|
+| Tablas | 24 |
+| Politicas RLS | 61 |
+| Funciones DB | 26 |
+| Acciones de auditoria | 19 |
+| Templates seeded | 211 (14 trades x 4 area types) |
+| Areas en seed | 30 |
+| Trade sequences | 14 |
+
+### Blindaje
+
+Sistema de notificaciones con **anti-spam (24h window)** y triggers de escalacion operativos:
+- **4h** — Reminder push al GC super si verificacion pendiente
+- **24h** — Escalacion: flag en dashboard + alerta al Sub PM
+- **20h** — NOD reminder si draft no enviado
+- **48h/72h** — Escalacion legal (receipt abierto sin respuesta / nunca abierto)
+
+Anti-spam: `last_notification_sent_at` en `area_trade_status` previene notificaciones duplicadas dentro de la ventana de 24h. Fire-and-forget pattern — fallos de notificacion nunca bloquean la operacion principal.
+
+### Validacion
+
+Golden Path certificado por **Playwright 1.58.2** (Chromium). 5 escenarios, 14 tests:
+
+| Escenario | Tests | Estado |
+|-----------|-------|--------|
+| Verification Queue Flow | 3 | PASSED |
+| Approve Flow | 3 | PASSED |
+| Correction Flow | 3 | PASSED |
+| Trade Config Lock | 4 | PASSED |
+| Audit Trail Integrity | 1 | PASSED |
+
+Tests cubren: DB triggers, UI interactions, RPC atomicity, toast feedback, RLS enforcement, y mode switching con bloqueo. 3 bugs de produccion descubiertos y corregidos durante testing E2E.
+
+### Mapa de Skills (18 activas)
+
+| # | Skill | Rol en v1.0 |
+|---|-------|-------------|
+| 1 | **bucle-agentico** | Orquestacion del build completo — fases, dependencias, validacion |
+| 2 | **playwright-cli** | E2E testing del Golden Path — 14/14 tests pasando |
+| 3 | **supabase** | Migraciones, RLS, RPCs, triggers, seed data |
+| 4 | **supabase-realtime** | Suscripciones en tiempo real para el dashboard GC |
+| 5 | **quality-gate-readyboard** | Audit reports, structural integrity checks |
+| 6 | **construction-agent** | Patrones de dominio construccion (trades, areas, delays) |
+| 7 | **predictive-forecast** | Motor de forecast deterministico (actual rate vs benchmark) |
+| 8 | **primer** | Inicializacion del proyecto, estructura base |
+| 9 | **prp** | Product Requirement Plans para cada sprint |
+| 10 | **new-app** | Scaffolding de apps (Next.js + Expo) |
+| 11 | **add-login** | Auth setup (SMS magic link foreman, email GC) |
+| 12 | **add-mobile** | Expo mobile scaffolding + offline-first |
+| 13 | **i18n-6lang** | Internacionalizacion EN/ES en todas las superficies |
+| 14 | **construction-takeoff** | Calculos de produccion (sqft/hr/person, crew-days) |
+| 15 | **ai** | Patrones de integracion AI (reservado para V2) |
+| 16 | **autoresearch** | Investigacion automatizada de patrones y APIs |
+| 17 | **memory-manager** | Persistencia de contexto entre sesiones |
+| 18 | **skill-creator** | Generacion de skills especializadas |
+
+### Configuracion de Produccion
+
+```env
+# Supabase (requeridas)
+NEXT_PUBLIC_SUPABASE_URL=https://errxmhgqksdasxccumtz.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+
+# PowerSync (mobile, requeridas)
+POWERSYNC_URL=<powersync-instance-url>
+POWERSYNC_PUBLIC_KEY=<powersync-jwt-public-key>
+
+# Opcional (legal docs)
+SMTP_HOST=<smtp-server>
+SMTP_FROM=noreply@readyboard.app
+RECEIPT_TRACKING_BASE_URL=https://readyboard.app/api/legal/track
+```
+
+### Caja Negra
+
+Artefactos de la version estable en `docs/snapshots/v1.0/`:
+
+| Archivo | Contenido |
+|---------|-----------|
+| `schema.sql` | 24 tablas, 26 funciones, 61 RLS policies, seed data reference |
+| `playwright-report.json` | Reporte completo JSON — 14/14 tests, timestamps, duraciones |
+
+---
+
 *ReadyBoard v5.1 — Legal Infrastructure Platform*
 *Built for Carlos. Defended in arbitration. Scaled to Dubai.*
