@@ -51,6 +51,7 @@ export const INITIAL_STATE: GridState = {
 export type GridAction =
   | { type: 'INIT'; data: ReadyBoardInitialData }
   | { type: 'CELL_UPDATE'; area_id: string; trade_type: string; effective_pct: number }
+  | { type: 'AREA_DELETE'; area_id: string }
   // Optimistic lifecycle ──────────────────────────
   | { type: 'ACTION_OPTIMISTIC_INSERT'; action: CorrectiveActionData }
   | { type: 'ACTION_INSERT_SUCCESS'; tempId: string; action: CorrectiveActionData }
@@ -295,6 +296,56 @@ export function gridReducer(state: GridState, action: GridAction): GridState {
       return { ...state, cellMap: newCellMap, floors: newFloors };
     }
 
+    case 'AREA_DELETE': {
+      const deletedAreaId = action.area_id;
+      if (!state.areaIds.has(deletedAreaId)) return state;
+
+      // Purge all entries for this area from maps
+      const newCellMap = new Map(state.cellMap);
+      const newDelayMap = new Map(state.delayMap);
+      const newDelayIdMap = new Map(state.delayIdMap);
+      const newActionMap = new Map(state.actionMap);
+
+      for (const [key, val] of state.cellMap) {
+        if (val.area_id === deletedAreaId) newCellMap.delete(key);
+      }
+      for (const [key, val] of state.delayMap) {
+        if (val.area_id === deletedAreaId) {
+          newDelayMap.delete(key);
+          newDelayIdMap.delete(val.id);
+        }
+      }
+      for (const [key] of state.actionMap) {
+        if (key.startsWith(`${deletedAreaId}:`)) newActionMap.delete(key);
+      }
+
+      const newAreaIds = new Set(state.areaIds);
+      newAreaIds.delete(deletedAreaId);
+
+      // Remove the row from floors
+      const newFloors = state.floors
+        .map((floor) => ({
+          ...floor,
+          rows: floor.rows.filter((r) => r.area_id !== deletedAreaId),
+        }))
+        .filter((floor) => floor.rows.length > 0);
+
+      // Clear selectedCell if it belonged to the deleted area
+      const newSelectedCell =
+        state.selectedCell?.area_id === deletedAreaId ? null : state.selectedCell;
+
+      return {
+        ...state,
+        cellMap: newCellMap,
+        delayMap: newDelayMap,
+        delayIdMap: newDelayIdMap,
+        actionMap: newActionMap,
+        areaIds: newAreaIds,
+        floors: newFloors,
+        selectedCell: newSelectedCell,
+      };
+    }
+
     // ── Optimistic lifecycle (guarded by canProceedWithAction) ──
 
     case 'ACTION_OPTIMISTIC_INSERT': {
@@ -380,6 +431,16 @@ export function useReadyBoardData(initialData: ReadyBoardInitialData) {
             trade_type: row.trade_type as string,
             effective_pct: Number(row.effective_pct),
           });
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'area_trade_status' },
+        (payload) => {
+          const row = payload.old as Record<string, unknown>;
+          const areaId = row.area_id as string;
+          if (!areaId || !state.areaIds.has(areaId)) return;
+          dispatch({ type: 'AREA_DELETE', area_id: areaId });
         },
       )
       .on(

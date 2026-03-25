@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-const PUBLIC_ROUTES = ['/', '/login', '/signup', '/forgot-password', '/api/legal/verify'];
+const PUBLIC_ROUTES = ['/', '/login', '/signup', '/forgot-password', '/api/legal/verify', '/join', '/api/invite/redeem'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -43,16 +43,34 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // GC-only route protection
-  if (pathname.startsWith('/dashboard')) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+  // Role-based route protection
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
 
-    const gcRoles = ['gc_super', 'gc_pm', 'gc_admin', 'owner'];
+  const gcRoles = ['gc_super', 'gc_pm', 'gc_admin', 'owner'];
+  const subRoles = ['sub_pm', 'sub_super'];
+
+  // GC dashboard — only GC roles
+  if (pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard-sub')) {
     if (!profile || !gcRoles.includes(profile.role)) {
+      // Sub users → redirect to sub dashboard
+      if (profile && subRoles.includes(profile.role)) {
+        return NextResponse.redirect(new URL('/dashboard-sub', request.url));
+      }
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
+  // Sub dashboard — only sub roles
+  if (pathname.startsWith('/dashboard-sub')) {
+    if (!profile || !subRoles.includes(profile.role)) {
+      // GC users → redirect to GC dashboard
+      if (profile && gcRoles.includes(profile.role)) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
       return NextResponse.redirect(new URL('/', request.url));
     }
   }

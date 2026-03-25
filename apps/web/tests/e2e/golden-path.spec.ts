@@ -301,8 +301,14 @@ test.describe('Golden Path — Checklist Lifecycle', () => {
     });
 
     test('DB: mode switch succeeds after clearing all active tasks', async () => {
-      // Complete all active tasks to clear the lock
-      await completeSubTasks(areaId);
+      // Complete ALL active tasks for this trade project-wide (not just test area)
+      const db0 = getServiceClient();
+      const now = new Date().toISOString();
+      await db0
+        .from('area_tasks')
+        .update({ status: 'complete', completed_at: now, completed_by: TEST_GC_USER_ID, completed_by_role: 'sub', updated_at: now })
+        .eq('trade_type', TEST_TRADE)
+        .in('status', ['pending', 'correction_requested']);
       await new Promise((r) => setTimeout(r, 500));
 
       const db = getServiceClient();

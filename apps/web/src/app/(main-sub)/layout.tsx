@@ -1,64 +1,44 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/getSession';
-import { createServiceClient } from '@/lib/supabase/service';
 import { LogoutButton } from '@/features/auth/components/LogoutButton';
 
-export default async function MainLayout({
+export default async function SubLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   const session = await getSession();
 
-  // Defense-in-depth: block non-GC roles at layout level (mirrors sub layout guard)
+  // Sub routes require sub_pm role
   if (!session) {
     redirect('/login');
   }
-  const gcRoles = ['gc_super', 'gc_pm', 'gc_admin', 'owner'];
-  if (!session.isDevBypass && !gcRoles.includes(session.user.role)) {
-    const subRoles = ['sub_pm', 'sub_super'];
-    if (subRoles.includes(session.user.role)) {
-      redirect('/dashboard-sub');
-    }
-    redirect('/login');
-  }
 
-  // Redirect to onboarding if GC user hasn't completed setup
-  if (session && !session.isDevBypass) {
-    if (gcRoles.includes(session.user.role)) {
-      const supabase = createServiceClient();
-      const { data: user } = await supabase
-        .from('users')
-        .select('onboarding_complete')
-        .eq('id', session.user.id)
-        .single();
-
-      if (user && !user.onboarding_complete) {
-        redirect('/onboarding');
-      }
-    }
+  const subRoles = ['sub_pm', 'sub_super'];
+  if (!session.isDevBypass && !subRoles.includes(session.user.role)) {
+    redirect('/dashboard');
   }
 
   return (
     <div className="flex min-h-screen bg-zinc-950">
-      {/* Sidebar */}
+      {/* Simplified sidebar for subs */}
       <aside className="flex w-56 flex-col border-r border-zinc-800 bg-zinc-900">
         <div className="flex items-center gap-2 border-b border-zinc-800 px-4 py-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/readyboard-icon-animated.svg" alt="" className="h-6 w-6" />
           <span className="text-sm font-semibold text-zinc-100">ReadyBoard</span>
         </div>
-        <nav className="flex-1 p-3">
+        <nav className="flex-1 p-3 space-y-1">
           <a
-            href="/dashboard"
+            href="/dashboard-sub"
             className="flex items-center gap-2 rounded-md bg-zinc-800 px-3 py-2 text-sm text-zinc-100"
           >
             <span className="text-base">&#9632;</span>
-            Dashboard
+            My Projects
           </a>
         </nav>
         <div className="border-t border-zinc-800 px-3 py-3 space-y-2">
-          {session ? (
+          {session && (
             <>
               <div className="px-1 space-y-1">
                 <p className="truncate text-xs font-medium text-zinc-300">
@@ -71,8 +51,6 @@ export default async function MainLayout({
               </div>
               <LogoutButton />
             </>
-          ) : (
-            <p className="px-1 text-xs text-zinc-600">ReadyBoard v0.1</p>
           )}
         </div>
       </aside>
@@ -80,5 +58,5 @@ export default async function MainLayout({
       {/* Main content */}
       <main className="flex-1 overflow-auto">{children}</main>
     </div>
-  )
+  );
 }

@@ -23,7 +23,10 @@ export type AuditAction =
   | 'evidence_package_generated'
   | 'receipt_opened'
   | 'gc_verification_approved'
-  | 'gc_correction_requested';
+  | 'gc_correction_requested'
+  | 'invite_created'
+  | 'invite_redeemed'
+  | 'foreman_invited';
 
 // ─── Write Audit Entry ──────────────────────────────────────
 

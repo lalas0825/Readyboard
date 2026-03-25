@@ -15,6 +15,7 @@ export type ReasonCode =
 export type UserRole =
   | 'foreman'
   | 'sub_pm'
+  | 'sub_super'
   | 'superintendent'
   | 'gc_super'
   | 'gc_pm'

@@ -26,14 +26,22 @@ export async function fetchTradeConfigs(
     ? createServiceClient()
     : await createClient();
 
-  // Get all trade types for this project
-  const { data: trades } = await supabase
+  // Get all trade types for this project (deduplicate across area_types)
+  const { data: rawTrades } = await supabase
     .from('trade_sequences')
     .select('trade_name, sequence_order')
     .eq('project_id', projectId)
     .order('sequence_order', { ascending: true });
 
-  if (!trades || trades.length === 0) return [];
+  if (!rawTrades || rawTrades.length === 0) return [];
+
+  // Deduplicate by trade_name (trade_sequences has rows per area_type)
+  const seen = new Set<string>();
+  const trades = rawTrades.filter((t) => {
+    if (seen.has(t.trade_name)) return false;
+    seen.add(t.trade_name);
+    return true;
+  });
 
   // Get existing configs
   const { data: configs } = await supabase
