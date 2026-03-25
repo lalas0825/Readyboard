@@ -38,7 +38,14 @@ export function SignupForm() {
       return;
     }
 
-    router.push('/login?confirmed=pending');
+    // GC/owner → onboarding wizard; sub → login
+    const gcRoles = ['gc_admin', 'owner'];
+    if (gcRoles.includes(role)) {
+      router.push('/onboarding');
+    } else {
+      router.push('/login?confirmed=pending');
+    }
+    router.refresh();
   }
 
   return (

@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/getSession';
+import { createServiceClient } from '@/lib/supabase/service';
 import { LogoutButton } from '@/features/auth/components/LogoutButton';
 
 export default async function MainLayout({
@@ -7,6 +9,23 @@ export default async function MainLayout({
   children: React.ReactNode
 }) {
   const session = await getSession();
+
+  // Redirect to onboarding if GC user hasn't completed setup
+  if (session && !session.isDevBypass) {
+    const gcRoles = ['gc_super', 'gc_pm', 'gc_admin', 'owner'];
+    if (gcRoles.includes(session.user.role)) {
+      const supabase = createServiceClient();
+      const { data: user } = await supabase
+        .from('users')
+        .select('onboarding_complete')
+        .eq('id', session.user.id)
+        .single();
+
+      if (user && !user.onboarding_complete) {
+        redirect('/onboarding');
+      }
+    }
+  }
 
   return (
     <div className="flex min-h-screen bg-zinc-950">
