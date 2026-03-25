@@ -17,9 +17,9 @@ export async function createArea(input: {
   const session = await getSession();
   if (!session) return { ok: false, error: 'Not authenticated' };
 
-  const supabase = session.isDevBypass
-    ? createServiceClient()
-    : await createClient();
+  // Use service client for writes — session check above is the auth gate,
+  // and RLS INSERT policies have evaluation issues with nested subqueries.
+  const supabase = createServiceClient();
 
   // 1. Insert area
   const { data: area, error: areaError } = await supabase

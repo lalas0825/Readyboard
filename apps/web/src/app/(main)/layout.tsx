@@ -1,4 +1,5 @@
 import { getSession } from '@/lib/auth/getSession';
+import { LogoutButton } from '@/features/auth/components/LogoutButton';
 
 export default async function MainLayout({
   children,
@@ -25,19 +26,22 @@ export default async function MainLayout({
             Dashboard
           </a>
         </nav>
-        <div className="border-t border-zinc-800 px-4 py-3">
+        <div className="border-t border-zinc-800 px-3 py-3 space-y-2">
           {session ? (
-            <div className="space-y-1">
-              <p className="truncate text-xs font-medium text-zinc-300">
-                {session.user.name}
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-600">
-                {session.user.role.replace('_', ' ')}
-                {session.isDevBypass && ' (dev)'}
-              </p>
-            </div>
+            <>
+              <div className="px-1 space-y-1">
+                <p className="truncate text-xs font-medium text-zinc-300">
+                  {session.user.name}
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-zinc-600">
+                  {session.user.role.replace('_', ' ')}
+                  {session.isDevBypass && ' (dev)'}
+                </p>
+              </div>
+              <LogoutButton />
+            </>
           ) : (
-            <p className="text-xs text-zinc-600">ReadyBoard v0.1</p>
+            <p className="px-1 text-xs text-zinc-600">ReadyBoard v0.1</p>
           )}
         </div>
       </aside>
