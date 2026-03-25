@@ -2,22 +2,7 @@
 
 import { useOnboardingStore } from '../store/useOnboardingStore';
 
-const TRADE_LABELS: Record<string, string> = {
-  rough_plumbing: 'Rough Plumbing',
-  metal_stud_framing: 'Metal Stud Framing',
-  mep_rough_in: 'MEP Rough-In',
-  fire_stopping: 'Fire Stopping',
-  insulation_drywall: 'Insulation & Drywall',
-  waterproofing: 'Waterproofing',
-  tile_stone: 'Tile / Stone',
-  paint: 'Paint',
-  ceiling_grid_act: 'Ceiling Grid / ACT',
-  mep_trim_out: 'MEP Trim-Out',
-  doors_hardware: 'Doors & Hardware',
-  millwork_countertops: 'Millwork & Countertops',
-  flooring: 'Flooring',
-  final_clean_punch: 'Final Clean & Punch',
-};
+// Trade names in store are already human-readable (match DB exactly)
 
 export function StepTradeSequence() {
   const { trades, toggleTrade, moveTrade, nextStep, prevStep } = useOnboardingStore();
@@ -65,7 +50,7 @@ export function StepTradeSequence() {
 
             {/* Trade name */}
             <span className="flex-1 text-sm text-zinc-200">
-              {TRADE_LABELS[trade.trade_name] || trade.trade_name}
+              {trade.trade_name}
             </span>
 
             {/* Reorder buttons */}

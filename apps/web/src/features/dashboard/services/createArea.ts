@@ -35,11 +35,12 @@ export async function createArea(input: {
 
   if (areaError) return { ok: false, error: areaError.message };
 
-  // 2. Get trade sequences for this project
+  // 2. Get trade sequences for this project + area_type
   const { data: trades } = await supabase
     .from('trade_sequences')
     .select('trade_name')
-    .eq('project_id', input.projectId);
+    .eq('project_id', input.projectId)
+    .eq('area_type', input.areaType);
 
   // 3. Create area_trade_status for each trade
   if (trades && trades.length > 0) {
@@ -51,6 +52,15 @@ export async function createArea(input: {
     }));
 
     await supabase.from('area_trade_status').insert(statusRows);
+
+    // 4. Clone task templates for each trade (populates area_tasks)
+    for (const trade of trades) {
+      await supabase.rpc('clone_task_templates_for_area', {
+        p_area_id: area.id,
+        p_trade_type: trade.trade_name,
+        p_area_type: input.areaType,
+      });
+    }
   }
 
   return { ok: true, areaId: area.id };

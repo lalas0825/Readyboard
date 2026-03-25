@@ -69,20 +69,20 @@ type OnboardingActions = {
 };
 
 const DEFAULT_TRADES: TradeEntry[] = [
-  { trade_name: 'rough_plumbing', sequence_order: 1, enabled: true },
-  { trade_name: 'metal_stud_framing', sequence_order: 2, enabled: true },
-  { trade_name: 'mep_rough_in', sequence_order: 3, enabled: true },
-  { trade_name: 'fire_stopping', sequence_order: 4, enabled: true },
-  { trade_name: 'insulation_drywall', sequence_order: 5, enabled: true },
-  { trade_name: 'waterproofing', sequence_order: 6, enabled: true },
-  { trade_name: 'tile_stone', sequence_order: 7, enabled: true },
-  { trade_name: 'paint', sequence_order: 8, enabled: true },
-  { trade_name: 'ceiling_grid_act', sequence_order: 9, enabled: true },
-  { trade_name: 'mep_trim_out', sequence_order: 10, enabled: true },
-  { trade_name: 'doors_hardware', sequence_order: 11, enabled: true },
-  { trade_name: 'millwork_countertops', sequence_order: 12, enabled: true },
-  { trade_name: 'flooring', sequence_order: 13, enabled: true },
-  { trade_name: 'final_clean_punch', sequence_order: 14, enabled: true },
+  { trade_name: 'Rough Plumbing', sequence_order: 1, enabled: true },
+  { trade_name: 'Metal Stud Framing', sequence_order: 2, enabled: true },
+  { trade_name: 'MEP Rough-In', sequence_order: 3, enabled: true },
+  { trade_name: 'Fire Stopping', sequence_order: 4, enabled: true },
+  { trade_name: 'Insulation & Drywall', sequence_order: 5, enabled: true },
+  { trade_name: 'Waterproofing', sequence_order: 6, enabled: true },
+  { trade_name: 'Tile / Stone', sequence_order: 7, enabled: true },
+  { trade_name: 'Paint', sequence_order: 8, enabled: true },
+  { trade_name: 'Ceiling Grid / ACT', sequence_order: 9, enabled: true },
+  { trade_name: 'MEP Trim-Out', sequence_order: 10, enabled: true },
+  { trade_name: 'Doors & Hardware', sequence_order: 11, enabled: true },
+  { trade_name: 'Millwork & Countertops', sequence_order: 12, enabled: true },
+  { trade_name: 'Flooring', sequence_order: 13, enabled: true },
+  { trade_name: 'Final Clean & Punch', sequence_order: 14, enabled: true },
 ];
 
 const INITIAL_STATE: OnboardingState = {
