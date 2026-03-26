@@ -26,7 +26,10 @@ export type AuditAction =
   | 'gc_correction_requested'
   | 'invite_created'
   | 'invite_redeemed'
-  | 'foreman_invited';
+  | 'foreman_invited'
+  | 'subscription_created'
+  | 'subscription_updated'
+  | 'payment_failed';
 
 // ─── Write Audit Entry ──────────────────────────────────────
 

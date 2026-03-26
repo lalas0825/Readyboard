@@ -1,8 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
 import { loadEnvConfig } from '@next/env';
 
-// Load .env.local so tests can access SUPABASE_SERVICE_ROLE_KEY
-loadEnvConfig(process.cwd());
+// Load .env.local — use __dirname to resolve from config file location
+// (Playwright workers may run from a different CWD)
+loadEnvConfig(path.resolve(__dirname));
 
 export default defineConfig({
   testDir: './tests',

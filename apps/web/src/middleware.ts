@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-const PUBLIC_ROUTES = ['/', '/login', '/signup', '/forgot-password', '/api/legal/verify', '/join', '/api/invite/redeem'];
+const PUBLIC_ROUTES = [
+  '/', '/login', '/signup', '/forgot-password',
+  '/api/legal/verify', '/join', '/api/invite/redeem',
+  '/api/billing/webhook', '/billing',
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -43,10 +47,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Role-based route protection
+  // Role-based route protection (includes org_id for billing check)
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, org_id')
     .eq('id', user.id)
     .single();
 
@@ -61,6 +65,23 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard-sub', request.url));
       }
       return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    // Past-due billing check — block GC admin features, NOT foreman operations
+    if (profile.org_id) {
+      const { data: pastDueSub } = await supabase
+        .from('project_subscriptions')
+        .select('status')
+        .eq('org_id', profile.org_id)
+        .eq('status', 'past_due')
+        .limit(1)
+        .maybeSingle();
+
+      if (pastDueSub) {
+        const url = new URL('/billing/payment-required', request.url);
+        url.searchParams.set('from', pathname);
+        return NextResponse.redirect(url);
+      }
     }
   }
 

@@ -3,6 +3,7 @@
 import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { getPlanForProject } from '@/features/billing/services/getPlanForProject';
 
 /**
  * Atomic trade mode switch via RPC.
@@ -19,6 +20,15 @@ export async function updateTradeMode(
   | { ok: false; error: string }
 > {
   const session = await getSession();
+
+  // Plan gate: checklist mode requires Pro plan
+  if (newMode === 'checklist') {
+    const plan = await getPlanForProject(projectId);
+    if (!plan.hasFeature('checklist_mode')) {
+      return { ok: false, error: 'Checklist mode requires a Pro plan.' };
+    }
+  }
+
   const supabase = session?.isDevBypass
     ? createServiceClient()
     : await createClient();

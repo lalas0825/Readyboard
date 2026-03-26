@@ -7,7 +7,12 @@
  * NEVER import this in production code.
  */
 
+import path from 'path';
+import { loadEnvConfig } from '@next/env';
 import { createClient } from '@supabase/supabase-js';
+
+// Ensure .env.local is loaded in Playwright worker processes
+loadEnvConfig(path.resolve(__dirname, '..', '..'));
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://errxmhgqksdasxccumtz.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -157,4 +162,41 @@ export async function cleanupTestArea(areaId: string) {
   await db.from('area_tasks').delete().eq('area_id', areaId);
   await db.from('area_trade_status').delete().eq('area_id', areaId);
   await db.from('areas').delete().eq('id', areaId);
+}
+
+// ─── Billing test helpers ───────────────────────────────
+
+/** Create a test subscription for a project */
+export async function createTestSubscription(
+  projectId: string,
+  orgId: string,
+  overrides?: Partial<{
+    plan_id: string;
+    status: string;
+    stripe_subscription_id: string;
+  }>,
+) {
+  const db = getServiceClient();
+  const subId = overrides?.stripe_subscription_id ?? `sub_test_${crypto.randomUUID()}`;
+
+  await db.from('project_subscriptions').upsert(
+    {
+      org_id: orgId,
+      project_id: projectId,
+      stripe_customer_id: `cus_test_${crypto.randomUUID().slice(0, 8)}`,
+      stripe_subscription_id: subId,
+      plan_id: overrides?.plan_id ?? 'pro',
+      status: overrides?.status ?? 'active',
+      current_period_end: new Date(Date.now() + 30 * 86400000).toISOString(),
+    },
+    { onConflict: 'stripe_subscription_id' },
+  );
+
+  return subId;
+}
+
+/** Clean up test subscriptions for a project */
+export async function cleanupTestSubscription(projectId: string) {
+  const db = getServiceClient();
+  await db.from('project_subscriptions').delete().eq('project_id', projectId);
 }
