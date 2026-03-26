@@ -1,4 +1,10 @@
 export { TradeConfig } from './components/TradeConfig';
+export { SettingsPage } from './components/SettingsPage';
 export { fetchTradeConfigs } from './services/fetchTradeConfigs';
 export { updateTradeMode } from './services/updateTradeMode';
+export { fetchProjectSettings } from './services/fetchProjectSettings';
+export { updateProjectSettings } from './services/updateProjectSettings';
+export { fetchAuditLog } from './services/fetchAuditLog';
 export type { TradeConfigItem } from './services/fetchTradeConfigs';
+export type { ProjectSettings } from './services/fetchProjectSettings';
+export type { AuditEntry } from './services/fetchAuditLog';

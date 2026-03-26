@@ -1,7 +1,7 @@
 # ReadyBoard — TASKS.md
 
 > **Single source of truth for all build tasks.**
-> Weeks 1-6: ✅ COMPLETE (collapsed). Week 7-8: 🔨 PARTIAL. Weeks 9-15: NEW BUILD.
+> Weeks 1-6: ✅ COMPLETE (collapsed). Week 7-8: 🔨 PARTIAL. Week 9-11: ✅ COMPLETE. Weeks 12-15: NEW BUILD.
 >
 > **TASK PREFIXES — Claude Code must follow these:**
 > - 🔍 **VERIFY FIRST** — Search codebase. If works: skip ✅. If broken: fix. If missing: build.
@@ -222,32 +222,71 @@
 
 ---
 
-## Week 11 — Full Navigation & New Pages (5 days)
+## ✅ Week 11 — Full Navigation & New Pages (5 days) — COMPLETE
 
-### Day 1: Sidebar + Routing
+<details>
+<summary>Week 11 — All 5 Days DONE (click to expand)</summary>
 
-- [ ] 🔨 Replace sidebar with full nav (11 items + badges + project selector + logout)
-- [ ] 🔨 Convert DashboardTabs → separate /dashboard/* routes
-- [ ] 🔨 Active state, collapsible mode, mobile hamburger
-- [ ] 🔨 Top bar: project selector, notification bell, user avatar menu, live indicator
+### Day 1: Sidebar + Routing ✅
 
-### Day 2: Delays & Costs Page
+- [x] 🔨 Professional Sidebar: 11 nav items, dynamic badges (Legal 6, Verifications count), project selector dropdown
+- [x] 🔨 Convert DashboardTabs → 11 separate /dashboard/* routes (App Router)
+- [x] 🔨 Active state (amber icon + zinc-800 bg), mobile hamburger (drawer + overlay)
+- [x] 🔨 Loading skeletons (loading.tsx) for Overview, ReadyBoard, Verifications, Legal, Billing
+- [x] 🔨 Server Components for data fetch, Client Components only for interactivity
 
-- [ ] 🔨 /dashboard/delays: cost counter, table (floor/area/trade/reason/hours/cost/GPS/photos/NOD), filters, row drill-down, "Generate NOD" button
+**Files:** Sidebar.tsx, DashboardSkeleton.tsx, fetchProjectContext.ts, 10 page.tsx, 5 loading.tsx
 
-### Day 3: Forecast + Corrective Actions
+### Day 2: Delays & Costs Page ✅
 
-- [ ] 🔨 /dashboard/forecast: delta chart, crew table, critical path, recovery recommendations
-- [ ] 🔨 /dashboard/corrective-actions: table + kanban toggle, create modal, response time metrics
+- [x] 🔨 /dashboard/delays: 5 summary cards (Active, Closed, Man Hours, Daily Burn, Cumulative Cost)
+- [x] 🔨 10-column table: Area, Trade, Reason, Severity, Duration, Daily Cost, Cumulative, GPS, Legal, Actions
+- [x] 🔨 Filters: trade, severity (critical/high/medium/low), status (active/closed), date range
+- [x] 🔨 EvidenceModal: GPS coords + Google Maps link + photo evidence
+- [x] 🔨 NodGenerateModal: triggers existing generateNodDraft → draft PDF with audit
+- [x] 🔨 Plan Guard: Starter → UpgradePrompt on "Generate NOD"
+- [x] 🔨 Pagination (20 per page), severity badges, live pulse indicator for active delays
 
-### Day 4: Schedule + Team
+**Files:** DelaysTable.tsx, NodGenerateModal.tsx, EvidenceModal.tsx, fetchDelayDetails.ts, delays/index.ts
 
-- [ ] 🔨 /dashboard/schedule: upload dropzone (.csv/.xlsx), preview, column mapper, import button
-- [ ] 🔨 /dashboard/team: member list, invite modal, assign foremen to areas, role management
+### Day 3: Forecast + Corrective Actions ✅
 
-### Day 5: Settings Expansion
+- [x] 🔨 /dashboard/forecast: 4 metric cards, projected vs original finish dates, SVG line chart (14-day trend)
+- [x] 🔨 Schedule vs Reality comparison table, At Risk areas section (red border)
+- [x] 🔨 Empty state with link to Schedule import
+- [x] 🔨 /dashboard/corrective-actions: Kanban view (4 columns: Open, Acknowledged, In Progress, Resolved)
+- [x] 🔨 Table view toggle, 6 metric cards (incl. Avg Resolution Time), overdue alert banner
+- [x] 🔨 Click actions: Acknowledge → Resolve (triggers DB trigger to close linked delay)
+- [x] 🔨 Uses existing acknowledgeCA + resolveCA server actions with full audit trail
 
-- [ ] 🔨 /dashboard/settings sections: Project, Trade Sequence, Areas, Benchmarks, Notifications, Data Export
+**Files:** ForecastPageView.tsx, fetchForecastPage.ts, CAKanban.tsx, fetchCorrectiveActions.ts
+
+### Day 4: Schedule + Team ✅
+
+- [x] 🔨 /dashboard/schedule: Drag-and-drop CSV upload, preview table (10 rows), validation warnings
+- [x] 🔨 Import/Update button → importP6Schedule (PapaParse + atomic RPC), result display + unmapped areas
+- [x] 🔨 Existing items table (area, trade, dates, mapped status, critical flag)
+- [x] 🔨 Plan Guard: Starter → UpgradePrompt blocks schedule import
+- [x] 🔨 /dashboard/team: 4 metric cards, GC/Sub team tables, role badges, assigned areas
+- [x] 🔨 "+ Invite Member" button (GC Admin/PM/Owner only), invite modal (Sub PM or Foreman + area)
+- [x] 🔨 Pending invites section with copy link + expiration status
+- [x] 🔨 Uses existing generateInviteLink (7-day tokens with audit)
+
+**Files:** ScheduleUpload.tsx, TeamManagementView.tsx, fetchTeamMembers.ts
+
+### Day 5: Settings Expansion ✅
+
+- [x] 🔨 Vertical tab navigation: General, Trades & Costs, Legal, Integrations, Team Roles, Audit Logs
+- [x] 🔨 General: project name, address, labor rate ($/hr), jurisdiction, safety gate toggle + save with audit
+- [x] 🔨 Trades & Costs: existing TradeConfig (percentage/checklist toggle, task counts, lock logic)
+- [x] 🔨 Legal: jurisdiction, SHA-256 status, NOD/REA thresholds (24h, $5K, 3 crew-days), template status
+- [x] 🔨 Team Roles: 7-role reference table with access descriptions
+- [x] 🔨 Plan Guard: Integrations + Audit Logs locked for Starter → UpgradePrompt
+- [x] 🔨 Audit Logs: paginated viewer, action badges, user names, JSON diff expandable detail
+
+**Files:** SettingsPage.tsx, GeneralSection.tsx, LegalSection.tsx, AuditLogSection.tsx, updateProjectSettings.ts, fetchProjectSettings.ts, fetchAuditLog.ts
+
+</details>
 
 ---
 

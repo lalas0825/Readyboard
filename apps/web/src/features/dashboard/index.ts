@@ -1,4 +1,4 @@
-export { DashboardTabs } from './components/DashboardTabs';
+export { Sidebar } from './components/Sidebar';
 export { GCDashboard } from './components/GCDashboard';
 export { LegalDocsTab } from './components/LegalDocsTab';
 export { fetchDashboardData } from './services/fetchDashboardData';
@@ -14,6 +14,8 @@ export type {
   DelayLegalStatus,
 } from './services/delayEngine';
 export { fetchNodDrafts } from './services/fetchNodDrafts';
+export { fetchProjectContext } from './services/fetchProjectContext';
+export type { ProjectContext } from './services/fetchProjectContext';
 export type { NodDraftRow } from './services/fetchNodDrafts';
 export type {
   DashboardData,

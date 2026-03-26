@@ -1,0 +1,158 @@
+'use server';
+
+import { getSession } from '@/lib/auth/getSession';
+import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
+
+// ─── Types ──────────────────────────────────────────
+
+export type TeamMember = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role: string;
+  orgName: string | null;
+  createdAt: string;
+  assignedAreas: string[];
+};
+
+export type PendingInvite = {
+  id: string;
+  role: string;
+  areaName: string | null;
+  createdAt: string;
+  expiresAt: string;
+  isExpired: boolean;
+  url: string;
+};
+
+export type TeamPageData = {
+  members: TeamMember[];
+  pendingInvites: PendingInvite[];
+  projectId: string;
+  projectName: string;
+  areas: { id: string; name: string; floor: string }[];
+};
+
+// ─── Fetch ──────────────────────────────────────────
+
+export async function fetchTeamMembers(
+  projectId?: string,
+): Promise<TeamPageData> {
+  const session = await getSession();
+  if (!session) return emptyData();
+
+  const supabase = session.isDevBypass
+    ? createServiceClient()
+    : await createClient();
+
+  // Resolve projectId
+  let pid = projectId;
+  if (!pid) {
+    const { data: p } = await supabase.from('projects').select('id, name').limit(1).single();
+    pid = p?.id;
+    if (!pid) return emptyData();
+  }
+
+  // Parallel fetches
+  const [projectResult, gcMembersResult, subMembersResult, assignmentsResult, invitesResult, areasResult] = await Promise.all([
+    supabase.from('projects').select('name, org_id, sub_org_id').eq('id', pid).single(),
+    // GC org members
+    supabase.from('projects').select('org_id').eq('id', pid).single().then(async ({ data }) => {
+      if (!data?.org_id) return { data: [] };
+      return supabase
+        .from('users')
+        .select('id, name, email, phone, role, created_at, organizations!inner(name)')
+        .eq('org_id', data.org_id)
+        .order('name');
+    }),
+    // Sub org members (via project_members or direct sub_org_id)
+    supabase.from('projects').select('sub_org_id').eq('id', pid).single().then(async ({ data }) => {
+      if (!data?.sub_org_id) return { data: [] };
+      return supabase
+        .from('users')
+        .select('id, name, email, phone, role, created_at, organizations!inner(name)')
+        .eq('org_id', data.sub_org_id)
+        .order('name');
+    }),
+    // User assignments for this project
+    supabase
+      .from('user_assignments')
+      .select('user_id, area_id, areas!inner(name, project_id)')
+      .eq('areas.project_id', pid),
+    // Pending invites
+    supabase
+      .from('invite_tokens')
+      .select('id, role, area_id, created_at, expires_at, token, areas(name)')
+      .eq('project_id', pid)
+      .is('used_at', null)
+      .order('created_at', { ascending: false }),
+    // Areas for assignment
+    supabase
+      .from('areas')
+      .select('id, name, floor')
+      .eq('project_id', pid)
+      .order('floor')
+      .order('name'),
+  ]);
+
+  // Build assignment map: userId → areaNames[]
+  const assignmentMap = new Map<string, string[]>();
+  for (const a of assignmentsResult.data ?? []) {
+    const area = a.areas as unknown as Record<string, unknown>;
+    const areaName = (area?.name as string) ?? '';
+    const existing = assignmentMap.get(a.user_id) ?? [];
+    existing.push(areaName);
+    assignmentMap.set(a.user_id, existing);
+  }
+
+  // Merge GC + Sub members
+  const allUsers = [...(gcMembersResult.data ?? []), ...(subMembersResult.data ?? [])];
+  const seen = new Set<string>();
+  const members: TeamMember[] = [];
+
+  for (const u of allUsers) {
+    if (seen.has(u.id)) continue;
+    seen.add(u.id);
+    const org = u.organizations as unknown as Record<string, unknown>;
+    members.push({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      role: u.role,
+      orgName: (org?.name as string) ?? null,
+      createdAt: u.created_at,
+      assignedAreas: assignmentMap.get(u.id) ?? [],
+    });
+  }
+
+  // Pending invites
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const now = Date.now();
+  const pendingInvites: PendingInvite[] = (invitesResult.data ?? []).map((inv) => {
+    const area = inv.areas as unknown as Record<string, unknown>;
+    return {
+      id: inv.id,
+      role: inv.role,
+      areaName: (area?.name as string) ?? null,
+      createdAt: inv.created_at,
+      expiresAt: inv.expires_at,
+      isExpired: new Date(inv.expires_at).getTime() < now,
+      url: `${baseUrl}/join/${inv.token}`,
+    };
+  });
+
+  return {
+    members,
+    pendingInvites,
+    projectId: pid,
+    projectName: projectResult.data?.name ?? '',
+    areas: (areasResult.data ?? []).map((a) => ({ id: a.id, name: a.name, floor: a.floor })),
+  };
+}
+
+function emptyData(): TeamPageData {
+  return { members: [], pendingInvites: [], projectId: '', projectName: '', areas: [] };
+}
