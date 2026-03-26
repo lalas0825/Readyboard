@@ -30,14 +30,19 @@ export async function updateProjectSettings(
     ? createServiceClient()
     : await createClient();
 
-  // Fetch current for audit diff
+  // Fetch current for audit diff — scoped to user's org for security
   const { data: current } = await supabase
     .from('projects')
-    .select('name, address, labor_rate_per_hour, legal_jurisdiction, safety_gate_enabled')
+    .select('name, address, labor_rate_per_hour, legal_jurisdiction, safety_gate_enabled, gc_org_id')
     .eq('id', input.projectId)
     .single();
 
   if (!current) return { ok: false, error: 'Project not found' };
+
+  // Org ownership check: user must belong to the project's GC org
+  if (!session.isDevBypass && current.gc_org_id !== session.user.org_id) {
+    return { ok: false, error: 'Not authorized — project belongs to a different organization' };
+  }
 
   // Build update object (only changed fields)
   const updates: Record<string, unknown> = {};

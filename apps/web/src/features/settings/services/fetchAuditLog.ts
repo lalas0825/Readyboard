@@ -16,8 +16,8 @@ export type AuditEntry = {
 };
 
 /**
- * Fetches audit log entries for display. Uses service client
- * since audit_log RLS only allows service role reads for full access.
+ * Fetches audit log entries scoped to the user's organization.
+ * Uses service client for cross-table joins but filters by org membership.
  */
 export async function fetchAuditLog(
   projectId: string,
@@ -29,15 +29,26 @@ export async function fetchAuditLog(
 
   const supabase = createServiceClient();
 
-  // Count total
+  // Scope: only show audit entries from users in the same org
+  const { data: orgUsers } = await supabase
+    .from('users')
+    .select('id')
+    .eq('org_id', session.user.org_id);
+
+  const orgUserIds = (orgUsers ?? []).map((u) => u.id);
+  if (orgUserIds.length === 0) return { entries: [], total: 0 };
+
+  // Count total (scoped to org)
   const { count } = await supabase
     .from('audit_log')
-    .select('id', { count: 'exact', head: true });
+    .select('id', { count: 'exact', head: true })
+    .in('changed_by', orgUserIds);
 
-  // Fetch entries with user names
+  // Fetch entries (scoped to org)
   const { data: rows } = await supabase
     .from('audit_log')
     .select('id, table_name, record_id, action, changed_by, old_value, new_value, reason, created_at')
+    .in('changed_by', orgUserIds)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
