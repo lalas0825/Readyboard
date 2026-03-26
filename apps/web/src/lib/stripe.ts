@@ -8,10 +8,12 @@ import Stripe from 'stripe';
  * In production, throws immediately if STRIPE_SECRET_KEY is missing.
  */
 const key = process.env.STRIPE_SECRET_KEY;
-if (!key && process.env.NODE_ENV === 'production') {
-  throw new Error('STRIPE_SECRET_KEY is not set');
-}
 
+/**
+ * Singleton Stripe client. Uses placeholder key during build/dev
+ * when STRIPE_SECRET_KEY is not set. API calls will fail gracefully
+ * at runtime if the key is missing — no build-time throw.
+ */
 export const stripe = new Stripe(key || 'sk_test_placeholder', {
   typescript: true,
 });
