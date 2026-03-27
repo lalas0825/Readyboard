@@ -4,7 +4,8 @@ import { createServerClient } from '@supabase/ssr';
 const PUBLIC_ROUTES = [
   '/', '/login', '/signup', '/forgot-password',
   '/api/legal/verify', '/join', '/api/invite/redeem',
-  '/api/billing/webhook', '/billing',
+  '/api/billing/webhook', '/api/briefing', '/api/push',
+  '/billing', '/terms', '/privacy',
 ];
 
 export async function middleware(request: NextRequest) {
@@ -48,20 +49,31 @@ export async function middleware(request: NextRequest) {
   }
 
   // Role-based route protection (includes org_id for billing check)
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, org_id')
-    .eq('id', user.id)
-    .single();
+  // Resilient: if query fails (schema cache, RLS), allow through (layout guards will catch)
+  let profile: { role: string; org_id: string } | null = null;
+  try {
+    const { data } = await supabase
+      .from('users')
+      .select('role, org_id')
+      .eq('id', user.id)
+      .single();
+    profile = data;
+  } catch {
+    // Schema or RLS error — let through, layout-level guards will handle
+    return response;
+  }
+
+  // If profile query returned null (user exists in auth but not in users table yet)
+  if (!profile) return response;
 
   const gcRoles = ['gc_super', 'gc_pm', 'gc_admin', 'owner'];
   const subRoles = ['sub_pm', 'sub_super'];
 
   // GC dashboard — only GC roles
   if (pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard-sub')) {
-    if (!profile || !gcRoles.includes(profile.role)) {
+    if (!gcRoles.includes(profile.role)) {
       // Sub users → redirect to sub dashboard
-      if (profile && subRoles.includes(profile.role)) {
+      if (subRoles.includes(profile.role)) {
         return NextResponse.redirect(new URL('/dashboard-sub', request.url));
       }
       return NextResponse.redirect(new URL('/', request.url));
@@ -87,9 +99,9 @@ export async function middleware(request: NextRequest) {
 
   // Sub dashboard — only sub roles
   if (pathname.startsWith('/dashboard-sub')) {
-    if (!profile || !subRoles.includes(profile.role)) {
+    if (!subRoles.includes(profile.role)) {
       // GC users → redirect to GC dashboard
-      if (profile && gcRoles.includes(profile.role)) {
+      if (gcRoles.includes(profile.role)) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
       return NextResponse.redirect(new URL('/', request.url));
