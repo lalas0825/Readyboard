@@ -60,9 +60,11 @@ export function StepTeam() {
       return;
     }
 
-    store.reset();
-    router.push('/dashboard');
+    // Navigate FIRST, then reset store — resetting first causes a flash back to step 1
+    router.replace('/dashboard');
     router.refresh();
+    // Delay reset so it doesn't trigger a re-render before navigation completes
+    setTimeout(() => store.reset(), 500);
   }
 
   return (
