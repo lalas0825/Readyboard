@@ -26,12 +26,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { useAreas, useReportStore, type AssignedArea } from '@readyboard/shared';
-import { useAuth } from '../../src/providers/AuthProvider';
-import AreaCard from '../../src/components/AreaCard';
-import NodBanner from '../../src/components/NodBanner';
+import { useAuth } from '../../../src/providers/AuthProvider';
+import AreaCard from '../../../src/components/AreaCard';
+import NodBanner from '../../../src/components/NodBanner';
 
 export default function ForemanHome() {
-  const { session, signOut } = useAuth();
+  const { session } = useAuth();
   const { areas, pendingNods, isLoading, isConnected, error, refresh } = useAreas(session?.user.id);
 
   // Instant refresh when screen regains focus (after report submit, back navigation, etc.)
@@ -74,11 +74,6 @@ export default function ForemanHome() {
     });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push('/report');
-  }
-
-  async function handleSignOut() {
-    await signOut();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   }
 
   const renderItem = useCallback(
@@ -137,9 +132,7 @@ export default function ForemanHome() {
             </Text>
           </View>
         </View>
-        <Pressable style={styles.logoutButton} onPress={handleSignOut}>
-          <Text style={styles.logoutText}>{t('auth.logout')}</Text>
-        </Pressable>
+        <Text style={styles.areaCount}>{areas.length} {t('tabs.myAreas').toLowerCase()}</Text>
       </View>
 
       {/* Loading */}
@@ -199,16 +192,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#94a3b8',
   },
-  logoutButton: {
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  logoutText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '600',
+  areaCount: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
   },
   list: {
     paddingHorizontal: 20,

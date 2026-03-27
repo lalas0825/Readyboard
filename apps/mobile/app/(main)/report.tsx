@@ -1,20 +1,22 @@
 /**
- * Report Route — 3-step field report flow.
+ * Report Route — 3-step field report flow with GPS + photo evidence.
  *
  * Reads context from useReportStore (set by AreaCard onPress).
  * Delegates step rendering to ReportFlowNavigator.
- * On submit: saves to local SQLite via useFieldReport, then navigates back.
+ * On submit: captures GPS → saves to local SQLite via useFieldReport → syncs to Supabase.
  *
  * Blindaje:
  *   - Unmount cleanup: resets store if user navigates away without submitting
  *   - Double-tap guard: isSubmitting blocks duplicate writes
  *   - Data integrity: validates formData before DB write
+ *   - GPS captured at submit time (most accurate)
  *   - No DB writes until final confirm (Sensei rule)
  */
 
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { useReportStore, useFieldReport } from '@readyboard/shared';
 import ReportFlowNavigator from '../../src/components/report/ReportFlowNavigator';
 
@@ -24,16 +26,14 @@ export default function ReportScreen() {
   const { createReport, createDelayLog } = useFieldReport();
   const submittedRef = useRef(false);
 
-  // Guard: if store has no context, redirect back (in useEffect, not during render)
-  // Skip if already submitted — handleClose manages its own navigation
+  // Guard: if store has no context, redirect back
   useEffect(() => {
     if (!submittedRef.current && (!store.isActive || !store.context)) {
       router.back();
     }
   }, [store.isActive, store.context, router]);
 
-  // Cleanup: reset store when screen unmounts (covers gesture back, hardware back)
-  // Skip reset if we already submitted successfully (reset happens in handleSubmit)
+  // Cleanup: reset store when screen unmounts
   useEffect(() => {
     return () => {
       if (!submittedRef.current) {
@@ -43,11 +43,10 @@ export default function ReportScreen() {
   }, []);
 
   async function handleSubmit() {
-    // Double-tap guard: abort if already submitting
+    // Double-tap guard
     if (store.isSubmitting) return;
     if (!store.context) return;
 
-    // Data integrity: validate minimum required fields
     const { formData } = store;
     if (formData.has_blockers === null) {
       console.warn('[Report] Aborted: blockers not answered');
@@ -60,16 +59,37 @@ export default function ReportScreen() {
 
     store.setSubmitting(true);
     try {
+      // Capture GPS at submit time if not already set (non-blocked reports)
+      let gpsLat = formData.gps_lat;
+      let gpsLng = formData.gps_lng;
+
+      if (gpsLat === null || gpsLng === null) {
+        try {
+          const { granted } = await Location.getForegroundPermissionsAsync();
+          if (granted) {
+            const loc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+              timeInterval: 3000,
+            });
+            gpsLat = loc.coords.latitude;
+            gpsLng = loc.coords.longitude;
+            store.setGps(gpsLat, gpsLng);
+          }
+        } catch {
+          // GPS failure never blocks report submission
+        }
+      }
+
       const status = store.getDerivedStatus();
-      const id = await createReport({
+      await createReport({
         area_id: store.context.area_id,
         user_id: store.context.user_id,
         trade_name: store.context.trade_name,
         status,
         progress_pct: formData.progress_pct,
         reason_code: formData.reason_code ?? undefined,
-        gps_lat: formData.gps_lat ?? undefined,
-        gps_lng: formData.gps_lng ?? undefined,
+        gps_lat: gpsLat ?? undefined,
+        gps_lng: gpsLng ?? undefined,
         photo_url: formData.photo_url ?? undefined,
       });
 
@@ -97,7 +117,6 @@ export default function ReportScreen() {
     }
   }
 
-  // Render nothing while redirecting (guard effect handles navigation)
   if (!store.isActive || !store.context) {
     return null;
   }

@@ -22,6 +22,8 @@
     "login": "Iniciar sesión",
     "signup": "Registrarse",
     "logout": "Cerrar sesión",
+    "logoutConfirmTitle": "¿Cerrar sesión?",
+    "logoutConfirmMessage": "Necesitarás iniciar sesión de nuevo para ver tus áreas.",
     "email": "Correo electrónico",
     "password": "Contraseña",
     "phone": "Número de teléfono",
@@ -70,6 +72,10 @@
     "statusWorking": "En Trabajo",
     "statusBlocked": "Bloqueada",
     "statusHeld": "En Espera",
+    "awaitingGC": "Esperando verificación del GC",
+    "verified": "Verificado — Área libre",
+    "areaReady": "Área Verificada",
+    "pendingVerification": "Verificación pendiente",
     "filterByFloor": "Filtrar por Piso",
     "filterByTrade": "Filtrar por Oficio",
     "filterByStatus": "Filtrar por Estado",
@@ -84,6 +90,8 @@
     "noBlockers": "Sin bloqueos",
     "hasBlockers": "Sí, bloqueado",
     "takePhoto": "Tomar foto y enviar",
+    "submit": "Enviar Reporte",
+    "selectAreaFirst": "Selecciona un área desde Mis Áreas para iniciar un reporte.",
     "selectReason": "Selecciona una razón",
     "reportUpdate": "Reportar Avance",
     "reported": "Reportado",
@@ -233,5 +241,26 @@
     "skipAndFinish": "Omitir y Terminar",
     "finishSetup": "Terminar Configuración",
     "settingUp": "Configurando..."
+  },
+  "tabs": {
+    "myAreas": "Mis Áreas",
+    "report": "Reportar",
+    "legal": "Legal",
+    "profile": "Perfil"
+  },
+  "profile": {
+    "details": "Detalles",
+    "phone": "Teléfono",
+    "email": "Correo",
+    "userId": "ID Usuario",
+    "notifications": "Notificaciones",
+    "pushAlerts": "Alertas Push",
+    "pushAlertsDesc": "Áreas bloqueadas, acciones correctivas",
+    "appVersion": "Versión de App"
+  },
+  "legal": {
+    "subtitle": "Borradores de NOD y áreas bloqueadas",
+    "noIssues": "Sin Problemas Legales",
+    "allClear": "Todas las áreas están despejadas. Sin NODs pendientes."
   }
 }

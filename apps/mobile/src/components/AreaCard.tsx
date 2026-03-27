@@ -85,10 +85,32 @@ export default function AreaCard({ area, onReport }: Props) {
         <Text style={styles.progressText}>{Math.round(area.effective_pct)}%</Text>
       </View>
 
-      {/* Report Update button */}
-      <Pressable style={styles.reportButton} onPress={handleReport}>
-        <Text style={styles.reportText}>{t('fieldReport.reportUpdate')}</Text>
-      </Pressable>
+      {/* Status banner: locked states */}
+      {area.status === 'held' && (
+        <View style={styles.heldBanner}>
+          <Text style={styles.heldIcon}>{'\u23F3'}</Text>
+          <Text style={styles.heldText}>{t('readyBoard.awaitingGC')}</Text>
+        </View>
+      )}
+      {area.status === 'ready' && (
+        <View style={styles.readyBanner}>
+          <Text style={styles.readyIcon}>{'\u2705'}</Text>
+          <Text style={styles.readyText}>{t('readyBoard.verified')}</Text>
+        </View>
+      )}
+
+      {/* Report Update button — disabled when held or ready (edit-lock) */}
+      {area.status !== 'held' && area.status !== 'ready' ? (
+        <Pressable style={styles.reportButton} onPress={handleReport}>
+          <Text style={styles.reportText}>{t('fieldReport.reportUpdate')}</Text>
+        </Pressable>
+      ) : (
+        <View style={styles.lockedButton}>
+          <Text style={styles.lockedText}>
+            {area.status === 'ready' ? t('readyBoard.areaReady') : t('readyBoard.pendingVerification')}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -200,5 +222,56 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  // ─── Status banners ──────────
+  heldBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#451a0320',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#a855f730',
+  },
+  heldIcon: { fontSize: 14 },
+  heldText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#c084fc',
+  },
+  readyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#052e16',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#22c55e30',
+  },
+  readyIcon: { fontSize: 14 },
+  readyText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#86efac',
+  },
+  lockedButton: {
+    backgroundColor: '#27272a',
+    borderRadius: 12,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockedText: {
+    color: '#71717a',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

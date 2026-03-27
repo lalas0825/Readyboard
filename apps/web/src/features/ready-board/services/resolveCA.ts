@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { writeAuditEntry } from '@/lib/audit';
+import { notifyUser } from '@/lib/pushNotify';
 
 /**
  * Server action: marks a corrective action as resolved.
@@ -63,6 +64,13 @@ export async function resolveCA(
     oldValue: { resolved_at: null },
     newValue: { resolved_at: now, resolution: resolution ?? null },
     reason: resolution ?? 'Corrective action resolved',
+  });
+
+  // Push notification to assigned user: "Your CA has been resolved"
+  void notifyUser(ca.assigned_to, 'Corrective Action Resolved', 'Your issue has been resolved. Tap to verify.', {
+    screen: 'area',
+    id: actionId,
+    type: 'ca_resolved',
   });
 
   return { ok: true };

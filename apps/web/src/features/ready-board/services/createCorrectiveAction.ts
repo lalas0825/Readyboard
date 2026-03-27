@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { writeAuditEntry } from '@/lib/audit';
+import { notifyUser } from '@/lib/pushNotify';
 import type { CorrectiveActionData } from '../types';
 import { deriveActionStatus } from '../lib/deriveActionStatus';
 
@@ -98,6 +99,13 @@ export async function createCorrectiveAction(
 
   const dl = inserted.delay_logs as unknown as Record<string, unknown>;
   const u = inserted.users as unknown as Record<string, unknown>;
+
+  // Push notification to assigned user (fire-and-forget)
+  void notifyUser(input.assigned_to, 'Corrective Action Assigned', `New CA: ${(dl.trade_name as string) ?? 'Unknown'}. Tap to view.`, {
+    screen: 'area',
+    id: inserted.id,
+    type: 'ca_assigned',
+  });
 
   return {
     ok: true,

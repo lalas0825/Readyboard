@@ -3,6 +3,7 @@
 import { getSession } from '@/lib/auth/getSession';
 import { createServiceClient } from '@/lib/supabase/service';
 import { checkEscalations } from '@/features/legal/services/escalationCheck';
+import { notifyProjectGC } from '@/lib/pushNotify';
 
 const NOD_REMINDER_HOURS = 20;
 const VERIFICATION_REMINDER_HOURS = 4;
@@ -73,6 +74,14 @@ export async function notificationTrigger(projectId: string): Promise<void> {
         });
 
         await supabase.from('notifications').insert(records);
+
+        // Push notification to GC team: blocked areas needing NOD
+        void notifyProjectGC(
+          projectId,
+          `${delaysToNotify.length} Blocked Area${delaysToNotify.length > 1 ? 's' : ''} — NOD Pending`,
+          `${delaysToNotify.map((d) => d.trade_name).join(', ')} blocked 20h+ without NOD.`,
+          { screen: 'area', type: 'nod_reminder' },
+        );
       }
     }
   } catch {

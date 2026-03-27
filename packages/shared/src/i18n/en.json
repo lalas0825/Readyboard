@@ -22,6 +22,8 @@
     "login": "Log In",
     "signup": "Sign Up",
     "logout": "Log Out",
+    "logoutConfirmTitle": "Sign Out?",
+    "logoutConfirmMessage": "You will need to sign in again to access your areas.",
     "email": "Email",
     "password": "Password",
     "phone": "Phone Number",
@@ -70,6 +72,10 @@
     "statusWorking": "Working",
     "statusBlocked": "Blocked",
     "statusHeld": "Held",
+    "awaitingGC": "Awaiting GC Verification",
+    "verified": "Verified — Area Clear",
+    "areaReady": "Area Verified",
+    "pendingVerification": "Pending Verification",
     "filterByFloor": "Filter by Floor",
     "filterByTrade": "Filter by Trade",
     "filterByStatus": "Filter by Status",
@@ -84,6 +90,8 @@
     "noBlockers": "No blockers",
     "hasBlockers": "Yes, blocked",
     "takePhoto": "Take photo & submit",
+    "submit": "Submit Report",
+    "selectAreaFirst": "Select an area from My Areas to start a report.",
     "selectReason": "Select a reason",
     "reportUpdate": "Report Update",
     "reported": "Reported",
@@ -233,5 +241,26 @@
     "skipAndFinish": "Skip & Finish",
     "finishSetup": "Finish Setup",
     "settingUp": "Setting up..."
+  },
+  "tabs": {
+    "myAreas": "My Areas",
+    "report": "Report",
+    "legal": "Legal",
+    "profile": "Profile"
+  },
+  "profile": {
+    "details": "Details",
+    "phone": "Phone",
+    "email": "Email",
+    "userId": "User ID",
+    "notifications": "Notifications",
+    "pushAlerts": "Push Alerts",
+    "pushAlertsDesc": "Blocked areas, corrective actions",
+    "appVersion": "App Version"
+  },
+  "legal": {
+    "subtitle": "NOD drafts and blocked areas",
+    "noIssues": "No Legal Issues",
+    "allClear": "All areas are clear. No NODs pending."
   }
 }

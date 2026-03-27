@@ -1,0 +1,284 @@
+/**
+ * Profile Tab — User info, notification settings, logout.
+ *
+ * Carlos Standard: clean layout, big logout button, no confusion.
+ * Logout clears: auth session, push token, PowerSync connection.
+ */
+
+import { useState } from 'react';
+import { View, Text, Pressable, StyleSheet, SafeAreaView, Switch, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import * as Haptics from 'expo-haptics';
+import Constants from 'expo-constants';
+import { useAuth } from '../../../src/providers/AuthProvider';
+import { clearPushToken, isPushEnabled } from '../../../src/services/pushNotifications';
+
+const ROLE_LABELS: Record<string, string> = {
+  foreman: 'Foreman',
+  sub_pm: 'Sub PM',
+  superintendent: 'Superintendent',
+  gc_pm: 'GC PM',
+  gc_admin: 'GC Admin',
+  gc_super: 'GC Super',
+  owner: 'Owner',
+};
+
+export default function ProfileTab() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const { session, signOut } = useAuth();
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const user = session?.user;
+  const appVersion = Constants.expoConfig?.version ?? '0.1.0';
+
+  async function handleLogout() {
+    Alert.alert(
+      t('auth.logoutConfirmTitle'),
+      t('auth.logoutConfirmMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('auth.logout'),
+          style: 'destructive',
+          onPress: async () => {
+            setLoggingOut(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+            // Clear push token before signing out
+            if (user?.id) {
+              await clearPushToken(user.id);
+            }
+
+            // Sign out (clears Supabase session, PowerSync disconnects)
+            await signOut();
+            setLoggingOut(false);
+          },
+        },
+      ],
+    );
+  }
+
+  async function handleTogglePush(value: boolean) {
+    setPushEnabled(value);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // In production: save preference to DB
+  }
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{t('tabs.profile')}</Text>
+      </View>
+
+      {/* User info card */}
+      <View style={styles.card}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {user?.user_metadata?.name?.[0]?.toUpperCase() ?? '?'}
+          </Text>
+        </View>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>
+            {user?.user_metadata?.name ?? user?.phone ?? 'User'}
+          </Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>
+              {ROLE_LABELS[user?.user_metadata?.role ?? ''] ?? 'Member'}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Details */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('profile.details')}</Text>
+        <DetailRow label={t('profile.phone')} value={user?.phone ?? '--'} />
+        <DetailRow label={t('profile.email')} value={user?.email ?? '--'} />
+        <DetailRow label={t('profile.userId')} value={user?.id?.slice(0, 8) ?? '--'} mono />
+      </View>
+
+      {/* Notification settings */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('profile.notifications')}</Text>
+        <View style={styles.settingRow}>
+          <View>
+            <Text style={styles.settingLabel}>{t('profile.pushAlerts')}</Text>
+            <Text style={styles.settingDesc}>{t('profile.pushAlertsDesc')}</Text>
+          </View>
+          <Switch
+            value={pushEnabled}
+            onValueChange={handleTogglePush}
+            trackColor={{ false: '#27272a', true: '#f59e0b40' }}
+            thumbColor={pushEnabled ? '#f59e0b' : '#71717a'}
+          />
+        </View>
+      </View>
+
+      {/* App info */}
+      <View style={styles.section}>
+        <DetailRow label={t('profile.appVersion')} value={`v${appVersion}`} />
+      </View>
+
+      {/* Logout */}
+      <View style={styles.logoutSection}>
+        <Pressable
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          disabled={loggingOut}
+        >
+          <Text style={styles.logoutText}>
+            {loggingOut ? t('common.loading') : t('auth.logout')}
+          </Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <View style={styles.detailRow}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={[styles.detailValue, mono && styles.mono]}>{value}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#0f172a' },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  // User card
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    backgroundColor: '#1e293b',
+    marginHorizontal: 20,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f59e0b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  userInfo: { flex: 1 },
+  userName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  roleBadge: {
+    backgroundColor: '#f59e0b20',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#f59e0b40',
+  },
+  roleText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#f59e0b',
+    letterSpacing: 0.5,
+  },
+  // Sections
+  section: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1e293b',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 6,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#94a3b8',
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#f8fafc',
+    fontWeight: '500',
+  },
+  mono: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    color: '#64748b',
+  },
+  // Notification setting
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1e293b',
+    borderRadius: 10,
+    padding: 14,
+  },
+  settingLabel: {
+    fontSize: 14,
+    color: '#f8fafc',
+    fontWeight: '500',
+  },
+  settingDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  // Logout
+  logoutSection: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  logoutButton: {
+    backgroundColor: '#450a0a',
+    borderRadius: 12,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ef444440',
+  },
+  logoutText: {
+    color: '#ef4444',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
