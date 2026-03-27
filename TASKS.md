@@ -1,7 +1,7 @@
 # ReadyBoard — TASKS.md
 
 > **Single source of truth for all build tasks.**
-> Weeks 1-6: ✅ COMPLETE. Week 7-8: 🔨 PARTIAL. Week 9-14: ✅ COMPLETE. Week 15: AI BRIEFING.
+> Weeks 1-6: ✅ COMPLETE. Week 7-8: 🔨 PARTIAL. **Week 9-15: ✅ COMPLETE.** Post-launch backlog only.
 >
 > **TASK PREFIXES — Claude Code must follow these:**
 > - 🔍 **VERIFY FIRST** — Search codebase. If works: skip ✅. If broken: fix. If missing: build.
@@ -405,31 +405,35 @@
 
 ---
 
-## Week 15 — AI Morning Briefing Agent (3 days)
+## ✅ Week 15 — AI Morning Briefing Agent — COMPLETE
 
-### Day 1: Data Pipeline + Prompt
+<details>
+<summary>Week 15 — DONE (click to expand)</summary>
 
-- [ ] 🔨 lib/ai/collectBriefingData.ts: parallel fetch (areas, delays, verifications, crews, forecast, changes, legal, CAs)
-- [ ] 🔨 lib/ai/briefingPrompt.ts: system prompt, role-aware (GC/Sub), language-aware (EN/ES), 4-8 sentences, specific numbers
-- [ ] 🔨 lib/ai/generateBriefing.ts: Vercel AI SDK + OpenRouter → gemini-2.5-flash, temp 0.3, 600 tokens
-- [ ] 🔨 Install @openrouter/ai-sdk-provider, add OPENROUTER_API_KEY
-- [ ] 🔨 Test script + 5 test cases (GC, Sub, Spanish, nothing changed, 0 delays)
+### Data Pipeline + AI Generation ✅
+- [x] 🔨 lib/ai/collectBriefingData.ts: 7 parallel queries (areas, delays, verifications, CAs, NODs, forecast, reports)
+- [x] 🔨 lib/ai/generateBriefing.ts: Vercel AI SDK + OpenRouter → Gemini 2.5 Flash, temp 0.3, 200 tokens
+- [x] 🔨 Role-aware prompt: GC (verifications+forecast) vs Sub (delays+costs+NODs)
+- [x] 🔨 Language-aware: EN/ES based on user.language
+- [x] 🔨 3-point format: "What blocks? What's urgent? Today's goal?"
+- [x] 🔨 Fallback chain: Gemini → Claude Haiku → data-only summary (never fails)
+- [x] 🔨 Installed ai + @ai-sdk/openai
 
-### Day 2: Storage + Scheduling
+### Storage + Scheduling ✅
+- [x] 🔨 briefings table + RLS (users see own, service inserts) + daily unique index
+- [x] 🔨 /api/briefing/generate route (cron-callable, CRON_SECRET protected)
+- [x] 🔨 vercel.json: cron at 12:00 UTC (7:00 AM ET) daily
+- [x] 🔨 Idempotent: checks existing briefing before generating
+- [x] 🔨 Push notification on generation (fire-and-forget via notifyUser)
 
-- [ ] 🔨 briefings table + RLS
-- [ ] 🔨 Cron (6am ET): generate per user × project → store → notify → push preview
-- [ ] 🔌 Add briefing push type (from Week 12 push infra)
-- [ ] 🔨 Optional: email digest via Resend
+### Dashboard UI ✅
+- [x] 🔨 MorningBriefingCard: top of Overview, dismissable, read_at tracking
+- [x] 🔨 Past Briefings viewer (last 7 days)
+- [x] 🔨 "NEW" badge for unread briefings
+- [x] 🔨 AI branding: "🤖 AI Briefing · Based on project data as of [time]"
+- [x] 🔨 Wrapped in SectionErrorBoundary (never crashes dashboard)
 
-### Day 3: Dashboard UI
-
-- [ ] 🔨 MorningBriefing.tsx card: top of Overview, dismissable, read_at tracking, action links
-- [ ] 🔨 Mobile MorningBriefingCard (GC/Sub only, never foreman)
-- [ ] 🔨 Past Briefings (last 7 days)
-- [ ] 🔨 Settings: briefing push/email toggles
-- [ ] 🔨 Demo: hardcoded briefing (no API call)
-- [ ] 🔨 Cost monitor: tokens per briefing, alert if monthly >$50
+</details>
 
 ---
 

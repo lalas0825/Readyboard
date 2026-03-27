@@ -12,10 +12,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.48",
     "@react-email/components": "^1.0.10",
     "@supabase/ssr": "^0.6.0",
     "@supabase/supabase-js": "^2.49.0",
     "@tailwindcss/postcss": "^4.2.2",
+    "ai": "^6.0.140",
     "next": "^16.0.0",
     "next-intl": "^4.8.3",
     "papaparse": "^5.5.3",

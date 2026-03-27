@@ -8,6 +8,7 @@ import { AlertsSection } from './AlertsSection';
 import { NodDraftsSection } from './NodDraftsSection';
 import { ForecastSection } from './ForecastSection';
 import { CreateAreaModal } from './CreateAreaModal';
+import { MorningBriefingCard } from './MorningBriefingCard';
 import type { DashboardData } from '../types';
 
 type GCDashboardProps = {
@@ -24,6 +25,11 @@ export function GCDashboard({ data, projectId }: GCDashboardProps) {
 
   return (
     <div className="space-y-6">
+      {/* AI Morning Briefing — top of dashboard */}
+      <SectionErrorBoundary fallbackLabel="Briefing">
+        <MorningBriefingCard projectId={projectId} />
+      </SectionErrorBoundary>
+
       <SectionErrorBoundary fallbackLabel="Metrics">
         <MetricsSection
           metrics={data.metrics}
