@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { LogoutButton } from '@/features/auth/components/LogoutButton';
 import { fetchUnreadNotificationCount } from '../services/fetchNotifications';
 import { fetchVerificationCount } from '@/features/checklist/services/fetchVerificationCount';
+import { NotificationBell } from './NotificationBell';
 
 // ─── Types ───────────────────────────────────────────
 
@@ -179,11 +180,14 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
 
   const sidebarContent = (
     <>
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 border-b border-zinc-800 px-4 py-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/readyboard-icon-animated.svg" alt="" className="h-6 w-6" />
-        <span className="text-sm font-semibold text-zinc-100">ReadyBoard</span>
+      {/* Logo + Notification Bell */}
+      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-4">
+        <div className="flex items-center gap-2.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/readyboard-icon-animated.svg" alt="" className="h-6 w-6" />
+          <span className="text-sm font-semibold text-zinc-100">ReadyBoard</span>
+        </div>
+        <NotificationBell />
       </div>
 
       {/* Project selector */}

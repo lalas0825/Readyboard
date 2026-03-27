@@ -12,6 +12,48 @@ const AREA_TYPES = [
   { value: 'utility', label: 'Utility' },
 ] as const;
 
+const UNIT_PRESETS: Record<string, { label: string; areas: { suffix: string; type: string }[] }> = {
+  standard_2br: {
+    label: 'Standard 2BR',
+    areas: [
+      { suffix: 'Master Bath', type: 'bathroom' },
+      { suffix: 'Hall Bath', type: 'bathroom' },
+      { suffix: 'Kitchen', type: 'kitchen' },
+    ],
+  },
+  studio: {
+    label: 'Studio',
+    areas: [
+      { suffix: 'Bath', type: 'bathroom' },
+      { suffix: 'Kitchen', type: 'kitchen' },
+    ],
+  },
+  luxury_3br: {
+    label: '3BR Luxury',
+    areas: [
+      { suffix: 'Master Bath', type: 'bathroom' },
+      { suffix: 'Hall Bath', type: 'bathroom' },
+      { suffix: 'Guest Bath', type: 'bathroom' },
+      { suffix: 'Kitchen', type: 'kitchen' },
+      { suffix: 'Powder Room', type: 'bathroom' },
+    ],
+  },
+  office_suite: {
+    label: 'Office Suite',
+    areas: [
+      { suffix: 'Kitchen', type: 'kitchen' },
+      { suffix: 'Restroom', type: 'bathroom' },
+    ],
+  },
+  common: {
+    label: 'Common Areas',
+    areas: [
+      { suffix: 'Corridor', type: 'corridor' },
+      { suffix: 'Lobby', type: 'lobby' },
+    ],
+  },
+};
+
 export function StepAreas() {
   const { areas, setAreas, removeArea, nextStep, prevStep } = useOnboardingStore();
 
@@ -20,12 +62,34 @@ export function StepAreas() {
   const [floorTo, setFloorTo] = useState('3');
   const [unitFrom, setUnitFrom] = useState('A');
   const [unitTo, setUnitTo] = useState('D');
-  const [areaType, setAreaType] = useState<AreaEntry['area_type']>('office');
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(['bathroom', 'kitchen']));
+  const [selectedPreset, setSelectedPreset] = useState<string>('');
 
   // Single add state
   const [singleName, setSingleName] = useState('');
   const [singleFloor, setSingleFloor] = useState('');
   const [singleType, setSingleType] = useState<AreaEntry['area_type']>('bathroom');
+
+  function toggleType(type: string) {
+    setSelectedTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+    setSelectedPreset('');
+  }
+
+  function applyPreset(presetKey: string) {
+    setSelectedPreset(presetKey);
+    const preset = UNIT_PRESETS[presetKey];
+    if (preset) {
+      setSelectedTypes(new Set(preset.areas.map((a) => a.type)));
+    }
+  }
 
   function generateAreas() {
     const from = parseInt(floorFrom, 10);
@@ -37,14 +101,38 @@ export function StepAreas() {
     if (startChar > endChar || startChar < 65 || endChar > 90) return;
 
     const generated: AreaEntry[] = [];
-    for (let floor = from; floor <= to; floor++) {
-      for (let c = startChar; c <= endChar; c++) {
-        const unit = String.fromCharCode(c);
-        generated.push({
-          name: `${floor}${unit}`,
-          floor: String(floor),
-          area_type: areaType,
-        });
+
+    if (selectedPreset && UNIT_PRESETS[selectedPreset]) {
+      // Preset mode: generate named areas per unit
+      const preset = UNIT_PRESETS[selectedPreset];
+      for (let floor = from; floor <= to; floor++) {
+        for (let c = startChar; c <= endChar; c++) {
+          const unit = String.fromCharCode(c);
+          for (const area of preset.areas) {
+            generated.push({
+              name: `${floor}${unit} ${area.suffix}`,
+              floor: String(floor),
+              area_type: area.type as AreaEntry['area_type'],
+            });
+          }
+        }
+      }
+    } else {
+      // Multi-type mode: one area per type per unit
+      const types = Array.from(selectedTypes);
+      if (types.length === 0) return;
+      for (let floor = from; floor <= to; floor++) {
+        for (let c = startChar; c <= endChar; c++) {
+          const unit = String.fromCharCode(c);
+          for (const type of types) {
+            const label = AREA_TYPES.find((t) => t.value === type)?.label ?? type;
+            generated.push({
+              name: `${floor}${unit} ${label}`,
+              floor: String(floor),
+              area_type: type as AreaEntry['area_type'],
+            });
+          }
+        }
       }
     }
 
@@ -78,7 +166,7 @@ export function StepAreas() {
       {/* Quick-Add */}
       <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 space-y-3">
         <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Quick Add</p>
-        <div className="grid grid-cols-5 gap-3 items-end">
+        <div className="grid grid-cols-4 gap-3 items-end">
           <div>
             <label className="block text-xs text-zinc-400 mb-1">Floor From</label>
             <input
@@ -119,23 +207,75 @@ export function StepAreas() {
               className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 uppercase focus:border-emerald-500 focus:outline-none"
             />
           </div>
-          <div>
-            <label className="block text-xs text-zinc-400 mb-1">Type</label>
-            <select
-              value={areaType}
-              onChange={(e) => setAreaType(e.target.value as AreaEntry['area_type'])}
-              className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none"
+        </div>
+
+        {/* Presets */}
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1.5">Preset</label>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(UNIT_PRESETS).map(([key, preset]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => applyPreset(key)}
+                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  selectedPreset === key
+                    ? 'border-emerald-600 bg-emerald-950/40 text-emerald-400'
+                    : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+                }`}
+              >
+                {preset.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setSelectedPreset('')}
+              className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                !selectedPreset
+                  ? 'border-emerald-600 bg-emerald-950/40 text-emerald-400'
+                  : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+              }`}
             >
-              {AREA_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
+              Custom
+            </button>
           </div>
         </div>
+
+        {/* Area types (multi-select, only when Custom) */}
+        {!selectedPreset && (
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1.5">Area Types (select multiple)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {AREA_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => toggleType(t.value)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    selectedTypes.has(t.value)
+                      ? 'border-amber-600 bg-amber-950/40 text-amber-400'
+                      : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Preview */}
+        {selectedPreset && UNIT_PRESETS[selectedPreset] && (
+          <p className="text-[10px] text-zinc-500">
+            Per unit: {UNIT_PRESETS[selectedPreset].areas.map((a) => a.suffix).join(', ')}
+          </p>
+        )}
+
         <button
           type="button"
           onClick={generateAreas}
-          className="rounded-lg border border-emerald-700 bg-emerald-950/30 px-4 py-2 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-950/50"
+          disabled={!selectedPreset && selectedTypes.size === 0}
+          className="rounded-lg border border-emerald-700 bg-emerald-950/30 px-4 py-2 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-950/50 disabled:opacity-40"
         >
           Generate Areas
         </button>

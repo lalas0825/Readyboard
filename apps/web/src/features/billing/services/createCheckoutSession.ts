@@ -60,7 +60,7 @@ export async function createCheckoutSession(input: {
     customer: customerId,
     mode: 'subscription',
     line_items: [{ price: plan.priceId, quantity: 1 }],
-    success_url: `${appUrl}/dashboard?billing=success&project=${input.projectId}`,
+    success_url: `${appUrl}/billing/success`,
     cancel_url: `${appUrl}/dashboard?billing=canceled`,
     subscription_data: {
       metadata: {

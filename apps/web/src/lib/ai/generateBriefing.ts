@@ -8,10 +8,14 @@ import { notifyUser } from '@/lib/pushNotify';
 
 // ─── AI Client ──────────────────────────────────────
 
-const openrouter = createOpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY || 'or-placeholder',
-});
+const HAS_AI_KEY = !!process.env.OPENROUTER_API_KEY;
+
+const openrouter = HAS_AI_KEY
+  ? createOpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.OPENROUTER_API_KEY!,
+    })
+  : null;
 
 const MODEL = 'google/gemini-2.5-flash-preview';
 const FALLBACK_MODEL = 'anthropic/claude-haiku-4-5-20251001';
@@ -95,46 +99,54 @@ export async function generateMorningBriefing(
   // Collect project data
   const ctx = await collectBriefingData(projectId);
 
-  // Try AI generation
+  // Try AI generation (skip entirely if no API key)
   let content: string;
   let model = MODEL;
   let tokensUsed = 0;
   let isFallback = false;
 
-  try {
-    const result = await generateText({
-      model: openrouter(MODEL),
-      prompt: buildPrompt(ctx, role, language),
-      maxOutputTokens: 200,
-      temperature: 0.3,
-    });
-
-    content = result.text.trim();
-    tokensUsed = result.usage?.totalTokens ?? 0;
-
-    // Validate: if too short or empty, use fallback
-    if (content.length < 20) {
-      throw new Error('AI response too short');
-    }
-  } catch (err) {
-    console.warn('[Briefing] AI failed, trying fallback model:', err);
-
+  if (!openrouter) {
+    // No API key — use data-only fallback without calling AI
+    console.info('[Briefing] No OPENROUTER_API_KEY configured, using data fallback');
+    content = buildFallbackBriefing(ctx, language);
+    model = 'fallback';
+    isFallback = true;
+  } else {
     try {
-      const fallback = await generateText({
-        model: openrouter(FALLBACK_MODEL),
+      const result = await generateText({
+        model: openrouter(MODEL),
         prompt: buildPrompt(ctx, role, language),
         maxOutputTokens: 200,
         temperature: 0.3,
       });
-      content = fallback.text.trim();
-      model = FALLBACK_MODEL;
-      tokensUsed = fallback.usage?.totalTokens ?? 0;
-    } catch {
-      // Both AI models failed — use data-only fallback
-      console.warn('[Briefing] Both AI models failed, using data fallback');
-      content = buildFallbackBriefing(ctx, language);
-      model = 'fallback';
-      isFallback = true;
+
+      content = result.text.trim();
+      tokensUsed = result.usage?.totalTokens ?? 0;
+
+      // Validate: if too short or empty, use fallback
+      if (content.length < 20) {
+        throw new Error('AI response too short');
+      }
+    } catch (err) {
+      console.warn('[Briefing] AI failed, trying fallback model:', err);
+
+      try {
+        const fallback = await generateText({
+          model: openrouter(FALLBACK_MODEL),
+          prompt: buildPrompt(ctx, role, language),
+          maxOutputTokens: 200,
+          temperature: 0.3,
+        });
+        content = fallback.text.trim();
+        model = FALLBACK_MODEL;
+        tokensUsed = fallback.usage?.totalTokens ?? 0;
+      } catch {
+        // Both AI models failed — use data-only fallback
+        console.warn('[Briefing] Both AI models failed, using data fallback');
+        content = buildFallbackBriefing(ctx, language);
+        model = 'fallback';
+        isFallback = true;
+      }
     }
   }
 

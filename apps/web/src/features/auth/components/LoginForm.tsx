@@ -1,16 +1,43 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
+const DEMO_ACCOUNTS: Record<string, { email: string; password: string }> = {
+  gc: { email: 'demo-gc@readyboard.ai', password: 'ReadyBoard2026!' },
+  sub: { email: 'demo-sub@readyboard.ai', password: 'ReadyBoard2026!' },
+};
+
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Auto-login for demo accounts (?demo=gc or ?demo=sub)
+  useEffect(() => {
+    const demoKey = searchParams.get('demo');
+    if (demoKey && DEMO_ACCOUNTS[demoKey]) {
+      const { email: demoEmail, password: demoPassword } = DEMO_ACCOUNTS[demoKey];
+      setEmail(demoEmail);
+      setPassword(demoPassword);
+      setLoading(true);
+      const supabase = createClient();
+      supabase.auth.signInWithPassword({ email: demoEmail, password: demoPassword }).then(({ error: err }) => {
+        if (err) {
+          setError(err.message);
+          setLoading(false);
+          return;
+        }
+        router.replace('/dashboard');
+        router.refresh();
+      });
+    }
+  }, [searchParams, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

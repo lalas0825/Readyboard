@@ -2,7 +2,7 @@
 
 import { STATUS_CONFIG, type GridStatus } from '../types';
 
-const LEGEND_ORDER: GridStatus[] = ['ready', 'almost', 'blocked', 'held', 'done', 'waiting'];
+const LEGEND_ORDER: GridStatus[] = ['ready', 'in_progress', 'almost', 'blocked', 'held', 'done', 'waiting'];
 
 type GridLegendProps = {
   counts?: Record<GridStatus, number>;

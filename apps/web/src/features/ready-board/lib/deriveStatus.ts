@@ -26,6 +26,11 @@ export function deriveStatus(
     return 'held';
   }
 
+  // 2.5. IN PROGRESS — work started (1-99%) on this trade
+  if (cell.effective_pct > 0 && cell.effective_pct < 100) {
+    return 'in_progress';
+  }
+
   // 3. First trade in sequence — always ready
   if (priorCells.length === 0) {
     return 'ready';

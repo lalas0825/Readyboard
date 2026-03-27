@@ -1,6 +1,30 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
+// ─── Rate Limiting (in-memory, per-instance) ──────────
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(key: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    return false;
+  }
+  entry.count++;
+  return entry.count > maxRequests;
+}
+
+// Cleanup stale entries every 5 minutes
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, val] of rateLimitMap) {
+      if (now > val.resetAt) rateLimitMap.delete(key);
+    }
+  }, 300000);
+}
+
 const PUBLIC_ROUTES = [
   '/', '/login', '/signup', '/forgot-password',
   '/api/legal/verify', '/join', '/api/invite/redeem',
@@ -10,6 +34,21 @@ const PUBLIC_ROUTES = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+
+  // ─── Rate limiting on sensitive routes ──────────
+  if (pathname.startsWith('/api/billing/webhook')) {
+    if (isRateLimited(`webhook:${clientIp}`, 100, 60000)) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+  } else if (
+    pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password' ||
+    pathname.startsWith('/api/auth') || pathname.startsWith('/api/invite')
+  ) {
+    if (isRateLimited(`auth:${clientIp}`, 10, 60000)) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+  }
 
   // Public routes — always allow
   if (PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))) {

@@ -223,6 +223,51 @@ export async function approveNodDraft(
     return { ok: false, error: audit.error };
   }
 
+  // 6. Send NOD email to GC (fire-and-forget — never blocks legal flow)
+  try {
+    const ctx = context.data;
+    const { sendNodEmail } = await import('@/lib/email/sendEmail');
+
+    // Fetch GC org users to email — need project's gc_org_id
+    const serviceClient = createServiceClient();
+    const { data: proj } = await serviceClient
+      .from('projects')
+      .select('gc_org_id')
+      .eq('name', ctx.project.name)
+      .limit(1)
+      .single();
+
+    const trackingUuid = crypto.randomUUID();
+
+    if (proj?.gc_org_id) {
+      const { data: gcUsers } = await serviceClient
+        .from('users')
+        .select('email, name, language')
+        .eq('org_id', proj.gc_org_id)
+        .in('role', ['gc_admin', 'gc_pm']);
+
+      for (const gcUser of gcUsers ?? []) {
+        void sendNodEmail({
+          to: gcUser.email,
+          recipientName: gcUser.name ?? 'Project Manager',
+          projectName: ctx.project.name,
+          areaName: ctx.area.name,
+          tradeName: ctx.delay.tradeName,
+          reasonCode: ctx.delay.reasonCode,
+          dailyCost: `$${Number(ctx.delay.dailyCost ?? 0).toLocaleString()}`,
+          cumulativeCost: `$${Number(ctx.delay.cumulativeCost ?? 0).toLocaleString()}`,
+          signedAt: new Date().toLocaleString('en-US'),
+          hash: uploadResult.hash,
+          trackingUuid,
+          language: (gcUser.language as 'en' | 'es') ?? 'en',
+        });
+      }
+    }
+  } catch (emailErr) {
+    // Email failure NEVER blocks NOD approval — legal doc is already signed and stored
+    console.error('[nodAutoGen] NOD email dispatch failed (non-blocking):', emailErr);
+  }
+
   return {
     ok: true,
     path: uploadResult.path,

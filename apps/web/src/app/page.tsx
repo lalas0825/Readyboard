@@ -49,7 +49,7 @@ export default function LandingPage() {
               Start Free Trial
             </Link>
             <Link
-              href="/login"
+              href="/login?demo=gc"
               className="rounded-xl border border-zinc-700 px-8 py-3.5 text-base font-medium text-zinc-300 transition-colors hover:bg-zinc-900"
             >
               View Demo
@@ -169,7 +169,7 @@ export default function LandingPage() {
           <p className="mt-2 text-zinc-400">GCs think in project costs, not seats.</p>
         </div>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
+        <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <PricingCard
             name="Starter"
             price="$399"
@@ -186,6 +186,15 @@ export default function LandingPage() {
             cta="Start Free Trial"
             href="/signup"
             popular
+          />
+          <PricingCard
+            name="Portfolio"
+            price="$1,999"
+            description="For multi-project GCs"
+            features={['Everything in Pro', 'Unlimited projects', 'AI Morning Briefing', 'Enterprise API access', 'Audit logs + integrations']}
+            cta="Contact Sales"
+            href="mailto:sales@readyboard.ai?subject=Portfolio%20Plan%20Inquiry"
+            enterprise
           />
           <PricingCard
             name="Sub Add-on"
@@ -235,7 +244,7 @@ export default function LandingPage() {
 // ─── Pricing Card ───────────────────────────────────
 
 function PricingCard({
-  name, price, description, features, cta, href, popular,
+  name, price, description, features, cta, href, popular, enterprise,
 }: {
   name: string;
   price: string;
@@ -244,38 +253,48 @@ function PricingCard({
   cta: string;
   href: string;
   popular?: boolean;
+  enterprise?: boolean;
 }) {
+  const borderClass = enterprise
+    ? 'border-yellow-600/40 bg-gradient-to-b from-yellow-950/20 to-zinc-900/50 shadow-lg shadow-yellow-900/10'
+    : popular
+      ? 'border-amber-700/50 bg-amber-950/10 shadow-lg shadow-amber-900/10'
+      : 'border-zinc-800 bg-zinc-900/50';
+
+  const buttonClass = enterprise
+    ? 'bg-yellow-600 text-white hover:bg-yellow-500'
+    : popular
+      ? 'bg-amber-600 text-white hover:bg-amber-500'
+      : 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800';
+
   return (
-    <div className={`relative rounded-2xl border p-8 ${
-      popular
-        ? 'border-amber-700/50 bg-amber-950/10 shadow-lg shadow-amber-900/10'
-        : 'border-zinc-800 bg-zinc-900/50'
-    }`}>
+    <div className={`relative rounded-2xl border p-8 ${borderClass}`}>
       {popular && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-600 px-3 py-0.5 text-[10px] font-bold text-white">
           MOST POPULAR
+        </div>
+      )}
+      {enterprise && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-yellow-600 px-3 py-0.5 text-[10px] font-bold text-white">
+          ENTERPRISE
         </div>
       )}
       <h3 className="text-lg font-bold">{name}</h3>
       <p className="mt-1 text-xs text-zinc-500">{description}</p>
       <p className="mt-4">
         <span className="text-3xl font-extrabold">{price}</span>
-        <span className="text-sm text-zinc-500">/mo per project</span>
+        <span className="text-sm text-zinc-500">/mo</span>
       </p>
       <ul className="mt-6 space-y-2">
         {features.map((f) => (
           <li key={f} className="flex items-center gap-2 text-sm text-zinc-400">
-            <span className="text-green-400">&#10003;</span> {f}
+            <span className={enterprise ? 'text-yellow-400' : 'text-green-400'}>&#10003;</span> {f}
           </li>
         ))}
       </ul>
       <Link
         href={href}
-        className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
-          popular
-            ? 'bg-amber-600 text-white hover:bg-amber-500'
-            : 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-        }`}
+        className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${buttonClass}`}
       >
         {cta}
       </Link>

@@ -131,7 +131,7 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
   // ─── Derived: status counts (from filtered view) ──────
   const statusCounts = useMemo(() => {
     const counts: Record<GridStatus, number> = {
-      ready: 0, almost: 0, blocked: 0, held: 0, done: 0, waiting: 0,
+      ready: 0, in_progress: 0, almost: 0, blocked: 0, held: 0, done: 0, waiting: 0,
     };
     for (const floor of filteredFloors) {
       for (const row of floor.rows) {

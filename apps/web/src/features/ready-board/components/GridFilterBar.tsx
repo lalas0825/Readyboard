@@ -2,7 +2,7 @@
 
 import { STATUS_CONFIG, type GridStatus } from '../types';
 
-const ALL_STATUSES: GridStatus[] = ['ready', 'almost', 'blocked', 'held', 'done', 'waiting'];
+const ALL_STATUSES: GridStatus[] = ['ready', 'in_progress', 'almost', 'blocked', 'held', 'done', 'waiting'];
 
 type GridFilterBarProps = {
   floors: string[];

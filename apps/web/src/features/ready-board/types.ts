@@ -1,5 +1,5 @@
 /** Derived status for each cell in the Ready Board grid */
-export type GridStatus = 'ready' | 'almost' | 'blocked' | 'held' | 'done' | 'waiting';
+export type GridStatus = 'ready' | 'in_progress' | 'almost' | 'blocked' | 'held' | 'done' | 'waiting';
 
 /** Corrective action lifecycle derived from timestamps */
 export type CorrectiveActionStatus = 'open' | 'acknowledged' | 'in_progress' | 'resolved';
@@ -84,12 +84,13 @@ export type DelayData = {
 
 /** Visual config for each status */
 export const STATUS_CONFIG: Record<GridStatus, { label: string; hex: string }> = {
-  done:    { label: 'DONE', hex: '#3b82f6' },
-  ready:   { label: 'RDY',  hex: '#4ade80' },
-  almost:  { label: 'ALM',  hex: '#fbbf24' },
-  blocked: { label: 'BLK',  hex: '#f87171' },
-  held:    { label: 'HLD',  hex: '#c084fc' },
-  waiting: { label: '\u2014',    hex: '#3f3f46' },
+  done:        { label: 'DONE', hex: '#3b82f6' },
+  ready:       { label: 'RDY',  hex: '#4ade80' },
+  in_progress: { label: 'WIP',  hex: '#60a5fa' },
+  almost:      { label: 'ALM',  hex: '#fbbf24' },
+  blocked:     { label: 'BLK',  hex: '#f87171' },
+  held:        { label: 'HLD',  hex: '#c084fc' },
+  waiting:     { label: '\u2014',    hex: '#3f3f46' },
 };
 
 /** Initial data passed from server component to client */

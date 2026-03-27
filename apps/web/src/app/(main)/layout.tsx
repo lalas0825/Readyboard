@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth/getSession';
 import { createServiceClient } from '@/lib/supabase/service';
 import { Sidebar } from '@/features/dashboard/components/Sidebar';
 import { fetchProjectContext } from '@/features/dashboard/services/fetchProjectContext';
+import { TrialBanner } from '@/features/billing/components/TrialBanner';
 
 export default async function MainLayout({
   children,
@@ -42,6 +43,24 @@ export default async function MainLayout({
 
   const projectCtx = await fetchProjectContext();
 
+  // Fetch trial info for banner
+  let trialEndsAt: string | null = null;
+  let subStatus = 'active';
+  if (projectCtx.currentProjectId && !session.isDevBypass) {
+    const supabase2 = createServiceClient();
+    const { data: sub } = await supabase2
+      .from('project_subscriptions')
+      .select('status, trial_ends_at')
+      .eq('project_id', projectCtx.currentProjectId)
+      .in('status', ['active', 'past_due', 'trialing'])
+      .limit(1)
+      .maybeSingle();
+    if (sub) {
+      trialEndsAt = sub.trial_ends_at;
+      subStatus = sub.status;
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-zinc-950">
       <Sidebar
@@ -58,6 +77,9 @@ export default async function MainLayout({
       <main className="flex-1 overflow-auto lg:ml-0">
         {/* Mobile top spacer for hamburger button */}
         <div className="h-14 lg:hidden" />
+        <div className="px-6 pt-2">
+          <TrialBanner trialEndsAt={trialEndsAt} status={subStatus} />
+        </div>
         {children}
       </main>
     </div>
