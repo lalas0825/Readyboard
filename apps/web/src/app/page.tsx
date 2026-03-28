@@ -29,7 +29,7 @@ export default function LandingPage() {
       <section className="relative mx-auto max-w-6xl px-6 pt-32 pb-20 text-center">
         <div className="mx-auto max-w-3xl">
           <div className="mb-6 inline-block rounded-full border border-amber-800/50 bg-amber-950/20 px-4 py-1.5 text-xs font-medium text-amber-400">
-            Built for foremen. Defended in arbitration.
+            Built for foremen. Trusted by GCs.
           </div>
           <h1 className="text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
             Your jobsite under control.{' '}
@@ -134,10 +134,10 @@ export default function LandingPage() {
               <div className="mb-4 inline-block rounded-full border border-blue-800/50 bg-blue-950/20 px-3 py-1 text-xs font-medium text-blue-400">
                 Mobile App
               </div>
-              <h2 className="text-3xl font-bold">Built for Carlos.</h2>
+              <h2 className="text-3xl font-bold">Built for the crew.</h2>
               <p className="mt-4 text-zinc-400">
-                Carlos is 60. He speaks Spanish. His only phone is for WhatsApp.
-                ReadyBoard gives him a 60-second morning update with zero training.
+                Your team reports from the field in 3 taps — no training, no WiFi, no waiting.
+                ReadyBoard works the way your crew already does: fast, simple, done.
               </p>
               <ul className="mt-6 space-y-3 text-sm text-zinc-400">
                 <li className="flex gap-3"><span className="text-amber-400 font-bold">1.</span> One job per screen</li>
