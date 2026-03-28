@@ -19,7 +19,8 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
-  SafeAreaView,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -113,7 +114,7 @@ export default function ForemanHome() {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -152,7 +153,7 @@ export default function ForemanHome() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -160,6 +161,7 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#0f172a',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 40) + 4 : 0,
   },
   header: {
     flexDirection: 'row',

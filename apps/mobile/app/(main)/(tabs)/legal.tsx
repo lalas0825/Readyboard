@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, FlatList, StyleSheet, StatusBar, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../../src/providers/AuthProvider';
@@ -48,7 +48,7 @@ export default function LegalTab() {
   ];
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('tabs.legal')}</Text>
         <Text style={styles.subtitle}>{t('legal.subtitle')}</Text>
@@ -99,12 +99,12 @@ export default function LegalTab() {
           )}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0f172a' },
+  safe: { flex: 1, backgroundColor: '#0f172a', paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 40) + 4 : 0 },
   header: {
     paddingHorizontal: 20,
     paddingTop: 12,

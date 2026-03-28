@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, SafeAreaView, Switch, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Switch, Alert, StatusBar, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
@@ -68,7 +68,7 @@ export default function ProfileTab() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('tabs.profile')}</Text>
       </View>
@@ -134,7 +134,7 @@ export default function ProfileTab() {
           </Text>
         </Pressable>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -148,7 +148,7 @@ function DetailRow({ label, value, mono }: { label: string; value: string; mono?
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0f172a' },
+  safe: { flex: 1, backgroundColor: '#0f172a', paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 40) + 4 : 0 },
   header: {
     paddingHorizontal: 20,
     paddingTop: 12,
