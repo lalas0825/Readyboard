@@ -28,6 +28,7 @@ type AuthContextValue = {
   session: Session | null;
   supabase: SupabaseClient;
   isLoading: boolean;
+  signInWithEmail: (email: string, password: string) => Promise<AuthResult>;
   signInWithPhone: (phone: string) => Promise<AuthResult>;
   verifyOtp: (phone: string, token: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
@@ -75,6 +76,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const signInWithEmail = useCallback(
+    async (email: string, password: string): Promise<AuthResult> => {
+      console.log('[AuthProvider] signInWithEmail:', email);
+      try {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          console.error('[AuthProvider] signInWithEmail failed:', error.message);
+          return { error: error.message };
+        }
+        console.log('[AuthProvider] signInWithEmail: session established');
+        return { error: null };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Network error';
+        console.error('[AuthProvider] signInWithEmail network error:', msg);
+        return { error: msg };
+      }
+    },
+    [supabase]
+  );
 
   const signInWithPhone = useCallback(
     async (phone: string): Promise<AuthResult> => {
@@ -134,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, supabase, isLoading, signInWithPhone, verifyOtp, signOut }}
+      value={{ session, supabase, isLoading, signInWithEmail, signInWithPhone, verifyOtp, signOut }}
     >
       {children}
     </AuthContext.Provider>
