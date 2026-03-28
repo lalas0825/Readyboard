@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { SignupForm } from '@/features/auth/components/SignupForm';
 
 export default function SignupPage() {
@@ -6,12 +5,11 @@ export default function SignupPage() {
     <div className="flex min-h-screen">
       {/* Left: foreman image (hidden on mobile) */}
       <div className="relative hidden lg:flex lg:w-1/2">
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src="/images/hero-foreman.jpg"
           alt="Construction foreman using ReadyBoard on jobsite"
-          fill
-          className="object-cover"
-          quality={85}
+          className="h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-black/30" />
         <div className="absolute bottom-12 left-12 right-12">

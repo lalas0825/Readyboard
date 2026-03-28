@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function LandingPage() {
   return (
@@ -30,13 +29,11 @@ export default function LandingPage() {
       <section className="relative flex min-h-[90vh] items-center justify-center overflow-hidden">
         {/* Background image */}
         <div className="absolute inset-0">
-          <Image
-            src="/images/hero-aerial.png"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/hero-aerial.jpg"
             alt="NYC high-rise construction site with ReadyBoard floor status overlay"
-            fill
-            className="object-cover"
-            priority
-            quality={85}
+            className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
         </div>
