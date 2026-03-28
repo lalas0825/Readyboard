@@ -139,6 +139,21 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [projectSelectorOpen, setProjectSelectorOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Restore collapsed state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('rb-sidebar-collapsed');
+    if (saved === 'true') setCollapsed(true);
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('rb-sidebar-collapsed', String(next));
+      return next;
+    });
+  }
 
   // Badge counts
   const [legalCount, setLegalCount] = useState(0);
@@ -180,18 +195,25 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
 
   const sidebarContent = (
     <>
-      {/* Logo + Notification Bell */}
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-4">
-        <div className="flex items-center gap-2.5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+      {/* Logo + Notification Bell + Collapse toggle */}
+      <div className={`flex items-center border-b border-zinc-800 px-4 py-4 ${collapsed ? 'justify-center' : 'justify-between'}`}>
+        {collapsed ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img src="/readyboard-icon-animated.svg" alt="" className="h-6 w-6" />
-          <span className="text-sm font-semibold text-zinc-100">ReadyBoard</span>
-        </div>
-        <NotificationBell />
+        ) : (
+          <>
+            <div className="flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/readyboard-icon-animated.svg" alt="" className="h-6 w-6" />
+              <span className="text-sm font-semibold text-zinc-100">ReadyBoard</span>
+            </div>
+            <NotificationBell />
+          </>
+        )}
       </div>
 
-      {/* Project selector */}
-      {projects.length > 0 && (
+      {/* Project selector (hidden when collapsed) */}
+      {!collapsed && projects.length > 0 && (
         <div className="border-b border-zinc-800 px-3 py-3">
           <button
             onClick={() => setProjectSelectorOpen(!projectSelectorOpen)}
@@ -238,7 +260,10 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
               <li key={item.key}>
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
+                  title={collapsed ? item.label : undefined}
+                  className={`flex items-center rounded-md px-3 py-2 text-sm transition-colors ${
+                    collapsed ? 'justify-center' : 'gap-2.5'
+                  } ${
                     active
                       ? 'bg-zinc-800 font-medium text-zinc-100'
                       : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
@@ -247,8 +272,8 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
                   <span className={active ? 'text-amber-400' : 'text-zinc-500'}>
                     {item.icon}
                   </span>
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge && (
+                  {!collapsed && <span className="flex-1">{item.label}</span>}
+                  {!collapsed && item.badge && (
                     <NavBadge
                       count={getBadgeCount(item.badge)}
                       color={getBadgeColor(item.badge)}
@@ -264,7 +289,10 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
         <div className="mt-4 border-t border-zinc-800 pt-3">
           <Link
             href="/dashboard/billing"
-            className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
+            title={collapsed ? 'Billing' : undefined}
+            className={`flex items-center rounded-md px-3 py-2 text-sm transition-colors ${
+              collapsed ? 'justify-center' : 'gap-2.5'
+            } ${
               pathname === '/dashboard/billing'
                 ? 'bg-zinc-800 font-medium text-zinc-100'
                 : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
@@ -273,21 +301,44 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
             <span className={pathname === '/dashboard/billing' ? 'text-amber-400' : 'text-zinc-500'}>
               {icons.billing}
             </span>
-            <span className="flex-1">Billing</span>
+            {!collapsed && <span className="flex-1">Billing</span>}
           </Link>
         </div>
       </nav>
 
+      {/* Collapse toggle (desktop only) */}
+      <div className="border-t border-zinc-800 px-3 py-2 hidden lg:block">
+        <button
+          onClick={toggleCollapsed}
+          className="flex w-full items-center justify-center rounded-md p-1.5 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
+          </svg>
+        </button>
+      </div>
+
       {/* User section */}
       <div className="border-t border-zinc-800 px-3 py-3 space-y-2">
-        <div className="px-1 space-y-1">
-          <p className="truncate text-xs font-medium text-zinc-300">{user.name}</p>
-          <p className="text-[10px] uppercase tracking-wider text-zinc-600">
-            {user.role.replace('_', ' ')}
-            {user.isDevBypass && ' (dev)'}
-          </p>
-        </div>
-        <LogoutButton />
+        {collapsed ? (
+          <div className="flex justify-center">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300" title={user.name}>
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="px-1 space-y-1">
+              <p className="truncate text-xs font-medium text-zinc-300">{user.name}</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-600">
+                {user.role.replace('_', ' ')}
+                {user.isDevBypass && ' (dev)'}
+              </p>
+            </div>
+            <LogoutButton />
+          </>
+        )}
       </div>
     </>
   );
@@ -328,7 +379,9 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden w-56 flex-col border-r border-zinc-800 bg-zinc-900 lg:flex">
+      <aside className={`hidden flex-col border-r border-zinc-800 bg-zinc-900 transition-all duration-200 lg:flex ${
+        collapsed ? 'w-16' : 'w-56'
+      }`}>
         {sidebarContent}
       </aside>
     </>

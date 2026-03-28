@@ -74,12 +74,35 @@ export type GenerateBriefingResult = {
  * Idempotent: checks if briefing already exists for today.
  * Falls back to data-only summary if AI fails.
  */
+// Demo project ID (383 Madison — hardcoded briefing, no API call)
+const DEMO_PROJECT_ID = 'b0000000-0000-0000-0000-000000000001';
+
+const DEMO_BRIEFINGS: Record<string, string> = {
+  en: `1. 3 areas blocked on Floor 22 — Drywall crew waiting on Fire Stopping inspection (FDNY). Cumulative cost: $14,400. NOD drafted for Bath 22C.
+2. GC verification overdue on Floor 21: 4 tasks pending approval >24h (Tile, Waterproofing). Escalation sent to sub PM.
+3. Today's priority: Clear Fire Stopping on F22 to unblock 6 areas. MEP Trim-Out on F20 is 2 days ahead of schedule — keep momentum.`,
+  es: `1. 3 áreas bloqueadas en Piso 22 — cuadrilla de Drywall esperando inspección de Fire Stopping (FDNY). Costo acumulado: $14,400. NOD redactado para Baño 22C.
+2. Verificación GC vencida en Piso 21: 4 tareas pendientes >24h (Tile, Waterproofing). Escalación enviada al sub PM.
+3. Prioridad hoy: Liberar Fire Stopping en P22 para desbloquear 6 áreas. MEP Trim-Out en P20 va 2 días adelantado — mantener ritmo.`,
+};
+
 export async function generateMorningBriefing(
   userId: string,
   projectId: string,
   role: string,
   language: string = 'en',
 ): Promise<GenerateBriefingResult> {
+  // Demo mode: instant hardcoded briefing, no API call, no DB write
+  if (projectId === DEMO_PROJECT_ID) {
+    return {
+      ok: true,
+      content: DEMO_BRIEFINGS[language] ?? DEMO_BRIEFINGS.en,
+      model: 'demo',
+      tokensUsed: 0,
+      isFallback: false,
+    };
+  }
+
   const supabase = createServiceClient();
   const today = new Date().toISOString().split('T')[0];
 
