@@ -1,10 +1,11 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
       {/* ─── Navbar ────────────────────────────── */}
-      <nav className="fixed top-0 z-50 w-full border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md">
+      <nav className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/40 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -12,7 +13,7 @@ export default function LandingPage() {
             <span className="text-base font-bold">ReadyBoard</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm text-zinc-400 transition-colors hover:text-zinc-200">
+            <Link href="/login" className="text-sm text-zinc-300 transition-colors hover:text-white">
               Log In
             </Link>
             <Link
@@ -26,9 +27,23 @@ export default function LandingPage() {
       </nav>
 
       {/* ─── Hero ──────────────────────────────── */}
-      <section className="relative mx-auto max-w-6xl px-6 pt-32 pb-20 text-center">
-        <div className="mx-auto max-w-3xl">
-          <div className="mb-6 inline-block rounded-full border border-amber-800/50 bg-amber-950/20 px-4 py-1.5 text-xs font-medium text-amber-400">
+      <section className="relative flex min-h-[90vh] items-center justify-center overflow-hidden">
+        {/* Background image */}
+        <div className="absolute inset-0">
+          <Image
+            src="/images/hero-aerial.png"
+            alt="NYC high-rise construction site with ReadyBoard floor status overlay"
+            fill
+            className="object-cover"
+            priority
+            quality={85}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
+        </div>
+
+        {/* Content on top */}
+        <div className="relative z-10 mx-auto max-w-4xl px-6 text-center">
+          <div className="mb-6 inline-block rounded-full border border-amber-400/30 bg-black/40 px-4 py-1.5 text-xs font-medium text-amber-400 backdrop-blur-sm">
             Built for foremen. Trusted by GCs.
           </div>
           <h1 className="text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
@@ -37,7 +52,7 @@ export default function LandingPage() {
               No calls. No chaos.
             </span>
           </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-zinc-400">
+          <p className="mx-auto mt-6 max-w-xl text-lg text-zinc-300">
             ReadyBoard tells every trade what areas they can work today, alerts when something changes,
             and auto-documents every lost day as legal evidence.
           </p>
@@ -50,7 +65,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/login?demo=gc"
-              className="rounded-xl border border-zinc-700 px-8 py-3.5 text-base font-medium text-zinc-300 transition-colors hover:bg-zinc-900"
+              className="rounded-xl border border-white/20 bg-white/10 px-8 py-3.5 text-base font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20"
             >
               View Demo
             </Link>
