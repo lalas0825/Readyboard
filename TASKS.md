@@ -14,7 +14,7 @@
 > - 🔨 BUILD — Does not exist, create from scratch
 > - 🔌 WIRE — Code exists but not connected
 >
-> Last updated: 2026-03-27
+> Last updated: 2026-03-27 (final session)
 
 ---
 
@@ -107,11 +107,11 @@
 - [x] Webhook route (/api/billing/webhook): 100 req/min
 - [x] Returns 429 Too Many Requests on breach
 
-### 12. Stripe — Sub Add-on Price ID
+### 12. Stripe — Sub Add-on Price ID — ✅ DONE
 
-- [ ] 🔨 Create Sub Add-on product ($59/mo) in Stripe dashboard (manual)
-- [ ] 🔨 Add Price ID to env vars
-- [ ] 🔌 Wire to checkout flow for sub_pm role
+- [x] Sub Add-on product ($59/mo) created in Stripe sandbox
+- [x] STRIPE_PRICE_SUB_ADDON added to .env.local + Vercel env vars
+- [ ] 🔌 Wire to checkout flow for sub_pm role (post-launch)
 
 ### 13. Trial Banner with Countdown — ✅ DONE
 
@@ -137,7 +137,7 @@
 - [x] `forecastCron.ts` — iterates all projects with try/catch per project
 - [ ] 🔨 Crew performance vs benchmark dashboard (tables exist, no UI)
 - [ ] 🔨 XLSX support for schedule import (CSV works, XLSX doesn't)
-- [ ] 🔨 Vercel Cron config (vercel.json) for 6-hour schedule
+- [x] Vercel Cron config: every 6h (vercel.json) + cron_logs table + cronLogger + fail-safe alerts
 
 ### Notification Coverage — ✅ 12/12 WIRED
 
@@ -164,12 +164,12 @@ Audit result: 9 were already wired, 3 were added.
 - [ ] trial_ending — needs billing cron
 - [ ] payment_failed — needs webhook integration
 
-### AI Morning Briefing — Complete Implementation
+### AI Morning Briefing — ✅ CORE DONE
 
-- [ ] 🔨 Configure cron: 6am ET daily generation
-- [ ] 🔨 Build demo hardcoded briefing (no API call for demo account)
-- [ ] 🔨 Add cost monitoring: tokens per briefing, alert if monthly >$50
-- [ ] 🔨 Past briefings view (last 7 days)
+- [x] Cron: 11:00 UTC (6AM ET) daily via vercel.json + CRON_SECRET auth
+- [x] Demo hardcoded briefing: detects 383 Madison → instant bilingual EN/ES, no API call
+- [x] cron_logs structured logging + 3x fail-safe admin alert email
+- [ ] 🔨 Cost monitoring: tokens per briefing, alert if monthly >$50
 - [ ] 🔨 Settings: briefing push/email toggle
 
 ### Change Order Engine
@@ -181,14 +181,23 @@ Audit result: 9 were already wired, 3 were added.
 
 ### Dashboard Polish
 
-- [ ] 🔨 Collapsible sidebar (icon-only mode)
+- [x] Collapsible sidebar: toggle button, icon-only mode (w-16), localStorage persistence
 - [ ] 🔨 Live indicator (green dot) in top bar
 - [ ] 🔨 Email verification custom gate (currently Supabase built-in)
 
-### DNS & Email Auth
+### DNS & Email Auth (manual — requires domain purchase)
 
-- [ ] 🔨 Verify/configure SPF, DKIM, DMARC records on readyboard.ai
+- [ ] 🔨 Buy readyboard.ai domain
+- [ ] 🔨 Connect domain to Vercel (Project Settings → Domains)
+- [ ] 🔨 Configure SPF, DKIM, DMARC in Resend + DNS registrar
+- [ ] 🔨 Update NEXT_PUBLIC_APP_URL + NEXT_PUBLIC_SITE_URL to https://readyboard.ai
 - [ ] 🔨 Test email deliverability from noreply@readyboard.ai
+
+### Demo Account — ✅ PRO UNLOCKED
+
+- [x] Demo GC (Tishman Speyer / 383 Madison) has active Pro subscription until 2027-12-31
+- [x] All features unlocked: Legal Docs, SHA-256, Checklist, Schedule, Audit Logs
+- [x] Demo briefing loads instantly (hardcoded, no API call)
 
 ---
 
@@ -230,19 +239,33 @@ Audit result: 9 were already wired, 3 were added.
 
 ---
 
-## Summary — Work Remaining
+## Summary — Current Status
 
-| Priority | Items | Est. Hours | Timeline |
-|----------|-------|------------|----------|
-| 🔴 P0 Critical | 4 items | ~2 hrs | Today |
-| 🟡 P1 Launch | 10 items | ~20 hrs | This week |
-| 🟢 P2 Post-Launch | ~15 items | ~40 hrs | Week 1-2 post-launch |
-| ⚪ P3 Future | ~20 items | Ongoing | V2+ |
+| Priority | Status | Detail |
+|----------|--------|--------|
+| 🔴 P0 Critical | ✅ CLOSED | All 4 blockers resolved |
+| 🟡 P1 Launch | ✅ CLOSED | 14/14 items done (Sub Add-on wiring post-launch) |
+| 🟢 P2 Post-Launch | ✅ CORE DONE | Forecast EMA, 12/12 notifications, cron automation, demo, sidebar |
+| ⚪ P3 Future | ⏳ BACKLOG | App Store, SMS, AI Chat, Change Orders |
 
-**Web launch target:** After P0 + P1 complete (~22 hours of work).
-**App Store target:** After P3 App Store items (~15 hours additional).
+### Remaining Work (non-blocking)
+
+| Task | Est. | Trigger |
+|------|------|---------|
+| Buy domain + DNS/SPF/DKIM | Manual | Pre-launch |
+| XLSX schedule import | 2h | Post-launch |
+| Crew performance UI | 3h | Post-launch |
+| Change order engine UI | 4h | Post-launch |
+| Live indicator (green dot) | 1h | Polish |
+| Sub Add-on checkout wiring | 1h | Post-launch |
+| App Store (eas.json + builds) | 4h | V2 |
+| SMS provider (Twilio) | 3h | V2 |
+| AI Chat Agent | TBD | V2 (post 10 projects) |
+
+**Web launch:** ✅ Ready after domain purchase + DNS config.
+**Field test:** ✅ Ready now with demo accounts (Pro unlocked).
 
 ---
 
-*ReadyBoard v5.3 — TASKS.md — Updated 2026-03-27 post-audit v2*
+*ReadyBoard v5.3 — TASKS.md — Updated 2026-03-27 (final session)*
 *readyboard.ai*
