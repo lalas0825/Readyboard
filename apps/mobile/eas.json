@@ -17,6 +17,11 @@
     "preview": {
       "distribution": "internal",
       "node": "18.18.0",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://errxmhgqksdasxccumtz.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVycnhtaGdxa3NkYXN4Y2N1bXR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NjA5NzYsImV4cCI6MjA4OTUzNjk3Nn0.D4CtW27aZIWS5L6vVqan6aA2Fwblz8yZuoHOLwj6h0E",
+        "EXPO_PUBLIC_POWERSYNC_URL": "https://69bca667470f5291b29d919d.powersync.journeyapps.com"
+      },
       "android": {
         "buildType": "apk"
       },

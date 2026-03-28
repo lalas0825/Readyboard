@@ -22,7 +22,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../src/providers/AuthProvider';
@@ -40,10 +40,9 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // If already authenticated, redirect immediately
+  // If already authenticated, redirect declaratively
   if (session) {
-    router.replace('/');
-    return null;
+    return <Redirect href="/" />;
   }
 
   async function handleSendCode() {

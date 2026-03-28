@@ -3,25 +3,18 @@
  *
  * All routes inside (main)/ require an active session.
  * Redirects to /login if no session after auth loading.
+ * Uses declarative Redirect to avoid "navigate before mount" crash.
  */
 
-import { useEffect } from 'react';
-import { Slot } from 'expo-router';
-import { useRouter } from 'expo-router';
+import { Slot, Redirect } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
 
 export default function MainLayout() {
   const { session, isLoading } = useAuth();
-  const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading && !session) {
-      router.replace('/login');
-    }
-  }, [isLoading, session, router]);
+  if (isLoading) return null;
 
-  // Show nothing while auth is loading or no session
-  if (isLoading || !session) return null;
+  if (!session) return <Redirect href="/login" />;
 
   return <Slot />;
 }
