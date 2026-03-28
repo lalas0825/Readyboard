@@ -96,6 +96,12 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      {/* Background image */}
+      <Image
+        source={require('../assets/login-bg.jpg')}
+        style={StyleSheet.absoluteFillObject}
+        resizeMode="cover"
+      />
       <View style={styles.inner}>
         {/* Logo */}
         <Image
@@ -231,7 +237,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
   },
   inner: {
     flex: 1,
@@ -259,7 +264,7 @@ const styles = StyleSheet.create({
   },
   tabs: {
     flexDirection: 'row',
-    backgroundColor: '#1e293b',
+    backgroundColor: 'rgba(30,41,59,0.85)',
     borderRadius: 10,
     padding: 3,
     marginBottom: 24,
@@ -282,13 +287,15 @@ const styles = StyleSheet.create({
     color: '#f8fafc',
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: 'rgba(30,41,59,0.85)',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 16,
     fontSize: 17,
     color: '#f8fafc',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(71,85,105,0.4)',
   },
   hint: {
     fontSize: 14,
