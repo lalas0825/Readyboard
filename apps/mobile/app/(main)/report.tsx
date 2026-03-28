@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useReportStore, useFieldReport } from '@readyboard/shared';
+import { uploadPhoto } from '../../src/services/uploadPhoto';
 import ReportFlowNavigator from '../../src/components/report/ReportFlowNavigator';
 
 export default function ReportScreen() {
@@ -81,6 +82,23 @@ export default function ReportScreen() {
       }
 
       const status = store.getDerivedStatus();
+
+      // Upload photo to Supabase Storage (falls back to local URI if offline)
+      let photoUrl = formData.photo_url ?? undefined;
+      if (photoUrl) {
+        try {
+          const uploadResult = await uploadPhoto(
+            photoUrl,
+            'reports',
+            store.context.area_id,
+          );
+          photoUrl = uploadResult.url;
+        } catch {
+          // Photo upload failure never blocks report submission
+          console.warn('[Report] Photo upload failed, using local URI');
+        }
+      }
+
       await createReport({
         area_id: store.context.area_id,
         user_id: store.context.user_id,
@@ -90,7 +108,7 @@ export default function ReportScreen() {
         reason_code: formData.reason_code ?? undefined,
         gps_lat: gpsLat ?? undefined,
         gps_lng: gpsLng ?? undefined,
-        photo_url: formData.photo_url ?? undefined,
+        photo_url: photoUrl,
       });
 
       // Atomic delay_log: only if blocked, non-blocking if it fails
