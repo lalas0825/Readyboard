@@ -88,7 +88,185 @@ export async function notificationTrigger(projectId: string): Promise<void> {
     // Silent — notification failures never block dashboard
   }
 
-  // ── 2. 48h/72h Escalation ──────────────────────────
+  // ── 2. Area BLOCKED — notify GC + Sub PM ──────────
+  try {
+    const antiSpamCutoff = new Date(now.getTime() - ANTI_SPAM_WINDOW_MS).toISOString();
+
+    // Find areas that became blocked (active delay, started in last 24h)
+    const { data: newBlocks } = await supabase
+      .from('delay_logs')
+      .select(`
+        id, area_id, trade_name, reason_code,
+        areas!inner ( name, project_id )
+      `)
+      .eq('areas.project_id', projectId)
+      .is('ended_at', null)
+      .gte('started_at', antiSpamCutoff);
+
+    if (newBlocks && newBlocks.length > 0) {
+      const { data: recentBlockNotifs } = await supabase
+        .from('notifications')
+        .select('data')
+        .eq('type', 'area_blocked')
+        .gte('created_at', antiSpamCutoff);
+
+      const notifiedIds = new Set(
+        (recentBlockNotifs ?? []).map((n) => (n.data as Record<string, unknown>)?.delayLogId),
+      );
+
+      const toNotify = newBlocks.filter((d) => !notifiedIds.has(d.id));
+
+      if (toNotify.length > 0) {
+        // Notify all GC users on the project
+        const { data: gcUsers } = await supabase
+          .from('project_members')
+          .select('user_id')
+          .eq('project_id', projectId)
+          .in('role', ['gc_admin', 'gc_pm', 'gc_super']);
+
+        const userIds = [...new Set((gcUsers ?? []).map((u) => u.user_id))];
+
+        const records = toNotify.flatMap((delay) => {
+          const area = delay.areas as unknown as Record<string, unknown>;
+          return userIds.map((uid) => ({
+            user_id: uid,
+            type: 'area_blocked',
+            title: `Area Blocked — ${(area.name as string)} · ${delay.trade_name}`,
+            body: `Reason: ${delay.reason_code}`,
+            data: { delayLogId: delay.id, areaId: delay.area_id, tradeName: delay.trade_name },
+          }));
+        });
+
+        if (records.length > 0) await supabase.from('notifications').insert(records);
+      }
+    }
+  } catch {
+    // Silent
+  }
+
+  // ── 3. Area READY — notify assigned foremen ───────
+  try {
+    const antiSpamCutoff = new Date(now.getTime() - ANTI_SPAM_WINDOW_MS).toISOString();
+
+    // Find areas where all prior trades just completed (effective_pct went to 100 recently)
+    const { data: recentlyReady } = await supabase
+      .from('area_trade_status')
+      .select(`
+        id, area_id, trade_type, effective_pct,
+        areas!inner ( name, project_id )
+      `)
+      .eq('areas.project_id', projectId)
+      .gte('effective_pct', 100)
+      .gte('updated_at', antiSpamCutoff);
+
+    if (recentlyReady && recentlyReady.length > 0) {
+      const { data: recentReadyNotifs } = await supabase
+        .from('notifications')
+        .select('data')
+        .eq('type', 'area_ready')
+        .gte('created_at', antiSpamCutoff);
+
+      const notifiedKeys = new Set(
+        (recentReadyNotifs ?? []).map((n) => {
+          const d = n.data as Record<string, unknown>;
+          return `${d?.areaId}:${d?.tradeName}`;
+        }),
+      );
+
+      const toNotify = recentlyReady.filter(
+        (r) => !notifiedKeys.has(`${r.area_id}:${r.trade_type}`),
+      );
+
+      if (toNotify.length > 0) {
+        // Get foremen assigned to these areas
+        const areaIds = [...new Set(toNotify.map((r) => r.area_id))];
+        const { data: assignments } = await supabase
+          .from('user_assignments')
+          .select('user_id, area_id')
+          .in('area_id', areaIds);
+
+        const records = toNotify.flatMap((item) => {
+          const area = item.areas as unknown as Record<string, unknown>;
+          const foremen = (assignments ?? []).filter((a) => a.area_id === item.area_id);
+          return foremen.map((f) => ({
+            user_id: f.user_id,
+            type: 'area_ready',
+            title: `Area Ready — ${(area.name as string)} · ${item.trade_type}`,
+            body: 'This trade is complete. Next trade can begin.',
+            data: { areaId: item.area_id, tradeName: item.trade_type },
+          }));
+        });
+
+        if (records.length > 0) await supabase.from('notifications').insert(records);
+      }
+    }
+  } catch {
+    // Silent
+  }
+
+  // ── 4. NOD Draft Ready — notify superintendent ────
+  try {
+    const antiSpamCutoff = new Date(now.getTime() - ANTI_SPAM_WINDOW_MS).toISOString();
+
+    const { data: newDrafts } = await supabase
+      .from('nod_drafts')
+      .select(`
+        id, delay_log_id, created_at,
+        delay_logs!inner ( area_id, trade_name, areas!inner ( name, project_id ) )
+      `)
+      .is('sent_at', null)
+      .gte('created_at', antiSpamCutoff);
+
+    // Filter to this project
+    const projectDrafts = (newDrafts ?? []).filter((d) => {
+      const dl = d.delay_logs as unknown as Record<string, unknown>;
+      const area = dl.areas as unknown as Record<string, unknown>;
+      return area.project_id === projectId;
+    });
+
+    if (projectDrafts.length > 0) {
+      const { data: recentDraftNotifs } = await supabase
+        .from('notifications')
+        .select('data')
+        .eq('type', 'nod_draft_ready')
+        .gte('created_at', antiSpamCutoff);
+
+      const notifiedIds = new Set(
+        (recentDraftNotifs ?? []).map((n) => (n.data as Record<string, unknown>)?.draftId),
+      );
+
+      const toNotify = projectDrafts.filter((d) => !notifiedIds.has(d.id));
+
+      if (toNotify.length > 0) {
+        // Notify GC supers and PMs
+        const { data: gcUsers } = await supabase
+          .from('project_members')
+          .select('user_id')
+          .eq('project_id', projectId)
+          .in('role', ['gc_admin', 'gc_pm', 'gc_super']);
+
+        const userIds = [...new Set((gcUsers ?? []).map((u) => u.user_id))];
+
+        const records = toNotify.flatMap((draft) => {
+          const dl = draft.delay_logs as unknown as Record<string, unknown>;
+          const area = dl.areas as unknown as Record<string, unknown>;
+          return userIds.map((uid) => ({
+            user_id: uid,
+            type: 'nod_draft_ready',
+            title: `NOD Draft Ready — ${(area.name as string)} · ${dl.trade_name as string}`,
+            body: 'Review and sign the Notice of Delay.',
+            data: { draftId: draft.id, delayLogId: draft.delay_log_id },
+          }));
+        });
+
+        if (records.length > 0) await supabase.from('notifications').insert(records);
+      }
+    }
+  } catch {
+    // Silent
+  }
+
+  // ── 5. 48h/72h Escalation ──────────────────────────
   try {
     await checkEscalations(projectId);
   } catch {

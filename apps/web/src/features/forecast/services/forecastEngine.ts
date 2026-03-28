@@ -4,9 +4,9 @@ import { createServiceClient } from '@/lib/supabase/service';
 import type { FieldReportForBurnRate, RefreshResult } from '../types';
 import { AT_RISK_THRESHOLD_DAYS, BURN_RATE_WINDOW_DAYS, MS_PER_DAY } from '@/lib/constants';
 
-/** EMA smoothing factor — α = 2/(N+1) where N=3 gives heavy weight to last 3 days */
-const EMA_SPAN = 3;
-const EMA_ALPHA = 2 / (EMA_SPAN + 1); // 0.5
+/** EMA smoothing factor — α = 2/(N+1) where N=14 gives balanced weight over 2 weeks */
+const EMA_SPAN = BURN_RATE_WINDOW_DAYS; // 14
+const EMA_ALPHA = 2 / (EMA_SPAN + 1); // ~0.133 — 13% weight to latest rate
 
 // ─── Pure Calculation Functions (exported for testing) ───────
 

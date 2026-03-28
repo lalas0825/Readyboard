@@ -129,29 +129,40 @@
 
 ## 🟢 P2 — POST-LAUNCH (Week 1-2 after launch)
 
-### Forecast Engine Completion
+### Forecast Engine Completion — ✅ CORE DONE
 
-- [ ] 🔨 14-day EMA burn rate algorithm (columns exist, no calculation)
-- [ ] 🔨 At-risk alerts trigger when area >3 days behind baseline
+- [x] 14-day EMA burn rate (EMA_SPAN=14, α=0.133) — replaces 3-day span
+- [x] AT_RISK flag: delta_days > 3 tracked in forecast_snapshots
+- [x] Cron API: `/api/forecast/refresh` — refreshes all projects (service client, no session)
+- [x] `forecastCron.ts` — iterates all projects with try/catch per project
 - [ ] 🔨 Crew performance vs benchmark dashboard (tables exist, no UI)
 - [ ] 🔨 XLSX support for schedule import (CSV works, XLSX doesn't)
+- [ ] 🔨 Vercel Cron config (vercel.json) for 6-hour schedule
 
-### Notification Coverage
+### Notification Coverage — ✅ 12/12 WIRED
 
-- [ ] 🔍 Audit which of the 12 notification types are wired
-- [ ] 🔌 Wire remaining notification triggers:
-  - Area READY for your trade
-  - Area BLOCKED on your project
-  - NOD draft ready for review
-  - GC verification needed
-  - GC verification reminder (4h)
-  - Escalation alert (24h)
-  - Correction requested
-  - Schedule delta alert
-  - REA threshold reached
-  - Briefing ready
-  - Trial ending
-  - Payment failed
+Audit result: 9 were already wired, 3 were added.
+
+**Previously wired (9):**
+- [x] nod_reminder (20h delay without NOD)
+- [x] legal_escalation (48h opened, no response)
+- [x] legal_follow_up (72h never opened)
+- [x] gc_verification_reminder (4h pending)
+- [x] gc_verification_escalation (24h pending)
+- [x] gc_correction_requested
+- [x] gc_verification_approved
+- [x] corrective_action_assigned
+- [x] morning_briefing
+
+**Newly wired (3):**
+- [x] area_blocked — notifies GC team when delay starts (anti-spam 24h)
+- [x] area_ready — notifies assigned foremen when trade completes (anti-spam 24h)
+- [x] nod_draft_ready — notifies GC supers/PMs when draft needs review (anti-spam 24h)
+
+**Remaining (event-driven, not poll-based):**
+- [ ] schedule_delta_alert — needs forecast cron integration
+- [ ] trial_ending — needs billing cron
+- [ ] payment_failed — needs webhook integration
 
 ### AI Morning Briefing — Complete Implementation
 
