@@ -5,10 +5,20 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "readyboard",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
     "ios": {
       "bundleIdentifier": "com.readyboard.foreman",
       "supportsTablet": true,
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "ReadyBoard uses your camera to photograph work areas as legal evidence for delay documentation.",
         "NSLocationWhenInUseUsageDescription": "ReadyBoard records your location to verify which work area you are reporting from.",
@@ -17,14 +27,20 @@
     },
     "android": {
       "package": "com.readyboard.foreman",
+      "versionCode": 1,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "plugins": [
@@ -49,6 +65,15 @@
           "color": "#f59e0b"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "edf9eb5c-25c3-47de-8402-76104869c627"
+      }
+    },
+    "owner": "lalas825"
   }
 }
