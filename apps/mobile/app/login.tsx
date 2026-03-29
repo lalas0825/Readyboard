@@ -96,9 +96,12 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Background image */}
+      {/* Background image — platform-specific */}
       <Image
-        source={require('../assets/login-bg.jpg')}
+        source={Platform.OS === 'ios'
+          ? require('../assets/login-mobile-ios.jpg')
+          : require('../assets/login-mobile-android.jpg')
+        }
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
       />
