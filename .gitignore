@@ -63,6 +63,7 @@ supabase/.temp
 .turbo
 
 # Expo
+/app.json
 apps/mobile/.expo/
 apps/mobile/ios/
 apps/mobile/android/
