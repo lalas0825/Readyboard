@@ -9,6 +9,11 @@ import Stripe from 'stripe';
  */
 const key = process.env.STRIPE_SECRET_KEY;
 
+// Hard validation in production — fail fast, not silently
+if (!key && process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+  console.error('[Stripe] STRIPE_SECRET_KEY is missing in production. Billing will not work.');
+}
+
 /**
  * Singleton Stripe client. Uses placeholder key during build/dev
  * when STRIPE_SECRET_KEY is not set. API calls will fail gracefully

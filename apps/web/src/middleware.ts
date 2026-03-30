@@ -55,8 +55,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Dev bypass — skip auth check in development
-  if (process.env.NODE_ENV === 'development') {
+  // Dev bypass — only when explicit flag is set (never in Vercel production)
+  if (process.env.NODE_ENV === 'development' && process.env.DEV_AUTH_BYPASS === 'true') {
     return NextResponse.next();
   }
 
@@ -85,6 +85,11 @@ export async function middleware(request: NextRequest) {
 
   if (!user) {
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // Email verification — block unverified users from protected routes
+  if (!user.email_confirmed_at && pathname !== '/onboarding') {
+    return NextResponse.redirect(new URL('/login?error=verify_email', request.url));
   }
 
   // Role-based route protection (includes org_id for billing check)

@@ -5,10 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
-const DEMO_ACCOUNTS: Record<string, { email: string; password: string }> = {
-  gc: { email: 'demo-gc@readyboard.ai', password: 'ReadyBoard2026!' },
-  sub: { email: 'demo-sub@readyboard.ai', password: 'ReadyBoard2026!' },
-};
+// Demo accounts loaded from server env — never exposed in client bundle
+// Set NEXT_PUBLIC_DEMO_ENABLED=true to activate demo login via ?demo=gc|sub
+const DEMO_ENABLED = process.env.NEXT_PUBLIC_DEMO_ENABLED === 'true';
+const DEMO_ACCOUNTS: Record<string, { email: string; password: string }> = DEMO_ENABLED
+  ? {
+      gc: { email: 'demo-gc@readyboard.ai', password: 'ReadyBoard2026!' },
+      sub: { email: 'demo-sub@readyboard.ai', password: 'ReadyBoard2026!' },
+    }
+  : {};
 
 export function LoginForm() {
   const router = useRouter();
