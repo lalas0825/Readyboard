@@ -137,6 +137,24 @@ npx eas build --profile production --platform android
 npx eas build --profile preview --platform ios
 ```
 
+## Build-Time Issues
+
+### "Unable to resolve module ../../App from expo/AppEntry.js"
+**Why:** In npm workspaces monorepos, `expo` gets hoisted to the root `node_modules/`. When EAS runs `expo/AppEntry.js`, it does `import App from '../../App'` which resolves to the monorepo root — where no `App.js` exists.
+
+**Fix:** Create an `App.js` at the **monorepo root** (not in apps/mobile):
+```js
+// App.js (monorepo root)
+import 'expo-router/entry';
+```
+
+This file is only used by EAS Build. It re-exports expo-router's entry point so the hoisted `expo/AppEntry.js` can find it.
+
+**Important:** Do NOT change `"main"` in mobile's `package.json` — keep it as `"expo-router/entry"`. Creating `index.js` in the mobile workspace does NOT fix this because the import path is relative to `node_modules/expo/`, not to your workspace.
+
+### Package ID mismatch
+When EAS asks "What would you like your Android application id to be?", use the **same one** from your `app.json` (`android.package`). If you use a different one, EAS creates new credentials and may cause config conflicts.
+
 ## Post-Build Issues
 
 ### App Crashes Immediately — "supabaseUrl is required"
@@ -220,3 +238,5 @@ Then update the profile in `public.users` with correct role/org.
 | `Attempted to navigate before mounting` | Imperative router in layout | Use `<Redirect>` component |
 | `Database error querying schema` (auth) | User created via SQL INSERT | Use `supabase.auth.admin.createUser()` |
 | PowerSync "Offline" forever | JWT Secret not configured | Client Auth → Use Supabase Auth → paste JWT secret |
+| `Unable to resolve module ../../App` | expo hoisted to monorepo root | Create `App.js` at monorepo root with `import 'expo-router/entry'` |
+| Package ID mismatch on rebuild | Different ID entered in EAS prompt | Always use same ID as `app.json` `android.package` |
