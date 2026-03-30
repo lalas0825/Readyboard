@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "edf9eb5c-25c3-47de-8402-76104869c627"
+      }
+    },
+    "android": {
+      "package": "com.lalas825.readyboard"
+    }
+  }
+}

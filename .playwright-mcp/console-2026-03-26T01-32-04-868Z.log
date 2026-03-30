@@ -1,0 +1,80 @@
+[    1936ms] Error: STRIPE_SECRET_KEY is not set
+    at module evaluation (http://localhost:3000/_next/static/chunks/apps_web_src_074e0f9._.js:9445:11)
+    at http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1307:27
+    at runModuleExecutionHooks (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1636:13)
+    at instantiateModuleShared (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1305:9)
+    at instantiateModule (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1621:12)
+    at getOrInstantiateModuleFromParent (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1604:12)
+    at DevContext.esmImport [as i] (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:278:20)
+    at module evaluation (http://localhost:3000/_next/static/chunks/apps_web_src_074e0f9._.js:9513:164)
+    at http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1307:27
+    at runModuleExecutionHooks (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1636:13)
+    at instantiateModuleShared (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1305:9)
+    at instantiateModule (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1621:12)
+    at getOrInstantiateModuleFromParent (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1604:12)
+    at DevContext.esmImport [as i] (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:278:20)
+    at module evaluation (http://localhost:3000/_next/static/chunks/apps_web_src_074e0f9._.js:9851:202)
+    at http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1307:27
+    at runModuleExecutionHooks (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1636:13)
+    at instantiateModuleShared (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1305:9)
+    at instantiateModule (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1621:12)
+    at getOrInstantiateModuleFromParent (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1604:12)
+    at DevContext.commonJsRequire [as r] (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:299:12)
+    at requireModule (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:95:84)
+    at initializeModuleChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:1110:25)
+    at readChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:846:17)
+    at Object.react_stack_bottom_frame (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:15101:20)
+    at resolveLazy (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:3866:20)
+    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6665:77)
+    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:74)
+    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9555:97)
+    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9551:58)
+    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9534:71)
+    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9061:150)
+    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10255:9)
+    at MessagePort.performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:2647:64)
+[    1976ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
+[   64091ms] Error: STRIPE_SECRET_KEY is not set
+    at module evaluation (http://localhost:3000/_next/static/chunks/apps_web_src_074e0f9._.js:9445:11)
+    at http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1307:27
+    at runModuleExecutionHooks (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1636:13)
+    at instantiateModuleShared (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1305:9)
+    at instantiateModule (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1621:12)
+    at getOrInstantiateModuleFromParent (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1604:12)
+    at DevContext.esmImport [as i] (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:278:20)
+    at module evaluation (http://localhost:3000/_next/static/chunks/apps_web_src_074e0f9._.js:9513:164)
+    at http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1307:27
+    at runModuleExecutionHooks (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1636:13)
+    at instantiateModuleShared (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1305:9)
+    at instantiateModule (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1621:12)
+    at getOrInstantiateModuleFromParent (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1604:12)
+    at DevContext.esmImport [as i] (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:278:20)
+    at module evaluation (http://localhost:3000/_next/static/chunks/apps_web_src_074e0f9._.js:9851:202)
+    at http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1307:27
+    at runModuleExecutionHooks (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1636:13)
+    at instantiateModuleShared (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1305:9)
+    at instantiateModule (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1621:12)
+    at getOrInstantiateModuleFromParent (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:1604:12)
+    at DevContext.commonJsRequire [as r] (http://localhost:3000/_next/static/chunks/turbopack-apps_web_0p44nws._.js:299:12)
+    at requireModule (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:95:84)
+    at initializeModuleChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:1110:25)
+    at readChunk (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:846:17)
+    at Object.react_stack_bottom_frame (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:15101:20)
+    at resolveLazy (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:3866:20)
+    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6665:77)
+    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:74)
+    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9555:97)
+    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9551:58)
+    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9534:71)
+    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9061:150)
+    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10255:9)
+    at MessagePort.performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:2647:64)
+[  128141ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  128142ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
