@@ -13,7 +13,17 @@
       "mcp__playwright__browser_wait_for",
       "Bash(npm run test:*)",
       "Bash(npm test:*)",
-      "Bash(npx vitest run)"
+      "Bash(npx vitest run)",
+      "Bash(./gradlew assembleDebug:*)",
+      "mcp__playwright__browser_click",
+      "Bash(vercel env add:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "mcp__supabase__get_logs",
+      "Bash(npx next build)",
+      "Bash(node -e:*)",
+      "Bash(npm install:*)",
+      "Bash(npx playwright test:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\lalas\\OneDrive\\Desktop\\Developer\\AI\\Projects\\ReadyBoard\\apps\\web\\src\\lib"

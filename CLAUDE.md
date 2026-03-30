@@ -1,126 +1,68 @@
 # ReadyBoard — CLAUDE.md
 
 > **ReadyBoard is a legal infrastructure platform for commercial construction.**
-> It tells every trade what areas they can work TODAY, alerts when something changes,
-> and auto-documents every lost day as legal evidence — in the foreman's language, without internet.
+> It tells trades what areas they can work on daily, auto-documents delays as legal evidence,
+> and operates offline-first in the foreman's language.
 >
-> **Read this entire file before writing any code.**
+> **This is the single source of truth.** If CLAUDE.md says it, Claude Code follows it.
+> Last updated: 2026-03-27 — Post-audit v2 (85% production-ready)
+
+---
+
+## Current Status — Final Audit (March 27, 2026)
+
+| Category | Done | Partial | Not Built | Broken |
+|----------|------|---------|-----------|--------|
+| Infrastructure | 10 | 0 | 0 | 0 |
+| Auth & Onboarding | 9 | 2 | 0 | 0 |
+| Stripe Billing | 10 | 1 | 1 | 0 |
+| Dashboard Navigation | 8 | 0 | 3 | 0 |
+| Dashboard Pages | 11 | 0 | 0 | 0 |
+| Foreman Mobile | 16 | 0 | 0 | 0 |
+| Checklist System | 11 | 0 | 0 | 0 |
+| Legal Documentation | 15 | 0 | 0 | 0 |
+| Forecast Engine | 3 | 2 | 3 | 0 |
+| Notifications | 2 | 2 | 2 | 0 |
+| Email System | 2 | 1 | 2 | 0 |
+| AI Morning Briefing | 2 | 0 | 5 | 1 |
+| Demo Account | 4 | 0 | 0 | 0 |
+| Landing Page & Legal | 1 | 0 | 2 | 0 |
+| Security | 3 | 0 | 1 | 0 |
+| App Store Readiness | 1 | 1 | 4 | 0 |
+| **TOTALS** | **108** | **9** | **23** | **1** |
+
+**Diagnostics:** 635 files, 20 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors, 0 TODOs/FIXMEs, 4 E2E specs, 3 unit specs.
 
 ---
 
 ## Product Definition
 
-ReadyBoard is NOT a project management tool. It is the equivalent of an insurance policy
-for specialty contractors.
+ReadyBoard serves a two-buyer model:
+- **General Contractor (GC):** Operational visibility via web dashboard — Ready Board grid, alerts ranked by cost of inaction, projected delivery date, corrective actions, verification queue
+- **Specialty Subcontractor (Sub):** Automated legal protection — Notices of Delay, Requests for Equitable Adjustment, SHA-256-hashed evidence packages with receipt tracking
 
-- **GC buys for operational visibility** (1-Screen Dashboard, Ready Board grid, Verification Queue)
-- **Specialty contractor stays for legal protection** (NOD, REA, Evidence Package with SHA-256)
+The GC pays for VISIBILITY. The sub stays for LEGAL PROTECTION. Two different value propositions, same platform.
 
-Two different value propositions. Two different buyers. Both valid, recurring, defensible.
-
----
-
-## Golden Path Stack
-
-| Layer | Technology | Version | Status |
-|-------|-----------|---------|--------|
-| Monorepo | Turborepo | 2.8+ | ✅ Built |
-| Frontend (Mobile) | Expo SDK 52 + React Native 0.76 + TypeScript | | ✅ Built |
-| Frontend (Web) | Next.js 16 + React 19 + TypeScript | | ✅ Built |
-| Styles | Tailwind CSS 4 + shadcn/ui | Dark theme | ✅ Built |
-| Backend | Supabase (Auth + PostgreSQL + RLS + Realtime) | | ✅ Built |
-| Offline Engine | PowerSync + SQLite | Cloud: 69bca667 | ✅ Built |
-| Payments | Stripe (Checkout + Portal + Webhooks) | | 🔨 Week 10 |
-| Email | Resend + React Email | | 🔨 Week 13 |
-| AI (V2) | Gemini 2.5 Flash via Vercel AI SDK + OpenRouter | | 🔨 Week 15 |
-| AI (V2.5+) | Claude Sonnet 4.6 via Anthropic API | Chat agent | Post-launch |
-| i18n (Web) | next-intl v4.8 | Auto-detect | ✅ Built |
-| i18n (Mobile) | i18next + react-i18next + expo-localization | Auto-detect | ✅ Built |
-| Validation | Zod | | ✅ Built |
-| State | Zustand | | ✅ Built |
-| Testing | Vitest (unit) + Playwright (web E2E) | 50 tests passing | ✅ Built |
-| Deploy (Web) | Vercel | Live | ✅ Built |
-| Deploy (Mobile) | Expo EAS | | Pending |
-| Legal Docs | pdf-lib + crypto (SHA-256) | | ✅ Built |
+**Coopetition Model:** Sub legal docs are private until the sub explicitly taps "Publish / Send to GC." GC has operational visibility. Sub maintains legal leverage. Both parties get value. Neither feels exposed.
 
 ---
 
-## Architecture
+## Tech Stack
 
-```
-readyboard/
-├── apps/
-│   ├── mobile/                  Expo (Foreman + Sub PM)
-│   │   ├── app/                 Expo Router (index, login, debug, report, (main))
-│   │   ├── src/providers/       AuthProvider, PowerSyncMobileProvider, I18nProvider
-│   │   ├── src/components/      DebugNav, SuccessView, report flow screens
-│   │   └── app.json             Plugins (camera, location, haptics, i18n)
-│   └── web/                     Next.js 16 (GC Dashboard + Landing)
-│       ├── src/app/             App router: /dashboard, /login, /signup, /onboarding, /billing
-│       ├── src/middleware.ts     Route protection (auth + role guard)
-│       ├── src/features/        Feature modules (see below)
-│       ├── src/lib/             Shared utils: auth, supabase clients, audit, constants, legal
-│       ├── messages/            EN + ES translations (next-intl)
-│       └── src/shared/          Modal, UI components
-├── packages/
-│   ├── db/                      PowerSync schema + sync rules + SupabaseConnector
-│   └── shared/                  Hooks (usePowerSync, useFieldReport), types, i18n (165+ keys EN/ES)
-├── supabase/
-│   └── migrations/              37+ SQL migrations
-├── scripts/                     test-rls.sql, test-offline-sync.ts, audit-delay-logs.ts, seed-demo.ts
-└── turbo.json
-```
-
-### Feature Modules (apps/web/src/features/)
-
-```
-ready-board/     Grid + Corrective Actions + Orchestration (ActionEventBus, 35 tests)
-dashboard/       1-Screen GC Dashboard (Metrics, Alerts, Forecast, NodDrafts, tabs)
-forecast/        Burn rate engine, schedule import (P6 CSV), delta alerts (9 tests)
-legal/           SignaturePad, thresholdEngine, evidenceStorage, pdfAssembler, nodAutoGen
-finance/         Change order engine (convert, approve, reject, financial summary)
-reports/         Executive report generation + PDF export
-checklist/       [Week 9-12] Task templates, verification queue, approve/correct flows
-```
-
----
-
-## Database: Current State
-
-**22 tables, 60 RLS policies, 26 functions, 21 triggers, 87 indexes, 37 migrations.**
-
-| Table | Status | Key Details |
-|-------|--------|-------------|
-| organizations | ✅ | 3 rows, type gc/sub, default_language. Needs: stripe columns (Week 10) |
-| projects | ✅ | 2 rows, labor_rate, jurisdiction, sha256, thresholds, safety_gate |
-| users | ✅ | 3 rows, 6 roles, auto-created on signup. Needs: push_token (Week 12) |
-| areas | ✅ | 31 rows, 6 area_types, floor, total_sqft |
-| trade_sequences | ✅ | 14 trades, canonical interior finish sequence |
-| user_assignments | ✅ | Schema ready, 0 rows (need foreman assignment UI) |
-| area_trade_status | ✅ | 420 rows, reporting_mode, effective_pct, verification_pending |
-| field_reports | ✅ | 14 columns incl GPS, photo, offline_created_at |
-| delay_logs | ✅ | 19 columns, 5 triggers (immutability, cost calc, delete guard) |
-| corrective_actions | ✅ | Full lifecycle: created → acknowledged → resolved |
-| legal_documents | ✅ | 22 columns, SHA-256, receipt tracking, locale, coopetition |
-| nod_drafts | ✅ | JSONB draft, reminder tracking, draft_pdf_path |
-| receipt_events | ✅ | IP, device_type, opened_at |
-| production_benchmarks | ✅ | 1 row seeded |
-| schedule_items | ✅ | P6 mapping, baseline_finish, is_critical, unique on activity_id |
-| forecast_snapshots | ✅ | Atomic upsert via RPC |
-| notifications | ✅ | Type-based, anti-spam index, 5 types |
-| audit_log | ✅ | 19 action types |
-| change_orders | ✅ | Proposal → approval flow |
-| scope_changes | ✅ | Evidence linkage to REA |
-| trade_task_templates | ✅ | 211 rows — 14 trades × 4 area types |
-| area_tasks | ✅ | 28 columns, SUB/GC ownership, gate, correction fields |
-
-### Tables Needed (Weeks 10-15)
-
-| Table | Week | Purpose |
-|-------|------|---------|
-| organizations (ALTER) | 10 | stripe_customer_id, stripe_subscription_id, plan, trial_ends_at, subscription_status |
-| users (ALTER) | 12 | push_token TEXT |
-| briefings | 15 | AI morning briefing storage, tokens, read_at |
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| Monorepo | Turborepo | apps/web, apps/mobile, packages/shared, packages/db |
+| Web | Next.js 16 + React 19 + TypeScript | GC dashboard, landing page, auth |
+| Mobile | Expo SDK 52 + React Native 0.76 | Foreman app (iOS + Android) |
+| Offline | PowerSync + SQLite | Offline-first field reporting |
+| Database | Supabase (PostgreSQL) | 22 tables, 60 RLS policies, 26 functions, 21 triggers |
+| Styling | Tailwind CSS 4.2 + shadcn/ui | Dashboard components |
+| i18n | next-intl 4.8 (web) + i18next (mobile) | EN + ES |
+| Billing | Stripe | 4 plans, checkout, webhooks, customer portal |
+| Email | Resend | Transactional emails, NOD delivery |
+| AI | Gemini 2.5 Flash via OpenRouter | Morning briefing (V1), insights (V2) |
+| Hosting | Vercel (web) + EAS (mobile) | Deploy |
+| Domain | readyboard.ai (Cloudflare) | DNS |
 
 ---
 
@@ -128,28 +70,112 @@ checklist/       [Week 9-12] Task templates, verification queue, approve/correct
 
 | Role | App | Can Do | Cannot Do |
 |------|-----|--------|-----------|
-| `gc_admin` | Web | Everything + org settings, billing, team mgmt | Access sub legal docs until published |
+| `gc_admin` | Web | Everything + org settings, billing, team | Access sub legal docs (until published) |
 | `gc_pm` | Web | Dashboard, Ready Board, verify, CAs, forecast | Billing, org settings |
 | `gc_super` | Web + Mobile | Verify tasks, create CAs, view all trades | Billing, org settings |
-| `sub_pm` | Web + Mobile | Sub areas, legal docs, delay costs, manage foremen | GC dashboard, CAs |
+| `sub_pm` | Web + Mobile | View sub areas, legal docs, delay costs, manage foremen | GC dashboard, CAs |
 | `superintendent` | Mobile + Web | Review NODs, send legal docs, manage foremen | GC dashboard |
-| `foreman` | Mobile only | Report status, view assigned areas, submit photos | Other trades, dashboard, legal, settings |
-| `owner` | Web | Executive summary, projections | Everything else |
+| `foreman` | Mobile only | Report status, view assigned areas, submit photos | See other trades, GC dashboard, legal docs |
+| `owner` | Web | Executive summary, delivery projections | Everything else |
+
+---
+
+## Spatial Hierarchy — Floor → Unit → Area
+
+### The Problem (identified 2026-03-27)
+
+The current data model is `Floor → Area` (flat). But real high-rise projects have a deeper hierarchy:
+
+```
+Building
+└── Floor 24
+    ├── Unit 24A (apartment/office)
+    │   ├── Master Bath      ← area (wet)
+    │   ├── Hall Bath         ← area (wet)
+    │   ├── Kitchen           ← area (wet)
+    │   └── Powder Room       ← area (wet)
+    ├── Unit 24B
+    │   ├── Master Bath
+    │   └── Kitchen
+    └── Common Areas
+        ├── Corridor          ← area (dry)
+        └── Elevator Lobby    ← area (dry)
+```
+
+### Architecture Decision
+
+The `areas` table needs a `unit_id` FK (nullable) that groups areas under a unit within a floor.
+The `units` table is NEW:
+
+```sql
+CREATE TABLE units (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID REFERENCES projects(id) NOT NULL,
+  floor_id UUID REFERENCES floors(id) NOT NULL,
+  name TEXT NOT NULL,                    -- "Unit 24A", "Apt 8B", "Office 301"
+  unit_type TEXT DEFAULT 'apartment',    -- apartment, office, retail, common
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE areas ADD COLUMN unit_id UUID REFERENCES units(id);
+```
+
+### Ready Board Grid Display
+
+The Ready Board grid changes from:
+```
+Floor → [Area rows] × [Trade columns]
+```
+To:
+```
+Floor → Unit → [Area rows] × [Trade columns]
+```
+
+With collapsible unit groups. Common areas (corridor, lobby) have `unit_id = NULL` and display under a "Common" section per floor.
+
+### Quick Add Presets in Setup Wizard
+
+The onboarding wizard "Quick Add" currently only adds one area at a time. It needs:
+
+1. **Preset templates** — one-click to add a standard unit:
+   - "Standard 2BR Apartment" → Master Bath, Hall Bath, Kitchen, Powder Room
+   - "Studio Apartment" → Bath, Kitchen
+   - "3BR Luxury" → Master Bath, Hall Bath, Guest Bath, Kitchen, Powder Room, Laundry
+   - "Office Suite" → Kitchen/Pantry, Restroom M, Restroom F
+   - "Common Areas" → Corridor, Elevator Lobby, Stairwell, Trash Room
+   - Custom → add individual areas
+
+2. **Batch add** — "Add Unit 24A-24F" creates 6 units with the selected preset in one action.
+
+3. **Clone floor** — "Copy Floor 23 → Floor 24" duplicates all units and areas.
+
+### Impact on Existing Code
+
+- `areas` table: add `unit_id` column (nullable, backward compatible)
+- `units` table: new migration
+- Ready Board grid: group areas by unit within each floor
+- Setup wizard: new Quick Add UI with presets
+- Seed data: update to include units
+- Foreman mobile: "My Areas" grouped by unit
+- All existing queries that filter by floor still work (areas still have floor_id)
 
 ---
 
 ## The 14-Trade Interior Finish Sequence
 
+Canonical trade sequence for NYC commercial high-rise interior finish.
+Ships as default template. GC can customize per project.
+
 ```
  1. Rough Plumbing
- 2. Metal Stud Framing + Door Frames (HM frames set here, doors hung Trade 11)
+ 2. Metal Stud Framing + Door Frames
  3. MEP Rough-In (In-Wall) — fire protection → HVAC → electrical → plumbing
  4. Fire Stopping — dedicated specialty sub, FDNY inspects separately
  5. Insulation & Drywall — hang, tape, mud, sand to Level 4
  6. Waterproofing (Wet Areas) — membrane + 24h flood test
  7. Tile / Stone — over cured waterproof membrane
  8. Paint — primer + 2 finish coats
- 9. Ceiling Grid / ACT — suspended acoustical tile (offices, corridors)
+ 9. Ceiling Grid / ACT — suspended acoustical tile
 10. MEP Trim-Out — outlets, lights, faucets, toilets, registers
 11. Doors & Hardware — hang doors, locksets, closers
 12. Millwork, Casework & Countertops
@@ -157,260 +183,298 @@ checklist/       [Week 9-12] Task templates, verification queue, approve/correct
 14. Specialties, Final Clean & Punch List
 ```
 
-211 task templates pre-seeded across 14 trades × 4 area types (bathroom, kitchen, corridor, office).
+211 task templates seeded (14 trades × 4 area types: bathroom, kitchen, corridor, office).
 
 ---
 
-## Checklist System
+## Area Status Definitions — 7 Statuses
 
-### Two Reporting Modes (per trade, GC configures)
+### CRITICAL: IN PROGRESS Status (Gap identified 2026-03-27)
 
-- **Percentage (default):** Slider → `effective_pct = manual_pct`
-- **Checklist (opt-in):** Task checkboxes → `effective_pct = SUM(done_weights) / SUM(all_weights) × 100`
+The GC Ready Board grid currently has 6 statuses. It is MISSING "IN PROGRESS" — when a trade has started work (1-99% reported) but hasn't finished. The foreman mobile already shows WORKING status, but the GC grid does not reflect it.
 
-Both produce `effective_pct`. Ready Board, Forecast, Legal Docs consume it identically.
+| Status | Color | Hex | Meaning | GC Action |
+|--------|-------|-----|---------|-----------|
+| **PENDING** | Gray | #334155 | Trade sequence hasn't reached this trade yet | None — wait |
+| **READY** | Green | #4ade80 | All prior trades done. Crew can start TODAY. | None — on track |
+| **IN PROGRESS** | Blue | #60a5fa | Trade actively working (1-99% reported) | Monitor — track rate |
+| **ALMOST** | Amber | #fbbf24 | Prior trade 80%+. ETA 1-2 days. | Monitor — don't send crew yet |
+| **BLOCKED** | Red | #f87171 | Prior trade not done. ETA 3+ days. | Create Corrective Action |
+| **HELD** | Purple | #c084fc | External block: no heat, no access, inspection failed | Resolve external issue. NOD auto-generates. |
+| **DONE** | Dark Blue | #3b82f6 | Trade completed 100% (or 100% + all gates passed) | None — move on |
 
-### Task Ownership
+**Implementation:** When `area_trade_status.effective_pct` is between 1 and 99 AND status is not BLOCKED/HELD, the cell should display as IN PROGRESS (blue) instead of staying READY.
 
-- **🔧 SUB** — Foreman completes. GPS + timestamp + photo captured.
-- **👷 GC VERIFY** — Only GC super can complete. Greyed out on foreman screen: "Awaiting GC".
-- **⛔ Gate** — Blocks READY regardless of %. "79% — awaiting GC verification" = ALMOST (yellow).
+---
 
-### Template Cloning (CRITICAL)
+## Checklist System Architecture
 
-When areas are created → system MUST clone `trade_task_templates` into `area_tasks`.
-**🔍 VERIFY THIS WORKS. If it doesn't, build `clone_task_templates_for_area()` function.**
+### Two Reporting Modes (configurable per trade by GC)
+
+**Mode A: Percentage (default)** — Foreman slides to a %. Fast, 3 taps.
+**Mode B: Checklist** — Foreman taps task checkboxes. Granular, legally stronger.
+
+### Task Ownership: SUB vs GC VERIFY
+
+Every task in a checklist has a `task_owner` field:
+- `sub` — foreman completes this (e.g., "Install tile adhesive")
+- `gc` — GC must verify this (e.g., "GC VERIFY: Waterproof membrane passes flood test")
+
+GC VERIFY tasks appear greyed out on the foreman's phone ("Awaiting GC"). The GC sees them in their Verification Queue.
+
+### Gate Tasks
+
+Certain tasks are `is_gate = true`. A gate task MUST be completed before the area can reach READY status — regardless of overall percentage. Example: "Waterproof flood test passed" is a gate. Even if the area is 95% complete, if the flood test hasn't passed, the area stays NOT READY.
 
 ### GC Verification Chain
 
-Last SUB task before GC gate complete → notify GC → 4h reminder → 24h escalation to sub PM.
-All timestamps become NOD evidence.
-
----
-
-## GC Web Dashboard — Full Navigation
-
-### Current State (Week 8)
-Sidebar: "ReadyBoard" logo + "Dashboard" link only.
-Content: DashboardTabs with 5 tabs (Overview, Ready Board, Verifications, Legal Docs, Settings).
-
-### Target State (Week 11)
-Convert tabs to separate routes. Add sidebar with full navigation:
-
-```
-[ReadyBoard Logo]
-[Project Selector]
-──────────────────
-📊 Overview              /dashboard/overview         ✅ Built (as tab)
-📋 Ready Board           /dashboard/readyboard       ✅ Built (as tab)
-👷 Verifications (badge) /dashboard/verifications    ✅ Built (as tab)
-⚠️ Delays & Costs        /dashboard/delays           🔨 Week 11
-⚖️ Legal Docs            /dashboard/legal            ✅ Built (as tab)
-📈 Forecast              /dashboard/forecast         🔨 Week 11
-🔧 Corrective Actions    /dashboard/corrective-actions  🔨 Week 11
-📅 Schedule              /dashboard/schedule         🔨 Week 11
-👥 Team                  /dashboard/team             🔨 Week 11
-⚙️ Settings              /dashboard/settings         ✅ Partial (Trade Config only)
-──────────────────
-💳 Billing               /dashboard/billing          🔨 Week 10
-🚪 Logout                                            🔨 Week 9
-──────────────────
-[User + Role Badge]
-```
-
----
-
-## Foreman Mobile — The Carlos Standard
-
-**North Star:** Carlos, 60 years old, Spanish-speaking, WhatsApp-only phone user.
-60-second morning update. Day 1. Zero training. No exceptions.
-
-### 6 Principles
-
-| # | Principle | Rule |
-|---|-----------|------|
-| 1 | One Job Per Screen | Every screen does exactly one thing |
-| 2 | Color Does the Talking | Status via color + icon. No reading required |
-| 3 | Maximum 3 Taps | Every field action ≤ 3 taps. If 4+ → redesign |
-| 4 | Big Buttons, Large Text | Min 56px tap targets. Min 18px body text |
-| 5 | Loud Confirmation | Full-screen green ✓ + haptic. No toasts. |
-| 6 | Offline is Invisible | No connectivity errors. EVER. |
-
-### Current Mobile State (Week 8)
-- ✅ Home screen with color-coded area cards (READY/ALMOST/BLOCKED/HELD)
-- ✅ 3-step report flow: slider → blockers → reason codes
-- ✅ Confirmation screen with haptic
-- ✅ NOD draft banner (purple)
-- ✅ Offline-first via PowerSync
-- ✅ i18n auto-detect EN/ES
-- ✅ SMS OTP login
-- ✅ Checklist mode (TaskChecklist component)
-- 🔌 GPS capture: expo-location installed, NOT wired to submit
-- 🔌 Photo capture: expo-camera installed, NOT wired to submit
-- ❌ Bottom tab navigation (stack only)
-- ❌ Profile/settings screen
-- ❌ Push notifications (DB-only polling)
-
-### Target Navigation (Week 12)
-```
-🏠 My Areas    📋 Report    ⚖️ Legal    👤 Profile
-```
-
-### What Foremen NEVER See
-AI, GC VERIFY tasks (greyed), billing, settings, org management, other trades, connectivity errors.
+1. Foreman completes all SUB tasks → area shows "Pending GC Verification"
+2. GC receives notification → opens Verification Queue
+3. GC approves → area progresses to READY for next trade
+4. GC requests correction → foreman sees CorrectionBanner, fixes, resubmits
+5. If GC doesn't verify within 4h → reminder. 24h → escalation alert.
+6. Auto-approve NEVER happens. GC inaction is documented as evidence.
 
 ---
 
 ## Legal Documentation Engine
 
-### Current State (Week 8)
-- ✅ SHA-256 hash computation + storage + verification endpoint
-- ✅ NOD draft auto-generation (pending → draft PDF → watermark)
-- ✅ NOD approval flow (draft → signature → final PDF → sent)
-- ✅ Finger signature canvas (pointer events, metadata, PNG export)
-- ✅ PDF generation via pdf-lib (header, details, costs, signature, footer)
-- ✅ Evidence storage (Supabase Storage, immutable, SHA-256 verified)
-- ✅ Receipt tracking pixel endpoint: /api/legal/track/[uuid]
-- ✅ 48h/72h escalation logic
-- ✅ REA threshold detection ($5K or 3 crew-days)
-- 🔨 Receipt tracking pixel in outbound NOD email (email sending not wired)
-- 🔨 REA PDF generation (cost table template)
-- 🔨 Evidence Package PDF (8-section arbitration document)
-- 🔨 AIA A201 contract references (needs attorney review)
-- 🔨 Bilingual PDF output (currently English only)
+### Document Lifecycle
 
-### The Three Documents
+1. **Delay occurs** — Foreman reports BLOCKED + reason + photo (offline capable)
+2. **Draft NOD** — System auto-generates within 60 seconds. Push: "Legal notice draft ready"
+3. **Review window** — Superintendent reviews, edits, draws finger signature. 24h countdown + 20h reminder.
+4. **NOD sent** — PDF generated with SHA-256 hash. Tracked email to GC. Receipt monitoring starts.
+5. **Receipt event** — GC opens email → timestamp recorded. No response in 48h → sub alerted.
+6. **REA generated** — When cumulative impact reaches $5K or 3 crew-days.
+7. **Evidence Package** — On demand. Complete arbitration-ready PDF.
 
-1. **NOD** — Day 1 BLOCKED. Auto-draft → super reviews → finger-signs → sends. SHA-256 + pixel.
-2. **REA** — Cumulative > $5K or 3 crew-days. Itemized cost table. References all NODs.
-3. **Evidence Package** — On demand. 8-section arbitration PDF. All exhibits.
+### Three Documents
+
+- **NOD (Notice of Delay)** — AIA A201 §8.3.1. Day 1 of BLOCKED. Draft auto-created, sub sends within 24h.
+- **REA (Request for Equitable Adjustment)** — AIA A201 §7.3. Itemized compensation claim.
+- **Evidence Package** — AAA Construction Arbitration ready. All exhibits, receipts, SHA-256 log.
+
+### SHA-256 Document Integrity
+
+Every PDF hashed immediately after generation. Hash stored in DB + printed in PDF footer. Public verification endpoint: `/api/legal/verify?hash=xxx`.
+
+### Receipt Acknowledgment
+
+1x1 transparent tracking pixel in NOD delivery email. Records: timestamp, IP, device, open count. Creates constructive notice — GC cannot claim ignorance.
 
 ---
 
-## Billing & Plans (Stripe) — Week 10
+## Stripe Billing
 
-| Plan | Price | For | Key Limits |
-|------|-------|-----|------------|
-| Trial | Free 30 days | Everyone | Pro features, 1 project |
-| Starter | $399/mo | GC small | No legal docs, no checklist, no SHA-256 |
-| Pro | $699/mo | GC serious | Everything |
-| Portfolio | $1,999/mo | GC multi | Unlimited projects + API + AI |
-| Sub Add-on | $59/mo | Specialty sub | Legal docs + delay costs |
+### Plans
+
+| Plan | Price | Stripe Price ID | For |
+|------|-------|-----------------|-----|
+| Starter | $399/mo | (configured in env) | Per project — Ready Board, basic forecast, delay logs |
+| Pro | $699/mo | (configured in env) | Per project — + legal docs, SHA-256, receipt, checklist, CAs |
+| Portfolio | $1,999/mo | (configured in env) | Unlimited projects — + multi-project dashboard, API, AI |
+| Sub Add-on | $59/mo | (needs Price ID) | Specialty contractor — legal docs, delay costs, bid intel (V3) |
 
 ### Feature Gate Matrix
 
+| Feature | Starter | Pro | Portfolio | Sub |
+|---------|---------|-----|-----------|-----|
+| Ready Board grid | ✅ | ✅ | ✅ | — |
+| Field reports | ✅ | ✅ | ✅ | ✅ |
+| Forecast (basic) | ✅ | ✅ | ✅ | — |
+| Delay logs | ✅ | ✅ | ✅ | ✅ |
+| Legal docs (NOD/REA) | — | ✅ | ✅ | ✅ |
+| SHA-256 + receipt | — | ✅ | ✅ | ✅ |
+| Checklist mode | — | ✅ | ✅ | — |
+| Schedule import (P6) | — | ✅ | ✅ | — |
+| Verification queue | — | ✅ | ✅ | — |
+| Corrective actions | — | ✅ | ✅ | — |
+| Multi-project dashboard | — | — | ✅ | — |
+| API access | — | — | ✅ | — |
+| AI insights (V2) | — | — | ✅ | — |
+| Evidence packages | — | ✅ | ✅ | ✅ |
+
+### Billing Status
+
+- Stripe SDK v20.4.1 installed
+- 3 of 4 Price IDs configured (Sub Add-on $59 needs creation)
+- `project_subscriptions` table with stripe columns ✅
+- Checkout, portal, webhook handler ✅
+- `getPlanForProject` + `hasFeature()` ✅
+- `/dashboard/billing` page ✅
+- Missing: trial countdown banner UI, `/billing/success` dedicated page
+
+---
+
+## Carlos Standard (UX Philosophy)
+
+> If Carlos — 60 years old, Spanish-speaking, uses his phone for calls and WhatsApp — cannot complete his morning update in under 60 seconds with zero training, the UX has failed.
+
+| # | Principle | Rule |
+|---|-----------|------|
+| 1 | One Job Per Screen | Every screen does exactly one thing |
+| 2 | Color Does the Talking | Status via color + icon. No English required. |
+| 3 | Maximum 3 Taps | Every field action ≤ 3 taps. If 4+, redesign. |
+| 4 | Big Buttons, Large Text | Tap targets ≥ 56px. Body text ≥ 18px. Gloved hands. |
+| 5 | Loud Confirmation | Full-screen green ✓ + haptic. No subtle toasts. |
+| 6 | Offline is Invisible | No error messages. App works identically offline. |
+
+**Auth:** SMS magic link. No passwords for foremen.
+**Theme:** High-contrast light theme on mobile. Dark theme on GC dashboard.
+**Language:** Auto-detected from device. Manual override in 1 tap.
+
+---
+
+## GC Dashboard — Navigation (11 pages)
+
+All pages built and routed as separate `/dashboard/*` paths:
+
 ```
-Feature                    | Trial | Starter | Pro  | Portfolio | Sub
----------------------------|-------|---------|------|-----------|----
-Ready Board                |  ✓    |   ✓     |  ✓   |    ✓      |  —
-Field reports              |  ✓    |   ✓     |  ✓   |    ✓      |  ✓
-Delay logs                 |  ✓    |   ✓     |  ✓   |    ✓      |  ✓
-Basic forecast             |  ✓    |   ✓     |  ✓   |    ✓      |  —
-Corrective actions         |  ✓    |   ✓     |  ✓   |    ✓      |  —
-Checklist mode             |  ✓    |   —     |  ✓   |    ✓      |  —
-Legal docs                 |  ✓    |   —     |  ✓   |    ✓      |  ✓
-SHA-256 + receipts         |  ✓    |   —     |  ✓   |    ✓      |  ✓
-Verification Queue         |  ✓    |   —     |  ✓   |    ✓      |  —
-Schedule import            |  ✓    |   —     |  ✓   |    ✓      |  —
-Multiple projects          |  —    |   —     |  —   |    ✓      |  —
-AI Morning Briefing        |  —    |   —     |  —   |    ✓      |  —
+📊 Overview          ✅ — metrics, alerts by cost, forecast, morning briefing card
+📋 Ready Board       ✅ — floors × trades grid, 14 trades, filters, color cells, detail panel
+👷 Verifications     ✅ — GC queue, approve/correct modal, badges
+⚠️ Delays & Costs   ✅ — summary cards, filterable table, GPS/photo evidence, Generate NOD
+⚖️ Legal Docs       ✅ — NOD/REA/Evidence list, receipt tracking, escalation alerts
+📈 Forecast          ✅ — 14-day trend, schedule delta, at-risk areas (needs burn rate calc)
+🔧 Corrective Actions ✅ — Kanban + table toggle, 4 columns, overdue tracking
+📅 Schedule          ✅ — CSV upload, preview, column mapper, import RPC
+👥 Team              ✅ — GC/Sub sections, invite, role badges, assigned areas
+⚙️ Settings          ✅ — 6 tabs (General, Trades & Costs, Legal, Integrations, Roles, Audit Logs)
+💳 Billing           ✅ — plan card, upgrade/manage, feature comparison
 ```
 
----
-
-## AI Morning Briefing Agent — Week 15
-
-Proactive daily briefing at 6:00 AM. No chat. Agent reads project data → writes 4-8 sentence
-summary personalized to role (GC: verifications + forecast | Sub: delays + costs + NODs).
-
-- **Model:** Gemini 2.5 Flash via OpenRouter. $0.90/month for 50 users.
-- **Fallback:** Claude Haiku 4.5 ($6.75/mo) if quality insufficient.
-- **Rule:** Every briefing labeled "🤖 AI Briefing · Based on [project] data as of [time]"
-- **Rule:** Foreman mobile NEVER shows briefing. GC/Sub PM only.
-- **Demo:** Hardcoded briefing for demo account (no API call).
+**Missing nav items:** Notification bell dropdown ❌, Live indicator (green dot) ❌, Collapsible sidebar ❌
 
 ---
 
-## Email System — Week 13
+## Foreman Mobile — Complete (16/16 ✅)
 
-- Provider: Resend + React Email
-- Sender: noreply@readyboard.ai (SPF, DKIM, DMARC)
-- Templates (bilingual EN/ES): welcome, team invite, NOD delivery (with pixel), receipt confirmation, trial ending (7/3/1 day), payment failed, morning briefing digest
+- Home: color-coded area cards (READY/ALMOST/BLOCKED/HELD/WORKING)
+- Report: slider OR checklist, blockers, reason codes (7), photo + GPS capture
+- Confirmation: full-screen ✓ + haptic
+- NOD draft banner (purple, tappable)
+- Bottom tabs: My Areas | Report | Legal | Profile (80px)
+- Profile: user info, role badge, push toggle, logout
+- Legal tab: pending NODs, blocked areas, status badges
+- Offline-first via PowerSync + SQLite
+- Checklist mode with progress bar
+- GC VERIFY tasks greyed out ("Awaiting GC")
+- Language: auto-detect EN/ES + manual override
 
 ---
 
-## Notification Rules
+## AI Morning Briefing Agent
 
-| Event | Who | Channel |
-|-------|-----|---------|
-| Area READY | Assigned foreman | Push |
-| Area BLOCKED | GC PM + Sub PM | Push + Web |
-| NOD draft ready | Superintendent | Push |
-| NOD 20h reminder | Superintendent | Push |
-| GC opened NOD | Sub PM | Push + Web |
-| GC 48h no response | Sub PM | Push + Web |
-| GC verify needed | GC Super | Push + Web |
-| 4h verify reminder | GC Super | Push |
-| 24h escalation | Sub PM | Push + Web |
-| Correction requested | Sub foreman | Push |
-| Morning briefing | GC/Sub PM | Push + Email |
-| Trial ending | Account owner | Email |
+### Spec
 
-Anti-spam: 1 per type per area per 24h. All bilingual EN/ES.
+- **Model:** Gemini 2.5 Flash via OpenRouter (cheap, fast)
+- **Trigger:** Cron at 6am ET daily, per user × project
+- **Output:** 4-8 sentences, role-aware (GC vs Sub), language-aware (EN/ES), specific numbers
+- **Storage:** `briefings` table (MIGRATION MISSING — critical blocker)
+- **UI:** MorningBriefingCard on Overview page (built), history dropdown
+- **Cost target:** < $0.90/month at 200 projects
+
+### Status
+
+- ✅ `collectBriefingData.ts` — parallel data fetch
+- ✅ `MorningBriefingCard.tsx` — UI component
+- 🐛 `briefings` table migration MISSING — code references it, will crash
+- ❌ OPENROUTER_API_KEY not in .env
+- ❌ Cron scheduler not configured
+- ❌ Demo hardcoded briefing not built
+- ❌ Cost monitoring incomplete
+
+---
+
+## Email System
+
+- ✅ Resend installed + configured (`src/lib/email/client.ts`)
+- ✅ Sender: `noreply@readyboard.ai`
+- ✅ Templates exist: WelcomeEmail, BlockedAlertEmail, VerifiedReportEmail
+- ❌ Missing templates: team invite, trial ending (7/3/1 day), payment failed
+- ❌ DNS (SPF/DKIM/DMARC) — cannot verify from codebase
+- ❌ NOD email dispatch — tracking pixel built, email never actually sends
+
+---
+
+## Notification Business Rules
+
+- All notifications stored in DB first, push is secondary layer
+- Anti-spam: max 1 notification of same type per area per 24h
+- GC verification chain: request → 4h reminder → 24h escalation
+- Foreman notifications: only READY and BLOCKED for assigned areas
+- Email: only for legal docs (NOD delivery) and billing
+- SMS: only for foreman invite links
 
 ---
 
 ## Demo Account
 
-- GC: `demo-gc@readyboard.ai` / `ReadyBoard2026!`
-- Sub: `demo-sub@readyboard.ai` / `ReadyBoard2026!`
-- Project: 383 Madison Ave, Tishman (GC, pro), Jantile (sub, sub_addon)
-- 9 floors, 45 areas, 14 trades, realistic progress + delays + legal docs + verifications
-- Resettable via `scripts/seed-demo.ts`
+- ✅ demo-gc + demo-sub credentials
+- ✅ `scripts/seed-demo.ts` (idempotent upserts)
+- ✅ 383 Madison Ave, Tishman/Jantile, 9 floors, 14 trades
+- ✅ Field reports, delays, legal docs, CAs, verifications seeded
 
 ---
 
-## Markets — Year 1
+## Pricing on Landing Page
 
-USA only. NYC + Miami first 6 months. Chicago Q3-Q4. Houston Q4.
-Colombia opportunistic only (4 conditions required).
-
----
-
-## What NOT To Do
-
-- Do NOT add AI to foreman mobile screens
-- Do NOT auto-send NODs (always human-approved: draft → review → send)
-- Do NOT auto-approve GC VERIFY tasks (inaction IS evidence)
-- Do NOT allow partial GC verification (approve or correct, nothing between)
-- Do NOT require foremen to create accounts or set passwords (SMS magic link only)
-- Do NOT show connectivity errors on mobile (offline is invisible)
-- Do NOT build AI chat before Morning Briefing ships + 10 projects have data
-- Do NOT attempt international legal templates in Year 1
-- Do NOT use per-user pricing (GCs think in project costs)
-- Do NOT build full JHA/safety module (keep lightweight gate)
-- Do NOT ship legal AI narrative without attorney review gate
-- Do NOT require sequential task completion in checklists (gates enforce, not sequence)
-- Do NOT build Post-Launch Backlog during Weeks 9-15
-- Do NOT duplicate existing code — always 🔍 VERIFY FIRST
+Landing page currently shows 3 pricing cards (Starter $399, Pro $699, Sub $59).
+**Missing:** Portfolio $1,999/mo card. Must add.
 
 ---
 
-## Skills Available
+## Key Terminology
 
-When working on specific systems, read the relevant skill BEFORE writing code:
-
-| Skill | Location | Use When |
-|-------|----------|----------|
-| stripe-billing | /mnt/skills/user/stripe-billing/SKILL.md | Checkout, webhooks, plans, enforcement |
-| supabase-rls | /mnt/skills/user/supabase-rls/SKILL.md | Tables, policies, debugging "no data" |
-| readyboard-legal-docs | /mnt/skills/user/readyboard-legal-docs/SKILL.md | SHA-256, PDFs, receipt tracking, NOD/REA |
-| expo-mobile | /mnt/skills/user/expo-mobile/SKILL.md | Foreman app, offline, GPS, photo, Carlos Standard |
-| readyboard-notifications | /mnt/skills/user/readyboard-notifications/SKILL.md | 12 notification types, push, anti-spam |
-| readyboard-checklist | /mnt/skills/user/readyboard-checklist/SKILL.md | Templates, tasks, gates, verification chain |
+| Term | Meaning |
+|------|---------|
+| NOD | Notice of Delay — formal notification under AIA A201 §8.3.1 |
+| REA | Request for Equitable Adjustment — itemized compensation claim |
+| AIA A201 | Standard US construction contract (American Institute of Architects) |
+| Ready Board | The cross-trade readiness grid (floors × trades × areas) |
+| Carlos Standard | UX philosophy: 3 taps, 60-year-old Spanish speaker, zero training |
+| effective_pct | Calculated completion % accounting for gate tasks |
+| gate task | Task that blocks READY regardless of overall % |
+| coopetition | GC sees operations, sub keeps legal docs private until published |
+| PowerSync | Offline-first sync engine (SQLite local ↔ Supabase cloud) |
+| cost of inaction | Daily $ lost if a delay remains unresolved |
+| GC VERIFY | Task that requires GC approval, not foreman completion |
 
 ---
 
-*ReadyBoard v5.3 — Legal Infrastructure Platform*
-*Built for Carlos. Defended in arbitration. Scaled to Dubai.*
+## What NOT To Build
+
+1. Don't build AI-generated legal narrative in V1 — templates first
+2. Don't build task creation UI for foremen — they consume checklists, not create them
+3. Don't allow partial GC verification — approve or correct, no "partially approved"
+4. Don't auto-approve GC VERIFY tasks — ever. Inaction IS the evidence.
+5. Don't show AI suggestions in foreman checklist — human-verified data only
+6. Don't require sequential task completion — foremen do tasks out of order
+7. Don't add DocuSign before V3 — finger signature is sufficient for V1
+8. Don't build Owner portal before 20 paying customers
+9. Don't add languages beyond EN/ES before V2
+10. Don't build Bid Intelligence before 50 projects + 12 months data
+11. Don't internationalize legal templates (non-US) in Year 1
+12. Don't build AI chat agent before V2
+13. Don't build custom domains / white-label before enterprise demand
+14. Don't send NODs automatically — always draft + human send
+15. Don't use WidthType.PERCENTAGE in docx tables — breaks in Google Docs
+
+---
+
+## Task Prefixes — Claude Code Must Follow
+
+- 🔍 **VERIFY FIRST** — Search codebase. If works: skip ✅. If broken: fix. If missing: build.
+- 🔨 **BUILD** — Does not exist. Create from scratch.
+- 🔌 **WIRE** — Code/dependency exists but not connected. Hook it up.
+
+**Rules:**
+- Never build a 🔍 task without searching the codebase first
+- After each task batch, run `npx tsc --noEmit` and `npm run build`
+- Read the relevant SKILL.md before working on billing, RLS, legal, mobile, notifications, or checklists
+
+---
+
+*ReadyBoard v5.3 — CLAUDE.md — Updated 2026-03-27 post-audit v2*
 *readyboard.ai*
