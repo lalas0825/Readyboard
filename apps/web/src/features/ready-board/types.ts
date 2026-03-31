@@ -41,6 +41,11 @@ export type GridCellData = {
   delay_reason: string | null;
   delay_log_id: string | null;
   gc_pending: boolean;
+  /** Context fields — passed through for detail panel */
+  area_name?: string;
+  area_code?: string | null;
+  area_description?: string | null;
+  unit_name?: string | null;
 };
 
 /** One row in the grid (1 area = 14 cells) */

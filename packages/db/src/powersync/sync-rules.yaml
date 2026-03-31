@@ -1,146 +1,87 @@
 # PowerSync Sync Rules for ReadyBoard
-# v5.1 — Fixed column references + added area_trade_status + area_tasks
+# v5.3 — Units + area hierarchy + no subqueries
 #
-# These rules define WHAT data syncs to each mobile device.
-# PowerSync uses the authenticated user's token (from Supabase Auth)
-# to determine which rows to sync.
+# Rules: data queries = single table, no JOINs, no subqueries.
+# Parameter queries = single table, no JOINs, no subqueries.
+# Use bucket.param to reference parameter values in data WHERE clauses.
 #
-# IMPORTANT: These rules work WITH Supabase RLS, not instead of it.
-# - PowerSync sync rules: control what data DOWNLOADS to the device
-# - Supabase RLS: validates all WRITES (uploads) on the server
-#
-# Deploy these rules to your PowerSync Dashboard (powersync.journeyapps.com)
-#
-# BUGS FIXED (v5.1):
-# 1. projects: p.org_id → gc_org_id, sub_org_id (org_id doesn't exist)
-# 2. field_reports: fr.progress → fr.progress_pct, added fr.trade_name
-# 3. areas: removed a.status (column doesn't exist in schema)
-# 4. Added area_trade_status sync (was missing — universal status currency)
-# 5. Added area_tasks sync (was missing — checklist system)
-# 6. superintendent_data: fixed NOD drafts join path
+# Deploy to PowerSync Dashboard (powersync.journeyapps.com)
 
 bucket_definitions:
-  # Foreman: only sees areas assigned to them
-  foreman_data:
+  # ── Bucket 1: User-scoped ──
+  by_user:
     parameters:
       - SELECT token_parameters.user_id as user_id
 
     data:
-      # User's own profile
       - SELECT id, email, phone, name, role, language, org_id
         FROM users
         WHERE id = bucket.user_id
 
-      # Areas assigned to this user (no 'status' column — it's derived from area_trade_status)
-      - SELECT a.id, a.name, a.floor, a.area_type, a.project_id, a.total_sqft, a.original_sqft,
-               a.unit_id, a.area_code, a.description, a.sort_order, a.created_at
-        FROM areas a
-        INNER JOIN user_assignments ua ON ua.area_id = a.id
-        WHERE ua.user_id = bucket.user_id
-
-      # Units for assigned projects (for Floor → Unit → Area hierarchy)
-      - SELECT u.id, u.project_id, u.floor, u.name, u.unit_type, u.sort_order,
-               u.created_at, u.updated_at
-        FROM units u
-        WHERE u.project_id IN (
-          SELECT DISTINCT a.project_id FROM areas a
-          INNER JOIN user_assignments ua ON ua.area_id = a.id
-          WHERE ua.user_id = bucket.user_id
-        )
-
-      # User's assignments
       - SELECT id, user_id, area_id, trade_name
         FROM user_assignments
         WHERE user_id = bucket.user_id
 
-      # Trade sequences for assigned projects
-      - SELECT ts.id, ts.project_id, ts.area_type, ts.trade_name, ts.sequence_order
-        FROM trade_sequences ts
-        WHERE ts.project_id IN (
-          SELECT DISTINCT a.project_id FROM areas a
-          INNER JOIN user_assignments ua ON ua.area_id = a.id
-          WHERE ua.user_id = bucket.user_id
-        )
-
-      # Projects the user is assigned to (gc_org_id + sub_org_id, NOT org_id)
-      - SELECT p.id, p.name, p.address, p.labor_rate_per_hour, p.legal_jurisdiction,
-               p.sha256_enabled, p.gc_org_id, p.sub_org_id, p.created_at
-        FROM projects p
-        WHERE p.id IN (
-          SELECT DISTINCT a.project_id FROM areas a
-          INNER JOIN user_assignments ua ON ua.area_id = a.id
-          WHERE ua.user_id = bucket.user_id
-        )
-
-      # Area trade status — THE universal status currency (effective_pct, gates, verification)
-      - SELECT ats.id, ats.area_id, ats.trade_type, ats.reporting_mode,
-               ats.manual_pct, ats.calculated_pct, ats.effective_pct,
-               ats.all_gates_passed, ats.gc_verification_pending,
-               ats.gc_verification_pending_since, ats.updated_at
-        FROM area_trade_status ats
-        WHERE ats.area_id IN (
-          SELECT ua.area_id FROM user_assignments ua
-          WHERE ua.user_id = bucket.user_id
-        )
-
-      # Field reports for assigned areas (progress_pct NOT progress, includes trade_name)
-      - SELECT fr.id, fr.area_id, fr.user_id, fr.trade_name, fr.status, fr.progress_pct,
-               fr.reason_code, fr.gps_lat, fr.gps_lng, fr.photo_url,
-               fr.device_id, fr.app_version, fr.offline_created_at, fr.created_at
-        FROM field_reports fr
-        WHERE fr.area_id IN (
-          SELECT ua.area_id FROM user_assignments ua
-          WHERE ua.user_id = bucket.user_id
-        )
-
-      # Area tasks — checklist system (sub + gc tasks for assigned areas)
-      - SELECT at.id, at.area_id, at.trade_type, at.task_template_id, at.task_order,
-               at.task_name_en, at.task_name_es, at.task_owner, at.is_gate, at.weight,
-               at.status, at.completed_at, at.completed_by, at.completed_by_role,
-               at.photo_url, at.notes, at.gps_lat, at.gps_lon,
-               at.verification_requested_at, at.notification_sent_at,
-               at.notification_opened_at, at.reminder_sent_at, at.escalation_flagged_at,
-               at.correction_reason, at.correction_note,
-               at.correction_requested_at, at.correction_requested_by,
-               at.correction_resolved_at, at.updated_at
-        FROM area_tasks at
-        WHERE at.area_id IN (
-          SELECT ua.area_id FROM user_assignments ua
-          WHERE ua.user_id = bucket.user_id
-        )
-
-      # Delay logs for assigned areas
-      - SELECT dl.id, dl.area_id, dl.trade_name, dl.reason_code, dl.started_at, dl.ended_at,
-               dl.man_hours, dl.daily_cost, dl.cumulative_cost, dl.crew_size,
-               dl.nod_draft_id, dl.rea_id, dl.receipt_confirmed
-        FROM delay_logs dl
-        WHERE dl.area_id IN (
-          SELECT ua.area_id FROM user_assignments ua
-          WHERE ua.user_id = bucket.user_id
-        )
-
-  # Superintendent/Sub PM: sees NOD drafts + corrective actions for their org
-  superintendent_data:
+  # ── Bucket 2: Area-scoped (one instance per assigned area) ──
+  by_area:
     parameters:
-      - SELECT token_parameters.user_id as user_id
+      - SELECT area_id FROM user_assignments
+        WHERE user_id = token_parameters.user_id
 
     data:
-      # NOD drafts for delays in projects where user's org participates
-      # Fixed: join through delay_logs → areas → projects → match org_id
-      - SELECT nd.id, nd.delay_log_id, nd.draft_content, nd.reminder_sent_at, nd.sent_at, nd.sent_by
-        FROM nod_drafts nd
-        INNER JOIN delay_logs dl ON dl.id = nd.delay_log_id
-        INNER JOIN areas a ON a.id = dl.area_id
-        INNER JOIN projects p ON p.id = a.project_id
-        WHERE p.sub_org_id = (SELECT org_id FROM users WHERE id = bucket.user_id)
-           OR p.gc_org_id = (SELECT org_id FROM users WHERE id = bucket.user_id)
+      - SELECT id, name, floor, area_type, project_id, total_sqft, original_sqft,
+               unit_id, area_code, description, sort_order, created_at
+        FROM areas
+        WHERE id = bucket.area_id
 
-      # Corrective actions for delays in org's projects
-      - SELECT ca.id, ca.delay_log_id, ca.assigned_to, ca.deadline, ca.note,
-               ca.created_at, ca.acknowledged_at, ca.in_resolution_at, ca.resolved_at, ca.created_by
-        FROM corrective_actions ca
-        INNER JOIN delay_logs dl ON dl.id = ca.delay_log_id
-        INNER JOIN areas a ON a.id = dl.area_id
-        INNER JOIN projects p ON p.id = a.project_id
-        WHERE p.sub_org_id = (SELECT org_id FROM users WHERE id = bucket.user_id)
-           OR p.gc_org_id = (SELECT org_id FROM users WHERE id = bucket.user_id)
+      - SELECT id, area_id, trade_type, reporting_mode,
+               manual_pct, calculated_pct, effective_pct,
+               all_gates_passed, gc_verification_pending,
+               gc_verification_pending_since, updated_at
+        FROM area_trade_status
+        WHERE area_id = bucket.area_id
+
+      - SELECT id, area_id, user_id, trade_name, status, progress_pct,
+               reason_code, gps_lat, gps_lng, photo_url,
+               device_id, app_version, offline_created_at, created_at
+        FROM field_reports
+        WHERE area_id = bucket.area_id
+
+      - SELECT id, area_id, trade_type, task_template_id, task_order,
+               task_name_en, task_name_es, task_owner, is_gate, weight,
+               status, completed_at, completed_by, completed_by_role,
+               photo_url, notes, gps_lat, gps_lon,
+               verification_requested_at, notification_sent_at,
+               notification_opened_at, reminder_sent_at, escalation_flagged_at,
+               correction_reason, correction_note,
+               correction_requested_at, correction_requested_by,
+               correction_resolved_at, updated_at
+        FROM area_tasks
+        WHERE area_id = bucket.area_id
+
+      - SELECT id, area_id, trade_name, reason_code, started_at, ended_at,
+               man_hours, daily_cost, cumulative_cost, crew_size,
+               nod_draft_id, rea_id, receipt_confirmed
+        FROM delay_logs
+        WHERE area_id = bucket.area_id
+
+  # ── Bucket 3: Project-scoped (via project_members — has user_id + project_id) ──
+  by_project:
+    parameters:
+      - SELECT project_id FROM project_members
+        WHERE user_id = token_parameters.user_id
+
+    data:
+      - SELECT id, name, address, labor_rate_per_hour, legal_jurisdiction,
+               sha256_enabled, gc_org_id, sub_org_id, created_at
+        FROM projects
+        WHERE id = bucket.project_id
+
+      - SELECT id, project_id, area_type, trade_name, sequence_order
+        FROM trade_sequences
+        WHERE project_id = bucket.project_id
+
+      - SELECT id, project_id, floor, name, unit_type, sort_order,
+               created_at, updated_at
+        FROM units
+        WHERE project_id = bucket.project_id

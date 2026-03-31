@@ -13,7 +13,8 @@ import { GridFilterBar } from './GridFilterBar';
 import { GridDetailPanel } from './GridDetailPanel';
 import { GridPrintButton } from './GridPrintButton';
 import { EfficiencyDashboard } from './EfficiencyDashboard';
-import type { ReadyBoardInitialData, GridStatus, GridFloor } from '../types';
+import type { ReadyBoardInitialData, GridStatus, GridFloor, GridUnit, GridRow as GridRowType, GridCellData } from '../types';
+import { STATUS_CONFIG } from '../types';
 
 type ReadyBoardGridProps = {
   initialData: ReadyBoardInitialData;
@@ -52,6 +53,44 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
       unsubOrchestrator();
     };
   }, [projectId]);
+
+  // ─── Expand/collapse state ─────────────────────────────
+  const [expandedFloors, setExpandedFloors] = useState<Set<string>>(new Set());
+  const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
+  const [problemsOnly, setProblemsOnly] = useState(false);
+
+  const toggleFloorExpand = useCallback((floor: string) => {
+    setExpandedFloors((prev) => {
+      const next = new Set(prev);
+      next.has(floor) ? next.delete(floor) : next.add(floor);
+      return next;
+    });
+  }, []);
+
+  const toggleUnitExpand = useCallback((unitKey: string) => {
+    setExpandedUnits((prev) => {
+      const next = new Set(prev);
+      next.has(unitKey) ? next.delete(unitKey) : next.add(unitKey);
+      return next;
+    });
+  }, []);
+
+  const expandAll = useCallback(() => {
+    const allFloors = new Set(floors.map((f) => f.floor));
+    const allUnits = new Set<string>();
+    for (const f of floors) {
+      for (const u of f.units) {
+        allUnits.add(`${f.floor}:${u.unit_id ?? '__common__'}`);
+      }
+    }
+    setExpandedFloors(allFloors);
+    setExpandedUnits(allUnits);
+  }, [floors]);
+
+  const collapseAll = useCallback(() => {
+    setExpandedFloors(new Set());
+    setExpandedUnits(new Set());
+  }, []);
 
   // ─── Filter state ──────────────────────────────────────
   const [selectedFloors, setSelectedFloors] = useState<Set<string>>(new Set());
@@ -125,8 +164,29 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
         .filter((floor) => floor.allRows.length > 0);
     }
 
+    // Problems-only filter: keep only floors/units/areas with blocked, held, or almost
+    if (problemsOnly) {
+      const problemStatuses = new Set<GridStatus>(['blocked', 'held', 'almost']);
+      result = result
+        .map((floor) => {
+          const filteredUnits = floor.units
+            .map((unit) => ({
+              ...unit,
+              rows: unit.rows.filter((row) =>
+                row.cells.some((c) => problemStatuses.has(c.status)),
+              ),
+            }))
+            .filter((unit) => unit.rows.length > 0);
+          const filteredAllRows = floor.allRows.filter((row) =>
+            row.cells.some((c) => problemStatuses.has(c.status)),
+          );
+          return { ...floor, units: filteredUnits, allRows: filteredAllRows };
+        })
+        .filter((floor) => floor.allRows.length > 0);
+    }
+
     return result;
-  }, [floors, selectedFloors, selectedTrades, selectedStatuses]);
+  }, [floors, selectedFloors, selectedTrades, selectedStatuses, problemsOnly]);
 
   // ─── Derived: status counts (from filtered view) ──────
   const statusCounts = useMemo(() => {
@@ -200,6 +260,52 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
         </div>
       </div>
 
+      {/* Navigation controls */}
+      <div className="flex items-center gap-3 print:hidden">
+        {/* Floor quick-jump tabs */}
+        <div className="flex gap-1 overflow-x-auto">
+          {floorNumbers.map((f) => (
+            <button
+              key={f}
+              onClick={() => {
+                if (!expandedFloors.has(f)) toggleFloorExpand(f);
+                document.getElementById(`floor-${f}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className={`rounded px-2 py-1 text-xs transition-colors ${
+                expandedFloors.has(f)
+                  ? 'bg-amber-500/20 text-amber-400 font-bold'
+                  : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+            >
+              F{f}
+            </button>
+          ))}
+        </div>
+
+        <div className="h-5 w-px bg-zinc-700" />
+
+        <button onClick={expandAll} className="text-xs text-zinc-500 hover:text-zinc-200">
+          Expand all
+        </button>
+        <button onClick={collapseAll} className="text-xs text-zinc-500 hover:text-zinc-200">
+          Collapse all
+        </button>
+
+        <button
+          onClick={() => {
+            setProblemsOnly((v) => !v);
+            if (!problemsOnly) expandAll();
+          }}
+          className={`rounded px-3 py-1 text-xs transition-colors ${
+            problemsOnly
+              ? 'bg-red-500/20 text-red-400 font-medium'
+              : 'text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          {problemsOnly ? '✕ Problems only' : 'Show problems only'}
+        </button>
+      </div>
+
       {/* Filter bar */}
       <GridFilterBar
         floors={floorNumbers}
@@ -226,7 +332,16 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
           <GridHeader trades={filteredTrades} />
           <tbody>
             {filteredFloors.map((floor) => (
-              <FloorGroup key={floor.floor} floor={floor} trades={filteredTrades} onSelectCell={selectCell} />
+              <FloorSection
+                key={floor.floor}
+                floor={floor}
+                trades={filteredTrades}
+                expanded={expandedFloors.has(floor.floor)}
+                expandedUnits={expandedUnits}
+                onToggleFloor={() => toggleFloorExpand(floor.floor)}
+                onToggleUnit={toggleUnitExpand}
+                onSelectCell={selectCell}
+              />
             ))}
           </tbody>
         </table>
@@ -254,29 +369,199 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
   );
 }
 
-/** Floor separator + rows */
-function FloorGroup({
+// ─── Worst status helper ─────────────────────────────
+
+const STATUS_PRIORITY: Record<GridStatus, number> = {
+  blocked: 6, held: 5, almost: 4, in_progress: 3, ready: 2, done: 1, waiting: 0,
+};
+
+function worstStatus(rows: GridRowType[]): GridStatus {
+  let worst: GridStatus = 'waiting';
+  let worstPri = -1;
+  for (const row of rows) {
+    for (const cell of row.cells) {
+      const pri = STATUS_PRIORITY[cell.status] ?? 0;
+      if (pri > worstPri) {
+        worstPri = pri;
+        worst = cell.status;
+      }
+    }
+  }
+  return worst;
+}
+
+function statusCounts(rows: GridRowType[]) {
+  const counts: Partial<Record<GridStatus, number>> = {};
+  for (const row of rows) {
+    for (const cell of row.cells) {
+      counts[cell.status] = (counts[cell.status] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
+
+// ─── Floor Section (Level 1) ─────────────────────────
+
+function FloorSection({
   floor,
   trades,
+  expanded,
+  expandedUnits,
+  onToggleFloor,
+  onToggleUnit,
   onSelectCell,
 }: {
-  floor: import('../types').GridFloor;
+  floor: GridFloor;
   trades: string[];
-  onSelectCell: (cell: import('../types').GridCellData) => void;
+  expanded: boolean;
+  expandedUnits: Set<string>;
+  onToggleFloor: () => void;
+  onToggleUnit: (key: string) => void;
+  onSelectCell: (cell: GridCellData) => void;
 }) {
+  const worst = useMemo(() => worstStatus(floor.allRows), [floor.allRows]);
+  const counts = useMemo(() => statusCounts(floor.allRows), [floor.allRows]);
+  const totalAreas = floor.allRows.length;
+  const worstCfg = STATUS_CONFIG[worst];
+
   return (
     <>
-      {/* Floor header row */}
-      <tr>
-        <td
-          colSpan={trades.length + 1}
-          className="border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-xs font-semibold text-zinc-300"
-        >
+      {/* Floor header row — click to expand/collapse */}
+      <tr
+        id={`floor-${floor.floor}`}
+        className="cursor-pointer transition-colors hover:bg-zinc-800/50"
+        onClick={onToggleFloor}
+      >
+        <td className="sticky left-0 z-10 border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-semibold text-zinc-200">
+          <span className="mr-2 text-zinc-500">{expanded ? '▼' : '▶'}</span>
           Floor {floor.floor}
+          <span className="ml-3 text-xs font-normal text-zinc-500">
+            {totalAreas} areas
+          </span>
+        </td>
+        <td colSpan={trades.length} className="border border-zinc-800 bg-zinc-900 px-3 py-2">
+          <div className="flex items-center gap-3">
+            {/* Aggregate status bar */}
+            <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-zinc-800">
+              {(['done', 'ready', 'in_progress', 'almost', 'blocked', 'held', 'waiting'] as GridStatus[]).map((s) => {
+                const count = counts[s] ?? 0;
+                if (count === 0) return null;
+                const total = Object.values(counts).reduce((a, b) => a + (b ?? 0), 0);
+                return (
+                  <div
+                    key={s}
+                    style={{ width: `${(count / total) * 100}%`, backgroundColor: STATUS_CONFIG[s].hex }}
+                    className="h-full"
+                  />
+                );
+              })}
+            </div>
+            {/* Worst status dot */}
+            <div className="flex items-center gap-1.5">
+              <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: worstCfg.hex }} />
+              <span className="text-[10px] text-zinc-500">
+                {counts.blocked ? `${counts.blocked} BLK` : ''}
+                {counts.held ? ` ${counts.held} HLD` : ''}
+                {counts.almost ? ` ${counts.almost} ALM` : ''}
+              </span>
+            </div>
+          </div>
         </td>
       </tr>
-      {/* Area rows */}
-      {floor.allRows.map((row) => (
+
+      {/* Expanded: show units */}
+      {expanded && floor.units.map((unit) => {
+        const unitKey = `${floor.floor}:${unit.unit_id ?? '__common__'}`;
+        return (
+          <UnitSection
+            key={unitKey}
+            unit={unit}
+            unitKey={unitKey}
+            trades={trades}
+            expanded={expandedUnits.has(unitKey)}
+            onToggle={() => onToggleUnit(unitKey)}
+            onSelectCell={onSelectCell}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+// ─── Unit Section (Level 2) ──────────────────────────
+
+function UnitSection({
+  unit,
+  unitKey,
+  trades,
+  expanded,
+  onToggle,
+  onSelectCell,
+}: {
+  unit: GridUnit;
+  unitKey: string;
+  trades: string[];
+  expanded: boolean;
+  onToggle: () => void;
+  onSelectCell: (cell: GridCellData) => void;
+}) {
+  const worst = useMemo(() => worstStatus(unit.rows), [unit.rows]);
+  const worstCfg = STATUS_CONFIG[worst];
+  const readyCount = useMemo(
+    () => unit.rows.filter((r) => r.cells.every((c) => c.status === 'done' || c.status === 'ready')).length,
+    [unit.rows],
+  );
+
+  return (
+    <>
+      {/* Unit header row */}
+      <tr
+        className="cursor-pointer transition-colors hover:bg-zinc-800/30"
+        onClick={onToggle}
+      >
+        <td className="sticky left-0 z-10 border border-zinc-800 bg-zinc-950 pl-8 pr-3 py-1.5 text-xs text-zinc-300">
+          <span className="mr-2 text-zinc-600">{expanded ? '▼' : '▶'}</span>
+          <span className="font-medium">Unit {unit.unit_name}</span>
+          {unit.unit_type && (
+            <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-500">
+              {unit.unit_type.replace(/_/g, ' ')}
+            </span>
+          )}
+          <span className="ml-2 text-zinc-600">
+            {readyCount}/{unit.rows.length}
+          </span>
+        </td>
+        {/* Per-trade worst status cells */}
+        {trades.map((trade) => {
+          let cellWorst: GridStatus = 'waiting';
+          let cellWorstPri = -1;
+          for (const row of unit.rows) {
+            const c = row.cells.find((cc) => cc.trade_type === trade);
+            if (c) {
+              const pri = STATUS_PRIORITY[c.status] ?? 0;
+              if (pri > cellWorstPri) {
+                cellWorstPri = pri;
+                cellWorst = c.status;
+              }
+            }
+          }
+          const cfg = STATUS_CONFIG[cellWorst];
+          return (
+            <td key={trade} className="border border-zinc-800 bg-zinc-950 p-0">
+              <div className="flex items-center justify-center py-1">
+                <div
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: cfg.hex }}
+                  title={`${cfg.label} (worst in unit)`}
+                />
+              </div>
+            </td>
+          );
+        })}
+      </tr>
+
+      {/* Expanded: show area rows */}
+      {expanded && unit.rows.map((row) => (
         <GridRow key={row.area_id} row={row} onSelectCell={onSelectCell} />
       ))}
     </>

@@ -178,11 +178,30 @@ export function GridDetailPanel({
       {/* Panel */}
       <div className="flex w-96 flex-col border-l border-zinc-800 bg-zinc-900 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-          <h3 className="text-sm font-semibold text-zinc-100">{cell.trade_type}</h3>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
-            &times;
-          </button>
+        <div className="border-b border-zinc-800 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-zinc-100">{cell.trade_type}</h3>
+            <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
+              &times;
+            </button>
+          </div>
+          {/* Area context */}
+          <div className="mt-1 flex items-center gap-2 text-xs">
+            {cell.area_code && (
+              <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[11px] text-zinc-400">
+                {cell.area_code}
+              </span>
+            )}
+            {cell.area_name && (
+              <span className="text-zinc-300">{cell.area_name}</span>
+            )}
+            {cell.unit_name && (
+              <span className="text-zinc-500">· Unit {cell.unit_name}</span>
+            )}
+          </div>
+          {cell.area_description && (
+            <p className="mt-0.5 text-[11px] text-zinc-500">{cell.area_description}</p>
+          )}
         </div>
 
         {/* Content */}

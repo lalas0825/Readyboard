@@ -94,6 +94,10 @@ function buildRow(
       delay_reason: delay ? delay.reason_code : null,
       delay_log_id: delay?.id ?? null,
       gc_pending: cell.gc_verification_pending,
+      area_name: cell.area_name,
+      area_code: cell.area_code,
+      area_description: cell.area_description,
+      unit_name: cell.unit_name,
     };
   });
 
