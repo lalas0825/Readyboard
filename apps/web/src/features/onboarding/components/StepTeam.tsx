@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useOnboardingStore, type InviteEntry } from '../store/useOnboardingStore';
 import { completeOnboarding } from '../services/completeOnboarding';
 
@@ -12,7 +11,6 @@ const ROLES = [
 ] as const;
 
 export function StepTeam() {
-  const router = useRouter();
   const store = useOnboardingStore();
   const { invites, addInvite, removeInvite, prevStep, isSubmitting, setIsSubmitting } = store;
 
@@ -53,17 +51,15 @@ export function StepTeam() {
       invites: invites.length > 0 ? invites : undefined,
     });
 
-    setIsSubmitting(false);
-
     if (!result.ok) {
       setError(result.error);
+      setIsSubmitting(false);
       return;
     }
 
-    // Navigate to dashboard — no need to reset store, the server component
-    // will redirect to /dashboard on next visit since onboarding_complete is now true
-    router.replace('/dashboard');
-    router.refresh();
+    // Hard redirect — router.replace races with Zustand re-renders and loses.
+    // Keep isSubmitting=true so the UI stays frozen until navigation completes.
+    window.location.href = '/dashboard';
   }
 
   return (
