@@ -60,11 +60,10 @@ export function StepTeam() {
       return;
     }
 
-    // Navigate FIRST, then reset store — resetting first causes a flash back to step 1
+    // Navigate to dashboard — no need to reset store, the server component
+    // will redirect to /dashboard on next visit since onboarding_complete is now true
     router.replace('/dashboard');
     router.refresh();
-    // Delay reset so it doesn't trigger a re-render before navigation completes
-    setTimeout(() => store.reset(), 500);
   }
 
   return (
