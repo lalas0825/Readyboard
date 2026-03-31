@@ -39,7 +39,21 @@ const areas = new Table({
   project_id: column.text,
   total_sqft: column.real,
   original_sqft: column.real,
+  unit_id: column.text,
+  area_code: column.text,
+  description: column.text,
+  sort_order: column.integer,
   created_at: column.text,
+}, { indexes: {} });
+
+const units = new Table({
+  project_id: column.text,
+  floor: column.text,
+  name: column.text,
+  unit_type: column.text,
+  sort_order: column.integer,
+  created_at: column.text,
+  updated_at: column.text,
 }, { indexes: {} });
 
 const trade_sequences = new Table({
@@ -172,6 +186,7 @@ const area_tasks = new Table({
 export const AppSchema = new Schema({
   projects,
   areas,
+  units,
   trade_sequences,
   user_assignments,
   users,

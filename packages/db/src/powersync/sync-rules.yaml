@@ -32,10 +32,21 @@ bucket_definitions:
         WHERE id = bucket.user_id
 
       # Areas assigned to this user (no 'status' column — it's derived from area_trade_status)
-      - SELECT a.id, a.name, a.floor, a.area_type, a.project_id, a.total_sqft, a.original_sqft, a.created_at
+      - SELECT a.id, a.name, a.floor, a.area_type, a.project_id, a.total_sqft, a.original_sqft,
+               a.unit_id, a.area_code, a.description, a.sort_order, a.created_at
         FROM areas a
         INNER JOIN user_assignments ua ON ua.area_id = a.id
         WHERE ua.user_id = bucket.user_id
+
+      # Units for assigned projects (for Floor → Unit → Area hierarchy)
+      - SELECT u.id, u.project_id, u.floor, u.name, u.unit_type, u.sort_order,
+               u.created_at, u.updated_at
+        FROM units u
+        WHERE u.project_id IN (
+          SELECT DISTINCT a.project_id FROM areas a
+          INNER JOIN user_assignments ua ON ua.area_id = a.id
+          WHERE ua.user_id = bucket.user_id
+        )
 
       # User's assignments
       - SELECT id, user_id, area_id, trade_name

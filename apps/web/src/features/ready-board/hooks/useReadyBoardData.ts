@@ -7,6 +7,7 @@ import { deriveActionStatus } from '../lib/deriveActionStatus';
 import { fetchGridData } from '../services/fetchGridData';
 import type {
   GridFloor,
+  GridUnit,
   GridRow,
   GridCellData,
   RawCellData,
@@ -96,10 +97,15 @@ function buildRow(
     };
   });
 
+  const first = rawCells[0];
   return {
     area_id,
-    area_name: rawCells[0]?.area_name ?? 'Unknown',
-    floor: rawCells[0]?.floor ?? '?',
+    area_name: first?.area_name ?? 'Unknown',
+    floor: first?.floor ?? '?',
+    unit_id: first?.unit_id ?? null,
+    unit_name: first?.unit_name ?? null,
+    area_code: first?.area_code ?? null,
+    area_description: first?.area_description ?? null,
     cells,
   };
 }
@@ -120,6 +126,7 @@ function buildAllFloors(
     rows.push(buildRow(areaId, cellMap, delayMap, actionMap, trades));
   }
 
+  // Group rows by floor
   const floorMap = new Map<string, GridRow[]>();
   for (const row of rows) {
     const arr = floorMap.get(row.floor) ?? [];
@@ -129,13 +136,38 @@ function buildAllFloors(
 
   return Array.from(floorMap.entries())
     .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
-    .map(([floor, floorRows]) => ({
-      floor,
-      rows: floorRows.sort((a, b) => a.area_name.localeCompare(b.area_name)),
-    }));
+    .map(([floor, floorRows]) => {
+      // Group rows within this floor by unit
+      const unitMap = new Map<string, GridRow[]>();
+      for (const row of floorRows) {
+        const unitKey = row.unit_id ?? '__common__';
+        const arr = unitMap.get(unitKey) ?? [];
+        arr.push(row);
+        unitMap.set(unitKey, arr);
+      }
+
+      const units: GridUnit[] = Array.from(unitMap.entries())
+        .sort(([, aRows], [, bRows]) => {
+          const aName = aRows[0]?.unit_name ?? 'ZZZ';
+          const bName = bRows[0]?.unit_name ?? 'ZZZ';
+          return aName.localeCompare(bName, undefined, { numeric: true });
+        })
+        .map(([unitKey, unitRows]) => ({
+          unit_id: unitKey === '__common__' ? null : unitKey,
+          unit_name: unitRows[0]?.unit_name ?? 'Common',
+          unit_type: cellMap.get(`${unitRows[0]?.area_id}:${trades[0]}`)?.unit_type ?? null,
+          rows: unitRows.sort((a, b) => a.area_name.localeCompare(b.area_name)),
+        }));
+
+      return {
+        floor,
+        units,
+        allRows: floorRows.sort((a, b) => a.area_name.localeCompare(b.area_name)),
+      };
+    });
 }
 
-/** Surgically rebuild one row inside the floor list — O(rows-in-floor) */
+/** Surgically rebuild one row inside the floor list — O(units-in-floor × rows-in-unit) */
 function rebuildRowInFloors(
   floors: GridFloor[],
   area_id: string,
@@ -145,12 +177,22 @@ function rebuildRowInFloors(
   trades: string[],
 ): GridFloor[] {
   return floors.map((floor) => {
-    const rowIdx = floor.rows.findIndex((r) => r.area_id === area_id);
-    if (rowIdx === -1) return floor; // unchanged floor — same reference
+    // Check allRows first for quick bail-out
+    if (!floor.allRows.some((r) => r.area_id === area_id)) return floor;
+
     const newRow = buildRow(area_id, cellMap, delayMap, actionMap, trades);
-    const newRows = [...floor.rows];
-    newRows[rowIdx] = newRow;
-    return { ...floor, rows: newRows };
+
+    const newUnits = floor.units.map((unit) => {
+      const rowIdx = unit.rows.findIndex((r) => r.area_id === area_id);
+      if (rowIdx === -1) return unit;
+      const newRows = [...unit.rows];
+      newRows[rowIdx] = newRow;
+      return { ...unit, rows: newRows };
+    });
+
+    const newAllRows = floor.allRows.map((r) => (r.area_id === area_id ? newRow : r));
+
+    return { ...floor, units: newUnits, allRows: newAllRows };
   });
 }
 
@@ -161,8 +203,10 @@ function findCellInFloors(
   trade_type: string,
 ): GridCellData | null {
   for (const floor of floors) {
-    const row = floor.rows.find((r) => r.area_id === area_id);
-    if (row) return row.cells.find((c) => c.trade_type === trade_type) ?? null;
+    for (const unit of floor.units) {
+      const row = unit.rows.find((r) => r.area_id === area_id);
+      if (row) return row.cells.find((c) => c.trade_type === trade_type) ?? null;
+    }
   }
   return null;
 }
@@ -322,13 +366,19 @@ export function gridReducer(state: GridState, action: GridAction): GridState {
       const newAreaIds = new Set(state.areaIds);
       newAreaIds.delete(deletedAreaId);
 
-      // Remove the row from floors
+      // Remove the row from floors (3-level: floor → unit → rows)
       const newFloors = state.floors
-        .map((floor) => ({
-          ...floor,
-          rows: floor.rows.filter((r) => r.area_id !== deletedAreaId),
-        }))
-        .filter((floor) => floor.rows.length > 0);
+        .map((floor) => {
+          const newUnits = floor.units
+            .map((unit) => ({
+              ...unit,
+              rows: unit.rows.filter((r) => r.area_id !== deletedAreaId),
+            }))
+            .filter((unit) => unit.rows.length > 0);
+          const newAllRows = floor.allRows.filter((r) => r.area_id !== deletedAreaId);
+          return { ...floor, units: newUnits, allRows: newAllRows };
+        })
+        .filter((floor) => floor.units.length > 0);
 
       // Clear selectedCell if it belonged to the deleted area
       const newSelectedCell =

@@ -3,7 +3,7 @@
 import { getSession } from '@/lib/auth/getSession';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import type { RawCellData, DelayData, CorrectiveActionData, ReadyBoardInitialData } from '../types';
+import type { RawCellData, DelayData, CorrectiveActionData, ReadyBoardInitialData, UnitData } from '../types';
 import { deriveActionStatus } from '../lib/deriveActionStatus';
 
 /**
@@ -40,7 +40,7 @@ export async function fetchGridData(
   }
 
   if (!pid) {
-    return { rawCells: [], delays: [], trades: [], projectId: '', actions: [], safetyGateEnabled: false };
+    return { rawCells: [], delays: [], trades: [], projectId: '', actions: [], safetyGateEnabled: false, units: [] };
   }
 
   // Single query: areas + area_trade_status + trade_sequences
@@ -65,7 +65,17 @@ export async function fetchGridData(
             name,
             floor,
             area_type,
-            project_id
+            project_id,
+            unit_id,
+            area_code,
+            description,
+            sort_order,
+            units (
+              id,
+              name,
+              unit_type,
+              sort_order
+            )
           )
         `)
         .eq('areas.project_id', pid)
@@ -83,7 +93,7 @@ export async function fetchGridData(
 
   if (gridError) {
     console.error('[ReadyBoard] Grid query failed:', gridError);
-    return { rawCells: [], delays: [], trades: [], projectId: pid, actions: [], safetyGateEnabled: false };
+    return { rawCells: [], delays: [], trades: [], projectId: pid, actions: [], safetyGateEnabled: false, units: [] };
   }
 
   // Trade sequence order
@@ -112,6 +122,7 @@ export async function fetchGridData(
   // Transform raw rows
   const rawCells: RawCellData[] = (rawRows ?? []).map((row: Record<string, unknown>) => {
     const areas = row.areas as Record<string, unknown>;
+    const unit = areas.units as Record<string, unknown> | null;
     return {
       area_id: row.area_id as string,
       area_name: areas.name as string,
@@ -121,6 +132,12 @@ export async function fetchGridData(
       effective_pct: Number(row.effective_pct),
       all_gates_passed: row.all_gates_passed as boolean,
       gc_verification_pending: row.gc_verification_pending as boolean,
+      unit_id: (areas.unit_id as string) ?? null,
+      unit_name: (unit?.name as string) ?? null,
+      unit_type: (unit?.unit_type as string) ?? null,
+      area_code: (areas.area_code as string) ?? null,
+      area_description: (areas.description as string) ?? null,
+      area_sort_order: Number(areas.sort_order ?? 0),
     };
   });
 
@@ -182,5 +199,21 @@ export async function fetchGridData(
     });
   }
 
-  return { rawCells, delays, trades, projectId: pid, actions, safetyGateEnabled };
+  // Fetch units for this project
+  const { data: unitRows } = await supabase
+    .from('units')
+    .select('id, name, floor, unit_type, sort_order')
+    .eq('project_id', pid)
+    .order('floor')
+    .order('sort_order');
+
+  const units: UnitData[] = (unitRows ?? []).map((u) => ({
+    id: u.id as string,
+    name: u.name as string,
+    floor: u.floor as string,
+    unit_type: (u.unit_type as string) ?? null,
+    sort_order: Number(u.sort_order ?? 0),
+  }));
+
+  return { rawCells, delays, trades, projectId: pid, actions, safetyGateEnabled, units };
 }

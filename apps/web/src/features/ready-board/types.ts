@@ -48,13 +48,27 @@ export type GridRow = {
   area_id: string;
   area_name: string;
   floor: string;
+  unit_id: string | null;
+  unit_name: string | null;
+  area_code: string | null;
+  area_description: string | null;
   cells: GridCellData[];
 };
 
-/** Group of rows by floor */
+/** Group of areas within a unit */
+export type GridUnit = {
+  unit_id: string | null;
+  unit_name: string;
+  unit_type: string | null;
+  rows: GridRow[];
+};
+
+/** Group of units by floor */
 export type GridFloor = {
   floor: string;
-  rows: GridRow[];
+  units: GridUnit[];
+  /** Flat list of all rows across all units (for backward compat with filters) */
+  allRows: GridRow[];
 };
 
 /** Raw cell data from Supabase (before status derivation) */
@@ -67,6 +81,21 @@ export type RawCellData = {
   effective_pct: number;
   all_gates_passed: boolean;
   gc_verification_pending: boolean;
+  unit_id: string | null;
+  unit_name: string | null;
+  unit_type: string | null;
+  area_code: string | null;
+  area_description: string | null;
+  area_sort_order: number;
+};
+
+/** Unit data from Supabase */
+export type UnitData = {
+  id: string;
+  name: string;
+  floor: string;
+  unit_type: string | null;
+  sort_order: number;
 };
 
 /** Active delay data from Supabase */
@@ -101,4 +130,5 @@ export type ReadyBoardInitialData = {
   projectId: string;
   actions: CorrectiveActionData[];
   safetyGateEnabled: boolean;
+  units: UnitData[];
 };

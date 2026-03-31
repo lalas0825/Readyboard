@@ -53,6 +53,12 @@ function makeInitialData(actions: CorrectiveActionData[] = []): ReadyBoardInitia
         effective_pct: 50,
         all_gates_passed: false,
         gc_verification_pending: false,
+        unit_id: null,
+        unit_name: null,
+        unit_type: null,
+        area_code: null,
+        area_description: null,
+        area_sort_order: 0,
       },
       {
         area_id: 'area-1',
@@ -63,6 +69,12 @@ function makeInitialData(actions: CorrectiveActionData[] = []): ReadyBoardInitia
         effective_pct: 0,
         all_gates_passed: false,
         gc_verification_pending: false,
+        unit_id: null,
+        unit_name: null,
+        unit_type: null,
+        area_code: null,
+        area_description: null,
+        area_sort_order: 0,
       },
     ],
     delays: [
@@ -80,6 +92,7 @@ function makeInitialData(actions: CorrectiveActionData[] = []): ReadyBoardInitia
     ],
     actions,
     safetyGateEnabled: false,
+    units: [],
   };
 }
 
@@ -257,7 +270,7 @@ describe('gridReducer — has_action on GridCellData', () => {
 
   function getCell(state: ReturnType<typeof reduceActions>, trade: string) {
     for (const floor of state.floors) {
-      for (const row of floor.rows) {
+      for (const row of floor.allRows) {
         const cell = row.cells.find((c) => c.trade_type === trade);
         if (cell) return cell;
       }

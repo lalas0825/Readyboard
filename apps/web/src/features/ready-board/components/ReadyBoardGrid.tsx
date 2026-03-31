@@ -109,9 +109,8 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
     // Trade + Status filter: filter cells within each row
     if (selectedTrades.size > 0 || selectedStatuses.size > 0) {
       result = result
-        .map((floor) => ({
-          ...floor,
-          rows: floor.rows
+        .map((floor) => {
+          const filteredRows = floor.allRows
             .map((row) => ({
               ...row,
               cells: row.cells.filter((cell) => {
@@ -120,9 +119,10 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
                 return tradeMatch && statusMatch;
               }),
             }))
-            .filter((row) => row.cells.length > 0),
-        }))
-        .filter((floor) => floor.rows.length > 0);
+            .filter((row) => row.cells.length > 0);
+          return { ...floor, allRows: filteredRows };
+        })
+        .filter((floor) => floor.allRows.length > 0);
     }
 
     return result;
@@ -134,7 +134,7 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
       ready: 0, in_progress: 0, almost: 0, blocked: 0, held: 0, done: 0, waiting: 0,
     };
     for (const floor of filteredFloors) {
-      for (const row of floor.rows) {
+      for (const row of floor.allRows) {
         for (const cell of row.cells) {
           counts[cell.status]++;
         }
@@ -260,7 +260,7 @@ function FloorGroup({
   trades,
   onSelectCell,
 }: {
-  floor: { floor: string; rows: import('../types').GridRow[] };
+  floor: import('../types').GridFloor;
   trades: string[];
   onSelectCell: (cell: import('../types').GridCellData) => void;
 }) {
@@ -276,7 +276,7 @@ function FloorGroup({
         </td>
       </tr>
       {/* Area rows */}
-      {floor.rows.map((row) => (
+      {floor.allRows.map((row) => (
         <GridRow key={row.area_id} row={row} onSelectCell={onSelectCell} />
       ))}
     </>
