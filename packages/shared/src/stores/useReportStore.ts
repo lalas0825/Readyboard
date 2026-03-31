@@ -30,6 +30,12 @@ export type ReportContext = {
   user_id: string;
   /** 'percentage' = slider, 'checklist' = task checklist (V1.1) */
   reporting_mode: ReportingMode;
+  /** Building-plan area code (e.g. "B.24A.1") */
+  area_code?: string | null;
+  /** Human description (e.g. "Master Bath - Marble") */
+  area_description?: string | null;
+  /** Unit name (e.g. "24A") */
+  unit_name?: string | null;
 };
 
 /** Accumulated form data across all steps */

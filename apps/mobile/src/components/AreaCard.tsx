@@ -7,7 +7,7 @@
  * Carlos Standard: large text, high contrast, color does the talking.
  */
 
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import type { AssignedArea, AreaStatus } from '@readyboard/shared';
@@ -49,6 +49,11 @@ export default function AreaCard({ area, onReport }: Props) {
       <View style={styles.header}>
         <View style={styles.titleArea}>
           <View style={styles.nameRow}>
+            {area.area_code && (
+              <View style={styles.codeBadge}>
+                <Text style={styles.codeText}>{area.area_code}</Text>
+              </View>
+            )}
             <Text style={styles.name} numberOfLines={1}>{area.name}</Text>
             {recentlyReported && (
               <View style={styles.reportedBadge}>
@@ -57,8 +62,11 @@ export default function AreaCard({ area, onReport }: Props) {
               </View>
             )}
           </View>
+          {area.description && (
+            <Text style={styles.description} numberOfLines={1}>{area.description}</Text>
+          )}
           <Text style={styles.meta}>
-            {area.floor} · {t(`trades.${area.trade_name}`, { defaultValue: area.trade_name })}
+            {area.unit_name ? `Unit ${area.unit_name} · ` : ''}{area.floor} · {t(`trades.${area.trade_name}`, { defaultValue: area.trade_name })}
           </Text>
         </View>
         <View style={[styles.chip, { backgroundColor: config.bg }]}>
@@ -166,6 +174,24 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 14,
     color: '#94a3b8',
+    marginTop: 2,
+  },
+  codeBadge: {
+    backgroundColor: 'rgba(96, 165, 250, 0.15)',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  codeText: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#60a5fa',
+    letterSpacing: 0.3,
+  },
+  description: {
+    fontSize: 12,
+    color: '#64748b',
     marginTop: 2,
   },
   chip: {

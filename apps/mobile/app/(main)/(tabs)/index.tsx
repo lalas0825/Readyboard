@@ -1,8 +1,9 @@
 /**
  * Foreman Home Screen — Areas assigned to the current user.
  *
- * Shows color-coded area cards grouped by status:
- * READY (green) → ALMOST (yellow) → WORKING (blue) → HELD (purple) → BLOCKED (red)
+ * Phase 5: SectionList grouped by unit_name with aggregate status dots.
+ * Each section header shows "Unit 24A" with colored dots per area status.
+ * Areas without a unit are grouped under "Common".
  *
  * NOD Banner: sticky purple banner when unsent NOD drafts exist.
  * Triple-tap on title → navigates to /debug (dev-only).
@@ -11,11 +12,11 @@
  * Carlos Standard: 56px+ buttons, 20px+ text, high contrast, zero menus.
  */
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   StyleSheet,
   Pressable,
   ActivityIndicator,
@@ -26,10 +27,30 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
-import { useAreas, useReportStore, type AssignedArea } from '@readyboard/shared';
+import { useAreas, useReportStore, type AssignedArea, type AreaStatus } from '@readyboard/shared';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import AreaCard from '../../../src/components/AreaCard';
 import NodBanner from '../../../src/components/NodBanner';
+
+// ─── Status dot colors ──────────────────────────────
+const STATUS_DOT_COLORS: Record<AreaStatus, string> = {
+  ready: '#22c55e',
+  almost: '#eab308',
+  working: '#3b82f6',
+  held: '#a855f7',
+  blocked: '#ef4444',
+};
+
+type UnitSection = {
+  title: string;
+  data: AssignedArea[];
+  statusDots: { color: string }[];
+};
+
+/** Build colored dots summarizing area statuses in a unit */
+function buildStatusDots(areas: AssignedArea[]): { color: string }[] {
+  return areas.map((a) => ({ color: STATUS_DOT_COLORS[a.status] }));
+}
 
 export default function ForemanHome() {
   const { session } = useAuth();
@@ -72,14 +93,56 @@ export default function ForemanHome() {
       trade_name: area.trade_name,
       user_id: session!.user.id,
       reporting_mode: area.reporting_mode,
+      area_code: area.area_code,
+      area_description: area.description,
+      unit_name: area.unit_name,
     });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push('/report');
   }
 
+  // ─── Group areas into SectionList sections by unit_name ──────
+  const sections = useMemo<UnitSection[]>(() => {
+    const grouped = new Map<string, AssignedArea[]>();
+    for (const area of areas) {
+      const key = area.unit_name ?? 'Common';
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.push(area);
+      } else {
+        grouped.set(key, [area]);
+      }
+    }
+    return Array.from(grouped.entries()).map(([title, data]) => ({
+      title,
+      data,
+      statusDots: buildStatusDots(data),
+    }));
+  }, [areas]);
+
   const renderItem = useCallback(
     ({ item }: { item: AssignedArea }) => (
       <AreaCard area={item} onReport={handleReport} />
+    ),
+    []
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: UnitSection }) => (
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>
+          {section.title === 'Common' ? 'Common Areas' : `Unit ${section.title}`}
+        </Text>
+        {/* Status dots: one per area, colored by status */}
+        <View style={styles.dotsRow}>
+          {section.statusDots.map((dot, i) => (
+            <View
+              key={i}
+              style={[styles.statusDot, { backgroundColor: dot.color }]}
+            />
+          ))}
+        </View>
+      </View>
     ),
     []
   );
@@ -143,15 +206,17 @@ export default function ForemanHome() {
         </View>
       )}
 
-      {/* Area list */}
-      <FlatList
-        data={areas}
+      {/* Area list grouped by unit */}
+      <SectionList
+        sections={sections}
         renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
         keyExtractor={keyExtractor}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={ListEmpty}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={false}
       />
     </View>
   );
@@ -207,6 +272,37 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     alignItems: 'center',
   },
+  // ─── Section headers (unit grouping) ──────────
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    marginTop: 16,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 4,
+    flexWrap: 'wrap',
+    maxWidth: 120,
+    justifyContent: 'flex-end',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  // ─── Empty + Error ──────────
   empty: {
     paddingVertical: 60,
     alignItems: 'center',

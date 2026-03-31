@@ -65,6 +65,16 @@ export type AssignedArea = {
   status: AreaStatus;
   /** ISO timestamp of most recent field_report for this area+trade (null if none) */
   last_report_at: string | null;
+  /** Unit FK — null for legacy/common areas */
+  unit_id: string | null;
+  /** Denormalized unit name for grouping (e.g. "24A") */
+  unit_name: string | null;
+  /** Building-plan area code (e.g. "B.24A.1") */
+  area_code: string | null;
+  /** Human description (e.g. "Master Bath - Marble, double vanity") */
+  description: string | null;
+  /** Sort order within unit */
+  sort_order: number;
 };
 
 /** Input for creating a delay_log in local SQLite */
@@ -80,4 +90,8 @@ export type PendingNod = {
   area_id: string;
   area_name: string;
   reason_code: string;
+  /** Denormalized for grouping in Legal tab */
+  unit_name: string | null;
+  /** Area code for display */
+  area_code: string | null;
 };

@@ -29,6 +29,11 @@ type RawAreaRow = {
   all_gates_passed: number | null;
   gc_verification_pending: number | null;
   reporting_mode: string | null;
+  unit_id: string | null;
+  unit_name: string | null;
+  area_code: string | null;
+  description: string | null;
+  sort_order: number | null;
 };
 
 type RawDelayRow = {
@@ -41,6 +46,8 @@ type RawNodRow = {
   area_id: string | null;
   area_name: string | null;
   reason_code: string | null;
+  unit_name: string | null;
+  area_code: string | null;
 };
 
 type RawRecentReportRow = {
@@ -98,13 +105,19 @@ export function useAreas(userId: string | undefined) {
           ats.effective_pct,
           ats.all_gates_passed,
           ats.gc_verification_pending,
-          ats.reporting_mode
+          ats.reporting_mode,
+          a.unit_id,
+          a.area_code,
+          a.description,
+          a.sort_order,
+          u.name as unit_name
         FROM user_assignments ua
         JOIN areas a ON a.id = ua.area_id
         LEFT JOIN area_trade_status ats
           ON ats.area_id = a.id AND ats.trade_type = ua.trade_name
+        LEFT JOIN units u ON u.id = a.unit_id
         WHERE ua.user_id = ?
-        ORDER BY a.floor, a.name`,
+        ORDER BY u.sort_order, u.name, a.sort_order, a.name`,
         [userId]
       );
 
@@ -165,15 +178,23 @@ export function useAreas(userId: string | undefined) {
             reporting_mode: reportingMode,
             status: deriveStatus(effectivePct, allGatesPassed, gcPending, hasDelay),
             last_report_at: reportMap.get(`${row.id}:${tradeName}`) ?? null,
+            unit_id: row.unit_id ?? null,
+            unit_name: row.unit_name ?? null,
+            area_code: row.area_code ?? null,
+            description: row.description ?? null,
+            sort_order: row.sort_order ?? 0,
           };
         });
 
-      // Sort by status priority, then floor, then name
+      // Sort by unit name first (geographic grouping), then sort_order, then name
+      // Status priority used as secondary within units
       derived.sort((a, b) => {
-        const orderDiff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
-        if (orderDiff !== 0) return orderDiff;
-        const floorDiff = a.floor.localeCompare(b.floor);
-        if (floorDiff !== 0) return floorDiff;
+        const unitA = a.unit_name ?? 'zzz'; // nulls last
+        const unitB = b.unit_name ?? 'zzz';
+        const unitDiff = unitA.localeCompare(unitB, undefined, { numeric: true });
+        if (unitDiff !== 0) return unitDiff;
+        const sortDiff = a.sort_order - b.sort_order;
+        if (sortDiff !== 0) return sortDiff;
         return a.name.localeCompare(b.name);
       });
 
@@ -181,10 +202,12 @@ export function useAreas(userId: string | undefined) {
 
       // 4. Pending NOD drafts (unsent)
       const nods = await db.getAll<RawNodRow>(
-        `SELECT nd.id as nod_id, dl.area_id, a.name as area_name, dl.reason_code
+        `SELECT nd.id as nod_id, dl.area_id, a.name as area_name,
+                dl.reason_code, u.name as unit_name, a.area_code
         FROM nod_drafts nd
         JOIN delay_logs dl ON dl.id = nd.delay_log_id
         JOIN areas a ON a.id = dl.area_id
+        LEFT JOIN units u ON u.id = a.unit_id
         JOIN user_assignments ua ON ua.area_id = dl.area_id
         WHERE ua.user_id = ? AND nd.sent_at IS NULL`,
         [userId]
@@ -198,6 +221,8 @@ export function useAreas(userId: string | undefined) {
             area_id: n.area_id!,
             area_name: n.area_name ?? 'Unknown',
             reason_code: n.reason_code ?? 'unknown',
+            unit_name: n.unit_name ?? null,
+            area_code: n.area_code ?? null,
           }))
       );
     } catch (err) {

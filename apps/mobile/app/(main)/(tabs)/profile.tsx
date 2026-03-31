@@ -5,7 +5,7 @@
  * Logout clears: auth session, push token, PowerSync connection.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Switch, Alert, StatusBar, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,7 @@ import * as Haptics from 'expo-haptics';
 import Constants from 'expo-constants';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { clearPushToken, isPushEnabled } from '../../../src/services/pushNotifications';
+import { useAreas } from '@readyboard/shared';
 
 const ROLE_LABELS: Record<string, string> = {
   foreman: 'Foreman',
@@ -30,9 +31,23 @@ export default function ProfileTab() {
   const { session, signOut } = useAuth();
   const [pushEnabled, setPushEnabled] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const { areas } = useAreas(session?.user.id);
 
   const user = session?.user;
   const appVersion = Constants.expoConfig?.version ?? '0.1.0';
+
+  // Derive assigned units from areas
+  const assignedUnits = useMemo(() => {
+    const unitMap = new Map<string, number>();
+    for (const area of areas) {
+      const key = area.unit_name ?? 'Common';
+      unitMap.set(key, (unitMap.get(key) ?? 0) + 1);
+    }
+    return Array.from(unitMap.entries()).map(([name, count]) => ({
+      name,
+      areaCount: count,
+    }));
+  }, [areas]);
 
   async function handleLogout() {
     Alert.alert(
@@ -99,6 +114,28 @@ export default function ProfileTab() {
         <DetailRow label={t('profile.email')} value={user?.email ?? '--'} />
         <DetailRow label={t('profile.userId')} value={user?.id?.slice(0, 8) ?? '--'} mono />
       </View>
+
+      {/* Assigned units */}
+      {assignedUnits.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>ASSIGNED UNITS</Text>
+          {assignedUnits.map((unit) => (
+            <View key={unit.name} style={styles.unitRow}>
+              <View style={styles.unitBadge}>
+                <Text style={styles.unitBadgeText}>
+                  {unit.name === 'Common' ? 'COM' : unit.name}
+                </Text>
+              </View>
+              <Text style={styles.unitName}>
+                {unit.name === 'Common' ? 'Common Areas' : `Unit ${unit.name}`}
+              </Text>
+              <Text style={styles.unitCount}>
+                {unit.areaCount} {unit.areaCount === 1 ? 'area' : 'areas'}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Notification settings */}
       <View style={styles.section}>
@@ -240,6 +277,43 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     fontSize: 12,
     color: '#64748b',
+  },
+  // Assigned units
+  unitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#1e293b',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 6,
+  },
+  unitBadge: {
+    width: 40,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: '#f59e0b20',
+    borderWidth: 1,
+    borderColor: '#f59e0b40',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unitBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#f59e0b',
+    letterSpacing: 0.3,
+  },
+  unitName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f8fafc',
+  },
+  unitCount: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
   },
   // Notification setting
   settingRow: {
