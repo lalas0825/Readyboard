@@ -49,7 +49,7 @@ export async function fetchGridData(
   let rawRows: Record<string, unknown>[] = [];
   let gridError: { message: string } | null = null;
   {
-    const PAGE_SIZE = 5000;
+    const PAGE_SIZE = 1000;
     let offset = 0;
     let hasMore = true;
     while (hasMore) {
