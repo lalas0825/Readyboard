@@ -34,9 +34,9 @@ export async function completeOnboarding(input: {
     p_project_address: input.projectAddress || null,
     p_labor_rate: input.laborRate || 85,
     p_jurisdiction: input.jurisdiction || 'NY',
-    p_trades: input.trades ? JSON.stringify(input.trades) : null,
-    p_areas: input.areas ? JSON.stringify(input.areas) : null,
-    p_invites: input.invites ? JSON.stringify(input.invites) : null,
+    p_trades: input.trades ?? null,
+    p_areas: input.areas ?? null,
+    p_invites: input.invites ?? null,
   });
 
   if (error) return { ok: false, error: error.message };
