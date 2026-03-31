@@ -41,12 +41,15 @@ export async function middleware(request: NextRequest) {
     if (isRateLimited(`webhook:${clientIp}`, 100, 60000)) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
-  } else if (
-    pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password' ||
-    pathname.startsWith('/api/auth') || pathname.startsWith('/api/invite')
-  ) {
-    if (isRateLimited(`auth:${clientIp}`, 10, 60000)) {
+  } else if (pathname.startsWith('/api/auth') || pathname.startsWith('/api/invite')) {
+    if (isRateLimited(`auth-api:${clientIp}`, 10, 60000)) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+  } else if (
+    pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password'
+  ) {
+    if (isRateLimited(`auth-page:${clientIp}`, 30, 60000)) {
+      return NextResponse.redirect(new URL('/?error=rate_limit', request.url));
     }
   }
 
