@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth/getSession';
 import { createServiceClient } from '@/lib/supabase/service';
 
 type TradeInput = { trade_name: string; sequence_order: number };
-type AreaInput = { name: string; floor: string; area_type: string };
+type AreaInput = { name: string; floor: string; area_type: string; unit_name?: string; area_code?: string; description?: string };
 type InviteInput = { email?: string; phone?: string; role: string };
 
 export async function completeOnboarding(input: {

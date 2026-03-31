@@ -15,7 +15,10 @@ export type TradeEntry = {
 export type AreaEntry = {
   name: string;
   floor: string;
-  area_type: 'bathroom' | 'kitchen' | 'corridor' | 'office' | 'lobby' | 'utility';
+  area_type: string;
+  unit_name?: string;
+  area_code?: string;
+  description?: string;
 };
 
 export type InviteEntry = {
