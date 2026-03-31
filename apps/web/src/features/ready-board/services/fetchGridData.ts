@@ -44,22 +44,42 @@ export async function fetchGridData(
   }
 
   // Single query: areas + area_trade_status + trade_sequences
-  const { data: rawRows, error: gridError } = await supabase
-    .from('area_trade_status')
-    .select(`
-      area_id,
-      trade_type,
-      effective_pct,
-      all_gates_passed,
-      gc_verification_pending,
-      areas!inner (
-        name,
-        floor,
-        area_type,
-        project_id
-      )
-    `)
-    .eq('areas.project_id', pid);
+  // Supabase default limit is 1000 rows. Large projects (40 floors × 20 areas × 14 trades)
+  // can exceed this. Fetch in pages of 5000 to handle up to ~50k cells.
+  let rawRows: Record<string, unknown>[] = [];
+  let gridError: { message: string } | null = null;
+  {
+    const PAGE_SIZE = 5000;
+    let offset = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data: page, error } = await supabase
+        .from('area_trade_status')
+        .select(`
+          area_id,
+          trade_type,
+          effective_pct,
+          all_gates_passed,
+          gc_verification_pending,
+          areas!inner (
+            name,
+            floor,
+            area_type,
+            project_id
+          )
+        `)
+        .eq('areas.project_id', pid)
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      if (error) {
+        gridError = error;
+        break;
+      }
+      rawRows = rawRows.concat(page ?? []);
+      hasMore = (page?.length ?? 0) === PAGE_SIZE;
+      offset += PAGE_SIZE;
+    }
+  }
 
   if (gridError) {
     console.error('[ReadyBoard] Grid query failed:', gridError);
@@ -76,8 +96,10 @@ export async function fetchGridData(
   const seqMap = new Map<string, number>();
   const trades: string[] = [];
   for (const s of seqRows ?? []) {
-    seqMap.set(s.trade_name, s.sequence_order);
-    trades.push(s.trade_name);
+    if (!seqMap.has(s.trade_name)) {
+      seqMap.set(s.trade_name, s.sequence_order);
+      trades.push(s.trade_name);
+    }
   }
 
   // Active delays (ended_at IS NULL) — scoped to current project
