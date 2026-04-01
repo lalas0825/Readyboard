@@ -53,6 +53,7 @@ export type GridRow = {
   area_id: string;
   area_name: string;
   floor: string;
+  area_type: string;
   unit_id: string | null;
   unit_name: string | null;
   area_code: string | null;
@@ -86,6 +87,7 @@ export type RawCellData = {
   effective_pct: number;
   all_gates_passed: boolean;
   gc_verification_pending: boolean;
+  area_type: string;
   unit_id: string | null;
   unit_name: string | null;
   unit_type: string | null;

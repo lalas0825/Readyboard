@@ -106,6 +106,7 @@ function buildRow(
     area_id,
     area_name: first?.area_name ?? 'Unknown',
     floor: first?.floor ?? '?',
+    area_type: first?.area_type ?? '',
     unit_id: first?.unit_id ?? null,
     unit_name: first?.unit_name ?? null,
     area_code: first?.area_code ?? null,

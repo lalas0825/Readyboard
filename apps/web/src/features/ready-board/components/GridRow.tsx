@@ -14,7 +14,7 @@ function GridRowComponent({ row, onSelectCell }: GridRowProps) {
     <tr>
       <td className="sticky left-0 z-10 whitespace-nowrap border border-zinc-800 bg-zinc-950 pl-16 pr-3 py-2 text-xs text-zinc-300">
         {row.area_code && (
-          <span className="mr-2 font-mono text-[11px] text-zinc-500">{row.area_code}</span>
+          <span className="mr-2 rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">{row.area_code}</span>
         )}
         <span className="font-medium">{row.area_name}</span>
         {row.area_description && (

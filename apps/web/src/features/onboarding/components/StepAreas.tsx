@@ -96,6 +96,7 @@ export function StepAreas() {
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(['Bathroom', 'Kitchen']));
   const [customTypes, setCustomTypes] = useState<string[]>([]);
   const [customInput, setCustomInput] = useState('');
+  const [typeCodes, setTypeCodes] = useState<Record<string, string>>({});
 
   // Single add state
   const [singleName, setSingleName] = useState('');
@@ -171,6 +172,7 @@ export function StepAreas() {
             floor: String(floor),
             area_type: normalizeAreaType(type),
             unit_name: unitLetter,
+            area_code: typeCodes[type] || undefined,
           });
         }
       }
@@ -203,6 +205,7 @@ export function StepAreas() {
           name: `${name}`,
           floor: String(floor),
           area_type: normalizeAreaType(name),
+          area_code: typeCodes[name] || undefined,
           // NO unit_name — these are floor-level areas
         });
       }
@@ -479,6 +482,30 @@ export function StepAreas() {
                 </button>
               </span>
             ))}
+          </div>
+        )}
+
+        {/* Area codes per selected type */}
+        {selectedTypes.size > 0 && (
+          <div>
+            <label className="block text-xs text-zinc-400 mb-1.5">Area codes (from building plans, optional)</label>
+            <div className="space-y-1.5">
+              {Array.from(selectedTypes).map((type) => (
+                <div key={type} className="flex items-center gap-2">
+                  <span className="w-32 text-xs text-zinc-400 truncate">{type}</span>
+                  <input
+                    type="text"
+                    value={typeCodes[type] ?? ''}
+                    onChange={(e) => setTypeCodes((prev) => ({ ...prev, [type]: e.target.value }))}
+                    placeholder="e.g., B-1.0.1"
+                    className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs font-mono text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="mt-1 text-[10px] text-zinc-600">
+              Same code applies to all areas of that type across all floors/units
+            </p>
           </div>
         )}
 

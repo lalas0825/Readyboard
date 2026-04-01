@@ -132,6 +132,7 @@ export async function fetchGridData(
       effective_pct: Number(row.effective_pct),
       all_gates_passed: row.all_gates_passed as boolean,
       gc_verification_pending: row.gc_verification_pending as boolean,
+      area_type: (areas.area_type as string) ?? '',
       unit_id: (areas.unit_id as string) ?? null,
       unit_name: (unit?.name as string) ?? null,
       unit_type: (unit?.unit_type as string) ?? null,
