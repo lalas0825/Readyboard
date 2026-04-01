@@ -13,6 +13,7 @@ import { GridFilterBar } from './GridFilterBar';
 import { GridDetailPanel } from './GridDetailPanel';
 import { GridPrintButton } from './GridPrintButton';
 import { EfficiencyDashboard } from './EfficiencyDashboard';
+import { AddAreasModal } from './AddAreasModal';
 import type { ReadyBoardInitialData, GridStatus, GridFloor, GridUnit, GridRow as GridRowType, GridCellData } from '../types';
 import { STATUS_CONFIG } from '../types';
 
@@ -58,6 +59,7 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
   const [expandedFloors, setExpandedFloors] = useState<Set<string>>(new Set());
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
   const [problemsOnly, setProblemsOnly] = useState(false);
+  const [showAddAreas, setShowAddAreas] = useState(false);
 
   const toggleFloorExpand = useCallback((floor: string) => {
     setExpandedFloors((prev) => {
@@ -250,6 +252,12 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
       <div className="flex items-center justify-between print:hidden">
         <h2 className="text-lg font-semibold text-zinc-100">Ready Board</h2>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAddAreas(true)}
+            className="rounded-md border border-emerald-700 bg-emerald-950/30 px-3 py-1 text-xs text-emerald-400 transition-colors hover:bg-emerald-950/50"
+          >
+            + Add Areas
+          </button>
           <GridPrintButton show={filteredFloors.length > 0} />
           <button
             onClick={refresh}
@@ -349,6 +357,15 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
 
       {/* Efficiency KPIs — self-contained, subscribes to bus internally */}
       <EfficiencyDashboard />
+
+      {/* Add Areas modal */}
+      {showAddAreas && (
+        <AddAreasModal
+          projectId={projectId}
+          onClose={() => setShowAddAreas(false)}
+          onSuccess={refresh}
+        />
+      )}
 
       {/* Detail panel */}
       {selectedCell && (
