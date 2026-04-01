@@ -54,39 +54,30 @@ export function StepProject() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="labor-rate" className="block text-sm font-medium text-zinc-300">
-              Labor Rate ($/hr)
-            </label>
-            <input
-              id="labor-rate"
-              type="number"
-              min={1}
-              step={0.5}
-              value={project.laborRate}
-              onChange={(e) => setProject({ laborRate: parseFloat(e.target.value) || 85 })}
-              className="mt-1 block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
-          </div>
+        <div>
+          <label htmlFor="jurisdiction" className="block text-sm font-medium text-zinc-300">
+            Jurisdiction
+          </label>
+          <select
+            id="jurisdiction"
+            value={project.jurisdiction}
+            onChange={(e) => setProject({ jurisdiction: e.target.value })}
+            className="mt-1 block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          >
+            {JURISDICTIONS.map((j) => (
+              <option key={j.value} value={j.value}>
+                {j.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <div>
-            <label htmlFor="jurisdiction" className="block text-sm font-medium text-zinc-300">
-              Jurisdiction
-            </label>
-            <select
-              id="jurisdiction"
-              value={project.jurisdiction}
-              onChange={(e) => setProject({ jurisdiction: e.target.value })}
-              className="mt-1 block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              {JURISDICTIONS.map((j) => (
-                <option key={j.value} value={j.value}>
-                  {j.label}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
+          <p className="text-sm font-medium text-zinc-300">Labor Rates</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            NYC union prevailing wage defaults will be applied per trade.
+            Edit anytime in Settings &rarr; Trades &amp; Costs.
+          </p>
         </div>
       </div>
 

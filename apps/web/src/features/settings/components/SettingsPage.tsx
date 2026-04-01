@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { TradeConfig } from './TradeConfig';
+import { LaborRatesConfig } from './LaborRatesConfig';
 import { GeneralSection } from './GeneralSection';
 import { AuditLogSection } from './AuditLogSection';
 import { LegalSection } from './LegalSection';
@@ -78,7 +79,10 @@ export function SettingsPage({ projectSettings, planId }: Props) {
               <GeneralSection settings={projectSettings} />
             )}
             {activeTab === 'trades' && (
-              <TradeConfig projectId={projectSettings.projectId} />
+              <>
+                <TradeConfig projectId={projectSettings.projectId} />
+                <LaborRatesConfig projectId={projectSettings.projectId} />
+              </>
             )}
             {activeTab === 'legal' && (
               <LegalSection settings={projectSettings} />
