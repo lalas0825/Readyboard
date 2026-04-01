@@ -84,6 +84,13 @@
 - [x] area_code is MANUAL only (from building plans, not auto-generated)
 - [x] `complete_onboarding` passes unit_name/area_code/description to RPC
 
+#### Phase 5: Floor-Level Areas (No Unit) — ✅
+- [x] Grid: floors with only NULL-unit areas render flat (no unit grouping)
+- [x] Grid: mixed floors show units collapsible + "Floor areas" section for loose areas
+- [x] Quick Add: mode toggle — "Add Units with Areas" vs "Add Areas to Floor"
+- [x] 5 floor-level presets: Lobby, Amenity, Mechanical, Parking, Retail
+- [x] `generateFloorAreas()` creates areas without unit_name (unit_id=NULL)
+
 #### Remaining (P2):
 - [ ] 🔨 Clone Floor button (copies structure from Floor N to N+1)
 - [ ] 🔨 Mobile: group "My Areas" by unit (PowerSync schema ready)

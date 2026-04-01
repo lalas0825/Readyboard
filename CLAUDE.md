@@ -40,6 +40,7 @@
 - **Hierarchy refactor:** Floor → Unit → Area (3-level collapsible grid, 156 units backfilled)
 - **Labor rates:** Per-trade, per-role NYC union rates + OT rules + crew composition
 - **Onboarding:** 25 area type chips, CSV import, unit auto-creation, area_code manual-only
+- **Floor-level areas:** Support floors without units (lobbies, mechanical, amenity)
 - **Security:** Auth bypass hardened, email verification, rate limiting, demo gating
 - **Grid:** Paginated fetch (8700+ rows), trade dedup, collapsible floors/units
 - **Deploy fixes:** .npmrc removal, Vercel build, onboarding navigation
@@ -121,44 +122,68 @@ The `units` table is NEW:
 ```sql
 CREATE TABLE units (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES projects(id) NOT NULL,
-  floor_id UUID REFERENCES floors(id) NOT NULL,
-  name TEXT NOT NULL,                    -- "Unit 24A", "Apt 8B", "Office 301"
-  unit_type TEXT DEFAULT 'apartment',    -- apartment, office, retail, common
-  created_at TIMESTAMPTZ DEFAULT now()
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE NOT NULL,
+  floor TEXT NOT NULL,                   -- "2", "24", "Basement"
+  name TEXT NOT NULL,                    -- "24A", "24B", "PH1"
+  unit_type TEXT DEFAULT 'standard_2br', -- standard_2br, studio, luxury_3br, office_suite, common
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 ALTER TABLE areas ADD COLUMN unit_id UUID REFERENCES units(id);
+ALTER TABLE areas ADD COLUMN area_code TEXT;        -- manual, from building plans
+ALTER TABLE areas ADD COLUMN description TEXT;
+ALTER TABLE areas ADD COLUMN sort_order INTEGER DEFAULT 0;
 ```
 
 ### Ready Board Grid Display
 
-The Ready Board grid changes from:
+The Ready Board grid supports 3 patterns:
+
+**Pattern A — Floor with units (residential/office):**
 ```
-Floor → [Area rows] × [Trade columns]
-```
-To:
-```
-Floor → Unit → [Area rows] × [Trade columns]
+Floor 24 → Unit 24A → [Master Bath, Kitchen, etc.] × [Trade columns]
+         → Unit 24B → [Bathroom, Kitchen] × [Trade columns]
 ```
 
-With collapsible unit groups. Common areas (corridor, lobby) have `unit_id = NULL` and display under a "Common" section per floor.
+**Pattern B — Floor without units (lobby, mechanical):**
+```
+Floor 1 → Main Lobby × [Trade columns]
+        → Mailroom × [Trade columns]
+        → Restroom M × [Trade columns]
+```
+
+**Pattern C — Mixed (amenity floor):**
+```
+Floor 2 → Gym Complex → [Main Gym, Locker Room] × [Trade columns]
+        → Pool Area → [Pool Deck, Equipment Room] × [Trade columns]
+        → ── Floor areas ──
+        → Kids Room × [Trade columns]
+        → Corridor × [Trade columns]
+```
+
+Areas with `unit_id = NULL` display directly under the floor header (no unit grouping).
 
 ### Quick Add Presets in Setup Wizard
 
-The onboarding wizard "Quick Add" currently only adds one area at a time. It needs:
+Two modes: **"Add Units with Areas"** and **"Add Areas to Floor (no unit)"**.
 
-1. **Preset templates** — one-click to add a standard unit:
-   - "Standard 2BR Apartment" → Master Bath, Hall Bath, Kitchen, Powder Room
-   - "Studio Apartment" → Bath, Kitchen
-   - "3BR Luxury" → Master Bath, Hall Bath, Guest Bath, Kitchen, Powder Room, Laundry
-   - "Office Suite" → Kitchen/Pantry, Restroom M, Restroom F
-   - "Common Areas" → Corridor, Elevator Lobby, Stairwell, Trash Room
-   - Custom → add individual areas
+**Unit presets** (creates unit + child areas):
+- "Standard 2BR" → Master Bath, Half Bath, Kitchen, Powder Room
+- "Studio" → Bathroom, Kitchen
+- "3BR Luxury" → Master Bath, Half Bath, Bathroom, Kitchen, Powder Room, Laundry
+- "Office Suite" → Kitchen, Bathroom, Server Room
+- "Common Areas" → Corridor, Elevator Lobby, Utility, Storage
 
-2. **Batch add** — "Add Unit 24A-24F" creates 6 units with the selected preset in one action.
+**Floor-level presets** (creates areas directly on floor, no unit):
+- "Lobby / Ground Floor" → Main Lobby, Mailroom, Package Room, Restroom M/F, Security Desk
+- "Amenity Floor" → Gym, Pool Deck, Locker Room M/F, Sauna, Kids Room, Lounge
+- "Mechanical / Service" → Mechanical Room, Electrical Room, Boiler Room, Elevator Machine Room, Fire Pump Room
+- "Parking / Basement" → Parking Level, Storage Units, Bike Room, Trash Room, Loading Dock
+- "Retail / Commercial" → Retail Space A/B, Common Corridor, Restroom, Utility
 
-3. **Clone floor** — "Copy Floor 23 → Floor 24" duplicates all units and areas.
+**Also:** 25 area type chips (toggleable), custom type input (free text → amber chips), CSV import with template download, batch generation by floor/unit range.
 
 ### Implementation Status
 
@@ -167,8 +192,10 @@ The onboarding wizard "Quick Add" currently only adds one area at a time. It nee
 - ✅ `areas.area_code`, `description`, `sort_order` columns added
 - ✅ `area_code` is MANUAL (from building plans), not auto-generated
 - ✅ Ready Board grid: 3-level collapsible hierarchy (Floor → Unit → Area)
+- ✅ Grid: floor-level areas (unit_id=NULL) render flat under floor header
 - ✅ Grid controls: floor tabs, expand/collapse all, "Show problems only" filter
 - ✅ Setup wizard: 25 area type chips, CSV import, unit auto-creation
+- ✅ Setup wizard: "Add to Floor" mode with 5 floor-level presets
 - ✅ PowerSync: `units` table synced, new area columns synced
 - ✅ `complete_onboarding` RPC creates units atomically before areas
 - ✅ All existing queries still work (areas.floor preserved, unit_id nullable)
