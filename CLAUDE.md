@@ -5,33 +5,44 @@
 > and operates offline-first in the foreman's language.
 >
 > **This is the single source of truth.** If CLAUDE.md says it, Claude Code follows it.
-> Last updated: 2026-03-27 — Post-audit v2 (85% production-ready)
+> Last updated: 2026-04-01 — Post-hierarchy refactor (90% production-ready)
 
 ---
 
-## Current Status — Final Audit (March 27, 2026)
+## Current Status — Updated April 1, 2026
 
 | Category | Done | Partial | Not Built | Broken |
 |----------|------|---------|-----------|--------|
 | Infrastructure | 10 | 0 | 0 | 0 |
-| Auth & Onboarding | 9 | 2 | 0 | 0 |
+| Auth & Onboarding | 11 | 0 | 0 | 0 |
 | Stripe Billing | 10 | 1 | 1 | 0 |
-| Dashboard Navigation | 8 | 0 | 3 | 0 |
+| Dashboard Navigation | 11 | 0 | 0 | 0 |
 | Dashboard Pages | 11 | 0 | 0 | 0 |
+| Ready Board Grid | 14 | 0 | 0 | 0 |
 | Foreman Mobile | 16 | 0 | 0 | 0 |
 | Checklist System | 11 | 0 | 0 | 0 |
 | Legal Documentation | 15 | 0 | 0 | 0 |
 | Forecast Engine | 3 | 2 | 3 | 0 |
-| Notifications | 2 | 2 | 2 | 0 |
-| Email System | 2 | 1 | 2 | 0 |
-| AI Morning Briefing | 2 | 0 | 5 | 1 |
+| Notifications | 5 | 2 | 2 | 0 |
+| Email System | 6 | 1 | 0 | 0 |
+| AI Morning Briefing | 2 | 0 | 5 | 0 |
+| Labor Rates | 4 | 0 | 3 | 0 |
 | Demo Account | 4 | 0 | 0 | 0 |
-| Landing Page & Legal | 1 | 0 | 2 | 0 |
-| Security | 3 | 0 | 1 | 0 |
+| Landing Page & Legal | 3 | 0 | 0 | 0 |
+| Security | 7 | 0 | 0 | 0 |
 | App Store Readiness | 1 | 1 | 4 | 0 |
-| **TOTALS** | **108** | **9** | **23** | **1** |
+| **TOTALS** | **144** | **7** | **18** | **0** |
 
-**Diagnostics:** 635 files, 20 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors, 0 TODOs/FIXMEs, 4 E2E specs, 3 unit specs.
+**Diagnostics:** ~700 files, 25 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
+
+### Recent Changes (March 30 — April 1, 2026)
+
+- **Hierarchy refactor:** Floor → Unit → Area (3-level collapsible grid, 156 units backfilled)
+- **Labor rates:** Per-trade, per-role NYC union rates + OT rules + crew composition
+- **Onboarding:** 25 area type chips, CSV import, unit auto-creation, area_code manual-only
+- **Security:** Auth bypass hardened, email verification, rate limiting, demo gating
+- **Grid:** Paginated fetch (8700+ rows), trade dedup, collapsible floors/units
+- **Deploy fixes:** .npmrc removal, Vercel build, onboarding navigation
 
 ---
 
@@ -55,7 +66,7 @@ The GC pays for VISIBILITY. The sub stays for LEGAL PROTECTION. Two different va
 | Web | Next.js 16 + React 19 + TypeScript | GC dashboard, landing page, auth |
 | Mobile | Expo SDK 52 + React Native 0.76 | Foreman app (iOS + Android) |
 | Offline | PowerSync + SQLite | Offline-first field reporting |
-| Database | Supabase (PostgreSQL) | 22 tables, 60 RLS policies, 26 functions, 21 triggers |
+| Database | Supabase (PostgreSQL) | 24 tables, 65 RLS policies, 28 functions, 21 triggers |
 | Styling | Tailwind CSS 4.2 + shadcn/ui | Dashboard components |
 | i18n | next-intl 4.8 (web) + i18next (mobile) | EN + ES |
 | Billing | Stripe | 4 plans, checkout, webhooks, customer portal |
@@ -80,11 +91,11 @@ The GC pays for VISIBILITY. The sub stays for LEGAL PROTECTION. Two different va
 
 ---
 
-## Spatial Hierarchy — Floor → Unit → Area
+## Spatial Hierarchy — Floor → Unit → Area ✅ IMPLEMENTED
 
-### The Problem (identified 2026-03-27)
+### Status: Fully implemented (2026-04-01)
 
-The current data model is `Floor → Area` (flat). But real high-rise projects have a deeper hierarchy:
+The data model supports a 3-level hierarchy: Floor → Unit → Area.
 
 ```
 Building
@@ -149,15 +160,18 @@ The onboarding wizard "Quick Add" currently only adds one area at a time. It nee
 
 3. **Clone floor** — "Copy Floor 23 → Floor 24" duplicates all units and areas.
 
-### Impact on Existing Code
+### Implementation Status
 
-- `areas` table: add `unit_id` column (nullable, backward compatible)
-- `units` table: new migration
-- Ready Board grid: group areas by unit within each floor
-- Setup wizard: new Quick Add UI with presets
-- Seed data: update to include units
-- Foreman mobile: "My Areas" grouped by unit
-- All existing queries that filter by floor still work (areas still have floor_id)
+- ✅ `units` table: 156 units backfilled from 780 existing areas
+- ✅ `areas.unit_id` FK: all 780 user areas linked, 30 legacy demo areas NULL (backward compat)
+- ✅ `areas.area_code`, `description`, `sort_order` columns added
+- ✅ `area_code` is MANUAL (from building plans), not auto-generated
+- ✅ Ready Board grid: 3-level collapsible hierarchy (Floor → Unit → Area)
+- ✅ Grid controls: floor tabs, expand/collapse all, "Show problems only" filter
+- ✅ Setup wizard: 25 area type chips, CSV import, unit auto-creation
+- ✅ PowerSync: `units` table synced, new area columns synced
+- ✅ `complete_onboarding` RPC creates units atomically before areas
+- ✅ All existing queries still work (areas.floor preserved, unit_id nullable)
 
 ---
 
@@ -303,7 +317,48 @@ Every PDF hashed immediately after generation. Hash stored in DB + printed in PD
 - Checkout, portal, webhook handler ✅
 - `getPlanForProject` + `hasFeature()` ✅
 - `/dashboard/billing` page ✅
-- Missing: trial countdown banner UI, `/billing/success` dedicated page
+- ✅ Trial countdown banner + `/billing/success` page built
+
+---
+
+## Labor Rates — Per-Trade Structured Rates (NEW 2026-04-01)
+
+### Architecture
+
+Each trade has per-role hourly rates + OT rules + crew composition. NYC Union Prevailing Wage 2025-2026 defaults auto-seeded on project creation.
+
+### Database
+
+- **`labor_rates` table:** `project_id × trade_name × role → hourly_rate` (UNIQUE constraint)
+  - Roles: `foreman`, `journeyperson`, `apprentice`, `helper`, `finisher`, `tender`
+  - RLS: SELECT for project members, ALL for gc_admin/gc_pm
+- **`trade_sequences` new columns:**
+  - `straight_time_hours` (7-8h depending on trade contract)
+  - `ot_multiplier` (1.5×), `dt_multiplier` (2.0×)
+  - `saturday_rule` (`ot` | `straight_makeup` | `double`)
+  - `typical_crew` JSONB (`{"foreman":1,"journeyperson":3,"apprentice":1,"helper":0}`)
+- **`seed_labor_rates(project_id)` RPC:** Seeds 56 rates (14 trades × 4 roles) + OT rules
+
+### Backward Compatibility
+
+`projects.labor_rate_per_hour` preserved as fallback. Projects without specific trade rates use this flat rate. New projects get per-trade rates automatically via `complete_onboarding` → `seed_labor_rates()`.
+
+### Sample Rates
+
+| Trade | Foreman | JP | Apprentice | Helper | ST Hours | Saturday |
+|-------|---------|-----|------------|--------|----------|----------|
+| Rough Plumbing | $140 | $127 | $76 | $55 | 8h | OT |
+| Tile / Stone | $117 | $107 | $64 | $86* | 7h | OT |
+| Paint | $105 | $95 | $57 | $45 | 7h | OT |
+
+*Tile helper = Tile Finisher (separate skilled classification)
+
+### Not Yet Built
+
+- [ ] Settings UI: editable rate matrix (Trades & Costs tab)
+- [ ] `calculateDelayCost()` function using per-trade rates
+- [ ] NOD/REA PDF: itemized role-by-role cost breakdown
+- [ ] Mobile: per-trade daily cost on blocked areas
 
 ---
 
@@ -332,7 +387,7 @@ All pages built and routed as separate `/dashboard/*` paths:
 
 ```
 📊 Overview          ✅ — metrics, alerts by cost, forecast, morning briefing card
-📋 Ready Board       ✅ — floors × trades grid, 14 trades, filters, color cells, detail panel
+📋 Ready Board       ✅ — 3-level collapsible grid (Floor→Unit→Area), 14 trades, floor tabs, problem filter
 👷 Verifications     ✅ — GC queue, approve/correct modal, badges
 ⚠️ Delays & Costs   ✅ — summary cards, filterable table, GPS/photo evidence, Generate NOD
 ⚖️ Legal Docs       ✅ — NOD/REA/Evidence list, receipt tracking, escalation alerts
@@ -344,7 +399,7 @@ All pages built and routed as separate `/dashboard/*` paths:
 💳 Billing           ✅ — plan card, upgrade/manage, feature comparison
 ```
 
-**Missing nav items:** Notification bell dropdown ❌, Live indicator (green dot) ❌, Collapsible sidebar ❌
+**Nav items:** Notification bell ✅, Collapsible sidebar ✅. Missing: Live indicator (green dot) ❌
 
 ---
 
@@ -476,5 +531,5 @@ Landing page currently shows 3 pricing cards (Starter $399, Pro $699, Sub $59).
 
 ---
 
-*ReadyBoard v5.3 — CLAUDE.md — Updated 2026-03-27 post-audit v2*
+*ReadyBoard v5.4 — CLAUDE.md — Updated 2026-04-01 post-hierarchy refactor*
 *readyboard.ai*

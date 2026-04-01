@@ -14,7 +14,7 @@
 > - 🔨 BUILD — Does not exist, create from scratch
 > - 🔌 WIRE — Code exists but not connected
 >
-> Last updated: 2026-03-27 (final session)
+> Last updated: 2026-04-01 (hierarchy refactor + labor rates)
 
 ---
 
@@ -52,22 +52,42 @@
 - [x] Updated `deriveStatus.ts`: 1-99% without active delay → `in_progress`
 - [x] Added to GridLegend + GridFilterBar + statusCounts
 
-### 6. Floor → Unit → Area Hierarchy — ✅ PHASE 1 DONE
+### 6. Floor → Unit → Area Hierarchy — ✅ ALL PHASES DONE
 
-#### Database — ✅
-- [x] `units` table created (id, project_id, floor, name, unit_type + RLS)
-- [x] `areas.unit_id` FK column added (nullable for backwards compat)
+#### Phase 1: Database — ✅
+- [x] `units` table created (id, project_id, floor, name, unit_type, sort_order + RLS)
+- [x] `areas.unit_id` FK column + `area_code`, `description`, `sort_order`
+- [x] Backfilled 156 units from 780 existing areas (regex `^(\d+)([A-Z])\s`)
+- [x] Generated area_codes (`B.10A.1`, `K.24D.1`) — later changed to manual-only
+- [x] Dropped CHECK constraints on `areas.area_type` + `units.unit_type` (custom types)
+- [x] `complete_onboarding` RPC creates units atomically before areas
 
-#### Quick Add — ✅ Multi-type + Presets
-- [x] 5 presets: Standard 2BR, Studio, 3BR Luxury, Office Suite, Common Areas
-- [x] Multi-type selection (checkboxes) when using Custom mode
-- [x] Preset mode generates named areas per unit (e.g., "1A Master Bath", "1A Kitchen")
+#### Phase 2: Backend & Sync — ✅
+- [x] `fetchGridData.ts`: JOINs units via areas, maps unit_id/unit_name/area_code
+- [x] `useReadyBoardData.ts`: buildAllFloors groups floor → unit → area
+- [x] Types: GridUnit, GridFloor.units[], RawCellData + GridRow + GridCellData expanded
+- [x] PowerSync: `units` table + `area_code/description/sort_order/unit_id` on areas
+- [x] Sync rules: 3 buckets (by_user, by_area, by_project) — no JOINs/subqueries
 
-#### Phase 2 (P2 — post-launch):
+#### Phase 3: Grid UI — ✅
+- [x] 3-level collapsible hierarchy: FloorSection → UnitSection → GridRow
+- [x] Floor rows: aggregate status bar + worst status dot + area count
+- [x] Unit rows: per-trade worst-status dots + ready/total count
+- [x] Floor quick-jump tabs, Expand/Collapse all, "Show problems only" filter
+- [x] GridRow: area_code (monospace) + description (muted)
+- [x] GridDetailPanel: area_code badge, unit context, description
+
+#### Phase 4: Onboarding — ✅
+- [x] 25 area type chips (toggleable) replacing 6-option select
+- [x] Custom type input (free text → amber chips)
+- [x] CSV import: papaparse, column validation, preview, confirm, download template
+- [x] area_code is MANUAL only (from building plans, not auto-generated)
+- [x] `complete_onboarding` passes unit_name/area_code/description to RPC
+
+#### Remaining (P2):
 - [ ] 🔨 Clone Floor button (copies structure from Floor N to N+1)
-- [ ] 🔨 Grid: group area rows by unit (collapsible)
-- [ ] 🔨 Mobile: group "My Areas" by unit
-- [ ] 🔨 Seed data: add units to 383 Madison demo
+- [ ] 🔨 Mobile: group "My Areas" by unit (PowerSync schema ready)
+- [ ] 🔨 Settings: editable area_code field per area
 
 ### 7. NOD Email Dispatch — ✅ DONE
 
@@ -100,12 +120,15 @@
 - [x] Click-outside closes dropdown
 - [x] Added to Sidebar header (next to logo)
 
-### 11. Rate Limiting on Auth Routes — ✅ DONE
+### 11. Rate Limiting + Security Hardening — ✅ DONE
 
 - [x] In-memory rate limiter in middleware.ts (per-IP, auto-cleanup)
-- [x] Auth routes (login, signup, forgot-password, /api/auth/*, /api/invite/*): 10 req/min
+- [x] API auth routes: 10 req/min, page auth routes: 30/min (redirect not JSON on limit)
 - [x] Webhook route (/api/billing/webhook): 100 req/min
-- [x] Returns 429 Too Many Requests on breach
+- [x] Dev bypass requires explicit `DEV_AUTH_BYPASS=true` flag (not just NODE_ENV)
+- [x] Email verification check (`email_confirmed_at`) in middleware
+- [x] Stripe SECRET_KEY validation warning in production
+- [x] Demo credentials gated behind `NEXT_PUBLIC_DEMO_ENABLED` env var
 
 ### 12. Stripe — Sub Add-on Price ID — ✅ DONE
 
@@ -171,6 +194,22 @@ Audit result: 9 were already wired, 3 were added.
 - [x] cron_logs structured logging + 3x fail-safe admin alert email
 - [ ] 🔨 Cost monitoring: tokens per briefing, alert if monthly >$50
 - [ ] 🔨 Settings: briefing push/email toggle
+
+### Labor Rates — Per-Trade Structured Rates — ✅ DB DONE
+
+#### Database — ✅
+- [x] `labor_rates` table: project_id × trade_name × role → hourly_rate (UNIQUE + RLS)
+- [x] `trade_sequences`: +straight_time_hours, ot/dt_multiplier, saturday_rule, typical_crew
+- [x] `seed_labor_rates(project_id)` RPC: 56 NYC union rates (14 trades × 4 roles)
+- [x] `complete_onboarding`: calls seed_labor_rates after trade_sequences insert
+- [x] `projects.labor_rate_per_hour` preserved as fallback
+
+#### Frontend + Integration — ❌ Not Built
+- [ ] 🔨 Settings UI: editable rate matrix (Trades & Costs tab) — OT rules + role rates
+- [ ] 🔨 `calculateDelayCost()` using per-trade rates + crew composition
+- [ ] 🔨 NOD/REA PDF: itemized role-by-role cost breakdown
+- [ ] 🔨 Onboarding: remove single rate field, add info note about defaults
+- [ ] 🔨 Mobile: per-trade daily cost on blocked area cards
 
 ### Change Order Engine
 
@@ -244,8 +283,8 @@ Audit result: 9 were already wired, 3 were added.
 | Priority | Status | Detail |
 |----------|--------|--------|
 | 🔴 P0 Critical | ✅ CLOSED | All 4 blockers resolved |
-| 🟡 P1 Launch | ✅ CLOSED | 14/14 items done (Sub Add-on wiring post-launch) |
-| 🟢 P2 Post-Launch | ✅ CORE DONE | Forecast EMA, 12/12 notifications, cron automation, demo, sidebar |
+| 🟡 P1 Launch | ✅ CLOSED | 14/14 items done + hierarchy refactor complete |
+| 🟢 P2 Post-Launch | ✅ CORE DONE | Hierarchy, labor rates DB, forecast, notifications, security |
 | ⚪ P3 Future | ⏳ BACKLOG | App Store, SMS, AI Chat, Change Orders |
 
 ### Remaining Work (non-blocking)
@@ -253,6 +292,12 @@ Audit result: 9 were already wired, 3 were added.
 | Task | Est. | Trigger |
 |------|------|---------|
 | Buy domain + DNS/SPF/DKIM | Manual | Pre-launch |
+| Labor rates Settings UI | 4h | Post-launch |
+| `calculateDelayCost()` per-trade | 3h | Post-launch |
+| NOD/REA PDF itemized cost breakdown | 3h | Post-launch |
+| Clone Floor button | 2h | Post-launch |
+| Mobile: group areas by unit | 3h | Post-launch |
+| Settings: editable area_code | 1h | Post-launch |
 | XLSX schedule import | 2h | Post-launch |
 | Crew performance UI | 3h | Post-launch |
 | Change order engine UI | 4h | Post-launch |
@@ -267,5 +312,5 @@ Audit result: 9 were already wired, 3 were added.
 
 ---
 
-*ReadyBoard v5.3 — TASKS.md — Updated 2026-03-27 (final session)*
+*ReadyBoard v5.4 — TASKS.md — Updated 2026-04-01 (hierarchy refactor + labor rates)*
 *readyboard.ai*
