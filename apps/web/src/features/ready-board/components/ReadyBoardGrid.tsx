@@ -469,21 +469,52 @@ function FloorSection({
         </td>
       </tr>
 
-      {/* Expanded: show units */}
-      {expanded && floor.units.map((unit) => {
-        const unitKey = `${floor.floor}:${unit.unit_id ?? '__common__'}`;
+      {/* Expanded: show units + floor-level areas */}
+      {expanded && (() => {
+        const realUnits = floor.units.filter((u) => u.unit_id !== null);
+        const commonUnit = floor.units.find((u) => u.unit_id === null);
+
+        // If floor has NO real units, render areas flat (no unit grouping)
+        if (realUnits.length === 0 && commonUnit) {
+          return commonUnit.rows.map((row) => (
+            <GridRow key={row.area_id} row={row} onSelectCell={onSelectCell} />
+          ));
+        }
+
         return (
-          <UnitSection
-            key={unitKey}
-            unit={unit}
-            unitKey={unitKey}
-            trades={trades}
-            expanded={expandedUnits.has(unitKey)}
-            onToggle={() => onToggleUnit(unitKey)}
-            onSelectCell={onSelectCell}
-          />
+          <>
+            {/* Real units (collapsible) */}
+            {realUnits.map((unit) => {
+              const unitKey = `${floor.floor}:${unit.unit_id}`;
+              return (
+                <UnitSection
+                  key={unitKey}
+                  unit={unit}
+                  unitKey={unitKey}
+                  trades={trades}
+                  expanded={expandedUnits.has(unitKey)}
+                  onToggle={() => onToggleUnit(unitKey)}
+                  onSelectCell={onSelectCell}
+                />
+              );
+            })}
+
+            {/* Floor-level areas (no unit) — render flat after units */}
+            {commonUnit && commonUnit.rows.length > 0 && (
+              <>
+                <tr>
+                  <td colSpan={trades.length + 1} className="border-t border-zinc-800/50 pl-8 py-1 text-[10px] uppercase tracking-wider text-zinc-600">
+                    Floor areas
+                  </td>
+                </tr>
+                {commonUnit.rows.map((row) => (
+                  <GridRow key={row.area_id} row={row} onSelectCell={onSelectCell} />
+                ))}
+              </>
+            )}
+          </>
         );
-      })}
+      })()}
     </>
   );
 }

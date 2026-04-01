@@ -55,17 +55,44 @@ const UNIT_PRESETS: Record<string, { label: string; areas: string[] }> = {
   },
 };
 
+// ─── Floor-level presets (no unit) ───────────────────
+
+const FLOOR_PRESETS: Record<string, { label: string; areas: string[] }> = {
+  lobby: {
+    label: 'Lobby / Ground Floor',
+    areas: ['Main Lobby', 'Mailroom', 'Package Room', 'Restroom M', 'Restroom F', 'Security Desk'],
+  },
+  amenity: {
+    label: 'Amenity Floor',
+    areas: ['Gym', 'Pool Deck', 'Locker Room M', 'Locker Room F', 'Sauna', 'Kids Room', 'Lounge'],
+  },
+  mechanical: {
+    label: 'Mechanical / Service',
+    areas: ['Mechanical Room', 'Electrical Room', 'Boiler Room', 'Elevator Machine Room', 'Fire Pump Room'],
+  },
+  parking: {
+    label: 'Parking / Basement',
+    areas: ['Parking Level', 'Storage Units', 'Bike Room', 'Trash Room', 'Loading Dock'],
+  },
+  retail: {
+    label: 'Retail / Commercial',
+    areas: ['Retail Space A', 'Retail Space B', 'Common Corridor', 'Restroom', 'Utility'],
+  },
+};
+
 // ─── Component ───────────────────────────────────────
 
 export function StepAreas() {
   const { areas, setAreas, removeArea, nextStep, prevStep } = useOnboardingStore();
 
   // Quick-Add state
+  const [addMode, setAddMode] = useState<'unit' | 'floor'>('unit');
   const [floorFrom, setFloorFrom] = useState('1');
   const [floorTo, setFloorTo] = useState('3');
   const [unitFrom, setUnitFrom] = useState('A');
   const [unitTo, setUnitTo] = useState('D');
   const [selectedPreset, setSelectedPreset] = useState<string>('standard_2br');
+  const [selectedFloorPreset, setSelectedFloorPreset] = useState<string>('');
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(['Bathroom', 'Kitchen']));
   const [customTypes, setCustomTypes] = useState<string[]>([]);
   const [customInput, setCustomInput] = useState('');
@@ -150,6 +177,37 @@ export function StepAreas() {
     }
 
     // Deduplicate against existing
+    const existingKeys = new Set(areas.map((a) => `${a.name}-${a.floor}`));
+    const newAreas = generated.filter((a) => !existingKeys.has(`${a.name}-${a.floor}`));
+    setAreas([...areas, ...newAreas]);
+  }
+
+  // ─── Generate floor-level areas (no unit) ─────────
+
+  function generateFloorAreas() {
+    const from = parseInt(floorFrom, 10);
+    const to = parseInt(floorTo, 10);
+    if (isNaN(from) || isNaN(to) || from > to) return;
+
+    // Use floor preset areas or selected types
+    const areaNames = selectedFloorPreset && FLOOR_PRESETS[selectedFloorPreset]
+      ? FLOOR_PRESETS[selectedFloorPreset].areas
+      : Array.from(selectedTypes);
+
+    if (areaNames.length === 0) return;
+
+    const generated: AreaEntry[] = [];
+    for (let floor = from; floor <= to; floor++) {
+      for (const name of areaNames) {
+        generated.push({
+          name: `${name}`,
+          floor: String(floor),
+          area_type: normalizeAreaType(name),
+          // NO unit_name — these are floor-level areas
+        });
+      }
+    }
+
     const existingKeys = new Set(areas.map((a) => `${a.name}-${a.floor}`));
     const newAreas = generated.filter((a) => !existingKeys.has(`${a.name}-${a.floor}`));
     setAreas([...areas, ...newAreas]);
@@ -282,8 +340,28 @@ export function StepAreas() {
       <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 space-y-4">
         <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Quick Add</p>
 
-        {/* Floor & Unit range */}
-        <div className="grid grid-cols-4 gap-3 items-end">
+        {/* Mode toggle */}
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setAddMode('unit')}
+            className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+              addMode === 'unit'
+                ? 'border-emerald-600 bg-emerald-950/40 text-emerald-400'
+                : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+            }`}>
+            Add Units with Areas
+          </button>
+          <button type="button" onClick={() => setAddMode('floor')}
+            className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+              addMode === 'floor'
+                ? 'border-amber-600 bg-amber-950/40 text-amber-400'
+                : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+            }`}>
+            Add Areas to Floor (no unit)
+          </button>
+        </div>
+
+        {/* Floor range (always shown) */}
+        <div className={`grid ${addMode === 'unit' ? 'grid-cols-4' : 'grid-cols-2'} gap-3 items-end`}>
           <div>
             <label className="block text-xs text-zinc-400 mb-1">Floor From</label>
             <input type="number" min={1} value={floorFrom} onChange={(e) => setFloorFrom(e.target.value)}
@@ -294,40 +372,72 @@ export function StepAreas() {
             <input type="number" min={1} value={floorTo} onChange={(e) => setFloorTo(e.target.value)}
               className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none" />
           </div>
-          <div>
-            <label className="block text-xs text-zinc-400 mb-1">Unit From</label>
-            <input type="text" maxLength={1} value={unitFrom} onChange={(e) => setUnitFrom(e.target.value.toUpperCase())}
-              className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 uppercase focus:border-emerald-500 focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs text-zinc-400 mb-1">Unit To</label>
-            <input type="text" maxLength={1} value={unitTo} onChange={(e) => setUnitTo(e.target.value.toUpperCase())}
-              className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 uppercase focus:border-emerald-500 focus:outline-none" />
-          </div>
+          {addMode === 'unit' && (
+            <>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Unit From</label>
+                <input type="text" maxLength={1} value={unitFrom} onChange={(e) => setUnitFrom(e.target.value.toUpperCase())}
+                  className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 uppercase focus:border-emerald-500 focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Unit To</label>
+                <input type="text" maxLength={1} value={unitTo} onChange={(e) => setUnitTo(e.target.value.toUpperCase())}
+                  className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 uppercase focus:border-emerald-500 focus:outline-none" />
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Presets */}
+        {/* Presets — unit mode or floor mode */}
         <div>
           <label className="block text-xs text-zinc-400 mb-1.5">Preset</label>
           <div className="flex flex-wrap gap-1.5">
-            {Object.entries(UNIT_PRESETS).map(([key, preset]) => (
-              <button key={key} type="button" onClick={() => applyPreset(key)}
-                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                  selectedPreset === key
-                    ? 'border-emerald-600 bg-emerald-950/40 text-emerald-400'
-                    : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
-                }`}>
-                {preset.label}
-              </button>
-            ))}
-            <button type="button" onClick={() => setSelectedPreset('')}
-              className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                !selectedPreset
-                  ? 'border-emerald-600 bg-emerald-950/40 text-emerald-400'
-                  : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
-              }`}>
-              Custom
-            </button>
+            {addMode === 'unit' ? (
+              <>
+                {Object.entries(UNIT_PRESETS).map(([key, preset]) => (
+                  <button key={key} type="button" onClick={() => applyPreset(key)}
+                    className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                      selectedPreset === key
+                        ? 'border-emerald-600 bg-emerald-950/40 text-emerald-400'
+                        : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+                    }`}>
+                    {preset.label}
+                  </button>
+                ))}
+                <button type="button" onClick={() => setSelectedPreset('')}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    !selectedPreset
+                      ? 'border-emerald-600 bg-emerald-950/40 text-emerald-400'
+                      : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+                  }`}>
+                  Custom
+                </button>
+              </>
+            ) : (
+              <>
+                {Object.entries(FLOOR_PRESETS).map(([key, preset]) => (
+                  <button key={key} type="button" onClick={() => {
+                    setSelectedFloorPreset(key);
+                    setSelectedTypes(new Set(preset.areas));
+                  }}
+                    className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                      selectedFloorPreset === key
+                        ? 'border-amber-600 bg-amber-950/40 text-amber-400'
+                        : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+                    }`}>
+                    {preset.label}
+                  </button>
+                ))}
+                <button type="button" onClick={() => setSelectedFloorPreset('')}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    !selectedFloorPreset
+                      ? 'border-amber-600 bg-amber-950/40 text-amber-400'
+                      : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+                  }`}>
+                  Custom
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -372,7 +482,7 @@ export function StepAreas() {
           </div>
         )}
 
-        <button type="button" onClick={generateAreas} disabled={selectedTypes.size === 0}
+        <button type="button" onClick={addMode === 'unit' ? generateAreas : generateFloorAreas} disabled={selectedTypes.size === 0}
           className="rounded-lg border border-emerald-700 bg-emerald-950/30 px-4 py-2 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-950/50 disabled:opacity-40">
           Generate Areas
         </button>
