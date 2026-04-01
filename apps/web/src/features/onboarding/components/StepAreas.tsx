@@ -19,25 +19,6 @@ const AREA_TYPES = [
   'Server Room',
 ] as const;
 
-// ─── Type prefix map for area_code generation ────────
-
-const TYPE_PREFIX: Record<string, string> = {
-  bathroom: 'B', 'master bath': 'B', 'half bath': 'B', 'powder room': 'B',
-  kitchen: 'K', kitchenette: 'K', pantry: 'K',
-  corridor: 'C', hallway: 'C',
-  office: 'O', 'conference room': 'O',
-  lobby: 'L', 'elevator lobby': 'L',
-  utility: 'U', mechanical: 'U', electrical: 'U',
-  laundry: 'LA', storage: 'ST', closet: 'CL',
-  balcony: 'BA', terrace: 'TE',
-  'living room': 'LR', 'dining room': 'DR', bedroom: 'BR',
-  'server room': 'SR',
-};
-
-function getTypePrefix(type: string): string {
-  return TYPE_PREFIX[type.toLowerCase()] ?? type.slice(0, 2).toUpperCase();
-}
-
 function normalizeAreaType(type: string): string {
   const lower = type.toLowerCase();
   if (lower.includes('bath') || lower.includes('powder')) return 'bathroom';
@@ -74,17 +55,6 @@ const UNIT_PRESETS: Record<string, { label: string; areas: string[] }> = {
   },
 };
 
-// ─── Code pattern types ──────────────────────────────
-
-type CodePattern = 'auto' | 'flat' | 'none';
-
-function generateCode(pattern: CodePattern, type: string, floor: string, unit: string, seq: number): string | undefined {
-  if (pattern === 'none') return undefined;
-  const prefix = getTypePrefix(type);
-  if (pattern === 'flat') return `${floor}-${unit}-${prefix}-${seq}`;
-  return `${prefix}.${floor}${unit}.${seq}`;
-}
-
 // ─── Component ───────────────────────────────────────
 
 export function StepAreas() {
@@ -99,7 +69,6 @@ export function StepAreas() {
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(['Bathroom', 'Kitchen']));
   const [customTypes, setCustomTypes] = useState<string[]>([]);
   const [customInput, setCustomInput] = useState('');
-  const [codePattern, setCodePattern] = useState<CodePattern>('auto');
 
   // Single add state
   const [singleName, setSingleName] = useState('');
@@ -169,20 +138,12 @@ export function StepAreas() {
         const unitLetter = String.fromCharCode(c);
         const unitName = `${floor}${unitLetter}`;
 
-        // Track sequence per type within this unit
-        const typeSeq: Record<string, number> = {};
-
         for (const type of allTypes) {
-          const areaType = normalizeAreaType(type);
-          typeSeq[areaType] = (typeSeq[areaType] ?? 0) + 1;
-          const seq = typeSeq[areaType];
-
           generated.push({
             name: `${unitName} ${type}`,
             floor: String(floor),
-            area_type: areaType,
+            area_type: normalizeAreaType(type),
             unit_name: unitLetter,
-            area_code: generateCode(codePattern, type, String(floor), unitLetter, seq),
           });
         }
       }
@@ -410,17 +371,6 @@ export function StepAreas() {
             ))}
           </div>
         )}
-
-        {/* Code pattern selector */}
-        <div>
-          <label className="block text-xs text-zinc-400 mb-1">Area code pattern</label>
-          <select value={codePattern} onChange={(e) => setCodePattern(e.target.value as CodePattern)}
-            className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none">
-            <option value="auto">B.24A.1 — Auto (type.floor+unit.seq)</option>
-            <option value="flat">24-A-B-1 — Flat (floor-unit-type-seq)</option>
-            <option value="none">No auto-codes</option>
-          </select>
-        </div>
 
         <button type="button" onClick={generateAreas} disabled={selectedTypes.size === 0}
           className="rounded-lg border border-emerald-700 bg-emerald-950/30 px-4 py-2 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-950/50 disabled:opacity-40">
