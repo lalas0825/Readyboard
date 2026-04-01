@@ -570,14 +570,15 @@ function UnitSection({
         <td className="sticky left-0 z-10 border border-zinc-800 bg-zinc-950 pl-8 pr-3 py-1.5 text-xs text-zinc-300">
           <span className="mr-2 text-zinc-600">{expanded ? '▼' : '▶'}</span>
           <span className="font-medium">Unit {unit.unit_name}</span>
-          {unit.unit_type && (
-            <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-500">
-              {unit.unit_type.replace(/_/g, ' ')}
-            </span>
-          )}
           <span className="ml-2 text-zinc-600">
             {readyCount}/{unit.rows.length}
           </span>
+          {/* Area codes preview */}
+          {!expanded && unit.rows.some((r) => r.area_code) && (
+            <span className="ml-2 text-[10px] text-zinc-600">
+              {unit.rows.filter((r) => r.area_code).map((r) => r.area_code).join(' · ')}
+            </span>
+          )}
         </td>
         {/* Per-trade worst status cells */}
         {trades.map((trade) => {
