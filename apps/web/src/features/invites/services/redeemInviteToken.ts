@@ -18,7 +18,7 @@ export async function redeemInviteToken(input: {
   // 1. Fetch and validate token
   const { data: invite, error: fetchErr } = await supabase
     .from('invite_tokens')
-    .select('id, project_id, role, area_id, used_at, expires_at')
+    .select('id, project_id, role, area_id, trade_name, used_at, expires_at')
     .eq('token', input.token)
     .single();
 
@@ -27,15 +27,16 @@ export async function redeemInviteToken(input: {
   if (new Date(invite.expires_at) < new Date()) return { ok: false, error: 'Token expired.' };
 
   // 2. Handle based on role
-  if (invite.role === 'sub_pm') {
-    // Add to project_members
+  if (['gc_pm', 'gc_super', 'sub_pm', 'superintendent'].includes(invite.role)) {
+    // Add to project_members with trade_name
     const { error: memberErr } = await supabase
       .from('project_members')
       .upsert({
         project_id: invite.project_id,
         user_id: input.userId,
         org_id: input.orgId ?? null,
-        role: 'sub_pm',
+        role: invite.role,
+        trade_name: invite.trade_name ?? null,
       }, { onConflict: 'project_id,user_id' });
 
     if (memberErr) return { ok: false, error: memberErr.message };

@@ -27,6 +27,8 @@ export async function generateInviteLink(input: {
   email?: string;
   phone?: string;
   name?: string;
+  tradeName?: string;
+  language?: string;
 }): Promise<{ ok: true; token: string; url: string } | { ok: false; error: string }> {
   const session = await getSession();
   if (!session) return { ok: false, error: 'Not authenticated' };
@@ -43,6 +45,8 @@ export async function generateInviteLink(input: {
     email: input.email ?? null,
     phone: input.phone ?? null,
     name: input.name ?? null,
+    trade_name: input.tradeName ?? null,
+    language: input.language ?? 'en',
     created_by: session.user.id,
     expires_at: expiresAt,
   });

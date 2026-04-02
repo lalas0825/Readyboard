@@ -32,7 +32,8 @@ export type TeamPageData = {
   pendingInvites: PendingInvite[];
   projectId: string;
   projectName: string;
-  areas: { id: string; name: string; floor: string }[];
+  areas: { id: string; name: string; floor: string; unit_name?: string }[];
+  trades: { trade_name: string; sequence_order: number }[];
 };
 
 // ─── Fetch ──────────────────────────────────────────
@@ -56,7 +57,7 @@ export async function fetchTeamMembers(
   }
 
   // Parallel fetches
-  const [projectResult, gcMembersResult, subMembersResult, assignmentsResult, invitesResult, areasResult] = await Promise.all([
+  const [projectResult, gcMembersResult, subMembersResult, assignmentsResult, invitesResult, areasResult, tradesResult] = await Promise.all([
     supabase.from('projects').select('name, org_id, sub_org_id').eq('id', pid).single(),
     // GC org members
     supabase.from('projects').select('org_id').eq('id', pid).single().then(async ({ data }) => {
@@ -91,10 +92,16 @@ export async function fetchTeamMembers(
     // Areas for assignment
     supabase
       .from('areas')
-      .select('id, name, floor')
+      .select('id, name, floor, units(name)')
       .eq('project_id', pid)
       .order('floor')
       .order('name'),
+    // Trades for invite modal
+    supabase
+      .from('trade_sequences')
+      .select('trade_name, sequence_order')
+      .eq('project_id', pid)
+      .order('sequence_order'),
   ]);
 
   // Build assignment map: userId → areaNames[]
@@ -149,10 +156,14 @@ export async function fetchTeamMembers(
     pendingInvites,
     projectId: pid,
     projectName: projectResult.data?.name ?? '',
-    areas: (areasResult.data ?? []).map((a) => ({ id: a.id, name: a.name, floor: a.floor })),
+    areas: (areasResult.data ?? []).map((a) => {
+      const unit = a.units as unknown as Record<string, unknown> | null;
+      return { id: a.id, name: a.name, floor: a.floor, unit_name: (unit?.name as string) ?? undefined };
+    }),
+    trades: [...new Map((tradesResult.data ?? []).map((t) => [t.trade_name, t])).values()],
   };
 }
 
 function emptyData(): TeamPageData {
-  return { members: [], pendingInvites: [], projectId: '', projectName: '', areas: [] };
+  return { members: [], pendingInvites: [], projectId: '', projectName: '', areas: [], trades: [] };
 }

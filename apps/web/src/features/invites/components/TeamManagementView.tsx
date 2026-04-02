@@ -104,6 +104,7 @@ export function TeamManagementView({ data, userRole }: Props) {
         <InviteModal
           projectId={data.projectId}
           areas={data.areas}
+          trades={data.trades}
           onClose={() => setShowInviteModal(false)}
         />
       )}
@@ -241,47 +242,67 @@ function InviteRow({ invite, onRefresh }: { invite: PendingInvite; onRefresh?: (
 
 // ─── Invite Modal ───────────────────────────────────
 
-const INVITABLE_ROLES: { value: InviteRole; label: string; description: string; method: 'email' | 'sms' }[] = [
-  { value: 'gc_pm', label: 'GC Project Manager', description: 'Full dashboard access', method: 'email' },
-  { value: 'gc_super', label: 'GC Superintendent', description: 'Field + dashboard access', method: 'email' },
-  { value: 'sub_pm', label: 'Sub PM', description: 'Trade-specific access + legal docs', method: 'email' },
-  { value: 'superintendent', label: 'Superintendent', description: 'Manages foremen, reviews NODs', method: 'email' },
-  { value: 'foreman', label: 'Foreman', description: 'Field reporting — no password needed', method: 'sms' },
+const INVITABLE_ROLES: { value: InviteRole; label: string; description: string; method: 'email' | 'sms'; needsTrade: boolean }[] = [
+  { value: 'gc_pm', label: 'GC Project Manager', description: 'Full dashboard access', method: 'email', needsTrade: false },
+  { value: 'gc_super', label: 'GC Superintendent', description: 'Field + dashboard access', method: 'email', needsTrade: false },
+  { value: 'sub_pm', label: 'Sub PM', description: 'Manages their trade — legal docs, delay tracking', method: 'email', needsTrade: true },
+  { value: 'superintendent', label: 'Superintendent', description: 'Manages foremen, reviews & sends NODs', method: 'email', needsTrade: true },
+  { value: 'foreman', label: 'Foreman', description: 'Reports from the field — joins via link, no account setup', method: 'sms', needsTrade: true },
 ];
 
 function InviteModal({
   projectId,
   areas,
+  trades,
   onClose,
 }: {
   projectId: string;
-  areas: { id: string; name: string; floor: string }[];
+  areas: { id: string; name: string; floor: string; unit_name?: string }[];
+  trades?: { trade_name: string; sequence_order: number }[];
   onClose: () => void;
 }) {
   const [role, setRole] = useState<InviteRole | ''>('');
+  const [tradeName, setTradeName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
-  const [areaId, setAreaId] = useState('');
+  const [language, setLanguage] = useState('en');
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const selectedRole = INVITABLE_ROLES.find((r) => r.value === role);
+  const roleConfig = INVITABLE_ROLES.find((r) => r.value === role);
   const isForeman = role === 'foreman';
+  const needsTrade = roleConfig?.needsTrade ?? false;
+
+  // Group areas by floor → unit for the selector
+  const floorGroups = areas.reduce<Record<string, typeof areas>>((acc, a) => {
+    const key = a.floor;
+    (acc[key] ??= []).push(a);
+    return acc;
+  }, {});
+
+  const toggleArea = (id: string) => {
+    setSelectedAreas((prev) => prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]);
+  };
 
   const handleGenerate = async () => {
     if (!role) return;
+    if (needsTrade && !tradeName) { toast.error('Select a trade'); return; }
     if (!isForeman && !email) { toast.error('Email is required'); return; }
-    if (isForeman && !phone) { toast.error('Phone is required for foreman'); return; }
+    if (isForeman && !phone) { toast.error('Phone is required'); return; }
 
     setLoading(true);
     const result = await generateInviteLink({
       projectId,
       role,
-      areaId: isForeman ? areaId || undefined : undefined,
+      areaId: selectedAreas[0] || undefined,
       email: !isForeman ? email : undefined,
       phone: isForeman ? phone : undefined,
       name: name || undefined,
+      tradeName: needsTrade ? tradeName : undefined,
+      language,
     });
     if (result.ok) {
       setGeneratedUrl(result.url);
@@ -292,16 +313,9 @@ function InviteModal({
     setLoading(false);
   };
 
-  const handleCopy = () => {
-    if (generatedUrl) {
-      navigator.clipboard.writeText(generatedUrl);
-      toast.success('Copied to clipboard!');
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="w-full max-w-md rounded-lg border border-zinc-700 bg-zinc-900 p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 p-5" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-sm font-semibold text-zinc-100">Invite Team Member</h3>
 
         <div className="mt-4 space-y-3">
@@ -311,15 +325,11 @@ function InviteModal({
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {INVITABLE_ROLES.map((r) => (
                 <button key={r.value} type="button"
-                  onClick={() => { setRole(r.value); setGeneratedUrl(null); }}
+                  onClick={() => { setRole(r.value); setGeneratedUrl(null); setCopied(false); }}
                   className={`rounded-md border px-2.5 py-1.5 text-left transition-colors ${
-                    role === r.value
-                      ? 'border-emerald-600 bg-emerald-950/40'
-                      : 'border-zinc-700 hover:border-zinc-600'
+                    role === r.value ? 'border-emerald-600 bg-emerald-950/40' : 'border-zinc-700 hover:border-zinc-600'
                   }`}>
-                  <p className={`text-xs font-medium ${role === r.value ? 'text-emerald-400' : 'text-zinc-300'}`}>
-                    {r.label}
-                  </p>
+                  <p className={`text-xs font-medium ${role === r.value ? 'text-emerald-400' : 'text-zinc-300'}`}>{r.label}</p>
                   <p className="text-[10px] text-zinc-500">{r.description}</p>
                 </button>
               ))}
@@ -328,6 +338,21 @@ function InviteModal({
 
           {role && (
             <>
+              {/* Trade selector (sub-side roles) */}
+              {needsTrade && (
+                <div>
+                  <label className="text-[10px] font-medium text-zinc-400">Trade</label>
+                  <select value={tradeName} onChange={(e) => setTradeName(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-300 focus:border-amber-600 focus:outline-none">
+                    <option value="">Select trade...</option>
+                    {(trades ?? []).map((t) => (
+                      <option key={t.trade_name} value={t.trade_name}>{t.sequence_order}. {t.trade_name}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[10px] text-zinc-600">This person will only see data for this trade.</p>
+                </div>
+              )}
+
               {/* Name */}
               <div>
                 <label className="text-[10px] font-medium text-zinc-400">Name</label>
@@ -343,7 +368,7 @@ function InviteModal({
                   <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
                     placeholder="+1 (212) 555-0123"
                     className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-300 placeholder-zinc-600 focus:border-amber-600 focus:outline-none" />
-                  <p className="mt-1 text-[10px] text-zinc-600">Share the link via WhatsApp — no password needed.</p>
+                  <p className="mt-1 text-[10px] text-zinc-600">An invite link will be generated. Share it via WhatsApp or text.</p>
                 </div>
               ) : (
                 <div>
@@ -354,17 +379,47 @@ function InviteModal({
                 </div>
               )}
 
-              {/* Area select (foreman only) */}
+              {/* Language (foreman) */}
               {isForeman && (
                 <div>
-                  <label className="text-[10px] font-medium text-zinc-400">Assign to Area (optional)</label>
-                  <select value={areaId} onChange={(e) => setAreaId(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-300 focus:border-amber-600 focus:outline-none">
-                    <option value="">Assign later...</option>
-                    {areas.map((a) => (
-                      <option key={a.id} value={a.id}>F{a.floor} — {a.name}</option>
+                  <label className="text-[10px] font-medium text-zinc-400">Language</label>
+                  <div className="mt-1 flex gap-2">
+                    {(['en', 'es'] as const).map((lang) => (
+                      <button key={lang} type="button" onClick={() => setLanguage(lang)}
+                        className={`rounded-md border px-3 py-1.5 text-xs ${
+                          language === lang ? 'border-emerald-600 bg-emerald-950/40 text-emerald-400' : 'border-zinc-700 text-zinc-400'
+                        }`}>
+                        {lang === 'en' ? 'English' : 'Español'}
+                      </button>
                     ))}
-                  </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Area assignment (foreman + superintendent) */}
+              {(isForeman || role === 'superintendent') && (
+                <div>
+                  <label className="text-[10px] font-medium text-zinc-400">
+                    Assign to areas ({selectedAreas.length} selected)
+                  </label>
+                  <div className="mt-1 max-h-48 overflow-y-auto rounded-md border border-zinc-700 bg-zinc-800">
+                    {Object.entries(floorGroups)
+                      .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+                      .map(([floor, floorAreas]) => (
+                        <div key={floor}>
+                          <div className="sticky top-0 bg-zinc-800 px-3 py-1 text-[10px] font-bold text-zinc-500 border-b border-zinc-700/50">
+                            Floor {floor}
+                          </div>
+                          {floorAreas.map((a) => (
+                            <label key={a.id} className="flex items-center gap-2 px-3 py-1 hover:bg-zinc-700/30 cursor-pointer">
+                              <input type="checkbox" checked={selectedAreas.includes(a.id)}
+                                onChange={() => toggleArea(a.id)} className="rounded border-zinc-600" />
+                              <span className="text-xs text-zinc-300">{a.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ))}
+                  </div>
                 </div>
               )}
             </>
@@ -374,16 +429,23 @@ function InviteModal({
           {generatedUrl && (
             <div className="rounded-lg border border-green-900/50 bg-green-950/20 p-3">
               <p className="text-[10px] font-medium text-green-400">
-                {isForeman ? 'Share this link via WhatsApp:' : 'Invite email sent! Link (expires 7 days):'}
+                {isForeman
+                  ? `Share this link with ${name || 'the foreman'} via WhatsApp:`
+                  : 'Invite email sent! Link (expires 7 days):'}
               </p>
               <div className="mt-1 flex gap-2">
                 <input type="text" value={generatedUrl} readOnly
                   className="flex-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-[10px] font-mono text-zinc-300" />
-                <button onClick={handleCopy}
+                <button onClick={() => { navigator.clipboard.writeText(generatedUrl); setCopied(true); toast.success('Copied!'); }}
                   className="rounded border border-green-700 px-2 py-1 text-[10px] font-medium text-green-400 hover:bg-green-950/30">
-                  Copy
+                  {copied ? 'Copied!' : 'Copy'}
                 </button>
               </div>
+              {isForeman && (
+                <p className="mt-2 text-[10px] text-zinc-600">
+                  When {name || 'the foreman'} taps this link, they'll be logged in automatically — no password, no email needed.
+                </p>
+              )}
             </div>
           )}
         </div>
