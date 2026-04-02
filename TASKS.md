@@ -202,7 +202,7 @@ Audit result: 9 were already wired, 3 were added.
 - [ ] 🔨 Cost monitoring: tokens per briefing, alert if monthly >$50
 - [ ] 🔨 Settings: briefing push/email toggle
 
-### Labor Rates — Per-Trade Structured Rates — ✅ DB DONE
+### Labor Rates — Per-Trade Structured Rates — ✅ COMPLETE
 
 #### Database — ✅
 - [x] `labor_rates` table: project_id × trade_name × role → hourly_rate (UNIQUE + RLS)
@@ -211,12 +211,41 @@ Audit result: 9 were already wired, 3 were added.
 - [x] `complete_onboarding`: calls seed_labor_rates after trade_sequences insert
 - [x] `projects.labor_rate_per_hour` preserved as fallback
 
-#### Frontend + Integration — ❌ Not Built
-- [ ] 🔨 Settings UI: editable rate matrix (Trades & Costs tab) — OT rules + role rates
+#### Settings UI — ✅
+- [x] OT Rules table: ST hours, OT/DT multiplier, Saturday rule per trade
+- [x] Labor Rates matrix: per-role rates (Foreman/JP/Apprentice/Helper) per trade
+- [x] Daily cost auto-calculated from rates × crew × ST hours
+- [x] Crew composition editor per trade
+- [x] Save Changes + Reset to NYC Defaults buttons
+- [x] Onboarding: removed single rate field, replaced with info note
+
+#### Remaining (P2):
 - [ ] 🔨 `calculateDelayCost()` using per-trade rates + crew composition
 - [ ] 🔨 NOD/REA PDF: itemized role-by-role cost breakdown
-- [ ] 🔨 Onboarding: remove single rate field, add info note about defaults
 - [ ] 🔨 Mobile: per-trade daily cost on blocked area cards
+
+### Invitation System — ✅ COMPLETE
+
+- [x] `invite_tokens` table: expanded roles (gc_pm, gc_super, sub_pm, superintendent, foreman)
+- [x] Added email, phone, name columns for tracking
+- [x] `generateInviteLink()`: auto-sends TeamInviteEmail for email roles
+- [x] Foreman: generates URL for manual WhatsApp sharing (no SMS provider in V1)
+- [x] Invite modal: 5 role chips, name/email/phone fields, area assignment (foreman)
+- [x] `resendInvite()`: extends expiration + re-sends email
+- [x] `revokeInvite()`: deletes unused token
+- [x] Pending invites list with Copy/Resend/Revoke buttons
+- [x] `/join/[token]` page: validates token, supports signup + foreman magic link
+- [x] `TeamInviteEmail` template (bilingual EN/ES)
+- [ ] 🔨 V2: Twilio SMS for foreman invites (currently WhatsApp manual share)
+
+### Add Areas (Post-Onboarding) — ✅ COMPLETE
+
+- [x] "Add Areas" modal accessible from Ready Board header
+- [x] 3 modes: Units+Areas, Floor Areas, CSV Import
+- [x] Per-type area_code input (manual, from building plans)
+- [x] Free-text unit names (comma-separated: A,B,C or 201,202 or East,West)
+- [x] Custom area type input with removable chips
+- [x] `addAreasToProject` server action with corridor fallback for new area types
 
 ### Change Order Engine
 
@@ -290,8 +319,8 @@ Audit result: 9 were already wired, 3 were added.
 | Priority | Status | Detail |
 |----------|--------|--------|
 | 🔴 P0 Critical | ✅ CLOSED | All 4 blockers resolved |
-| 🟡 P1 Launch | ✅ CLOSED | 14/14 items done + hierarchy refactor complete |
-| 🟢 P2 Post-Launch | ✅ CORE DONE | Hierarchy, labor rates DB, forecast, notifications, security |
+| 🟡 P1 Launch | ✅ CLOSED | 14/14 items + hierarchy + invitations + labor rates |
+| 🟢 P2 Post-Launch | ✅ CORE DONE | Settings UI, Add Areas modal, forecast, notifications |
 | ⚪ P3 Future | ⏳ BACKLOG | App Store, SMS, AI Chat, Change Orders |
 
 ### Remaining Work (non-blocking)
@@ -299,25 +328,24 @@ Audit result: 9 were already wired, 3 were added.
 | Task | Est. | Trigger |
 |------|------|---------|
 | Buy domain + DNS/SPF/DKIM | Manual | Pre-launch |
-| Labor rates Settings UI | 4h | Post-launch |
 | `calculateDelayCost()` per-trade | 3h | Post-launch |
 | NOD/REA PDF itemized cost breakdown | 3h | Post-launch |
 | Clone Floor button | 2h | Post-launch |
-| Mobile: group areas by unit | 3h | Post-launch |
-| Settings: editable area_code | 1h | Post-launch |
 | XLSX schedule import | 2h | Post-launch |
 | Crew performance UI | 3h | Post-launch |
 | Change order engine UI | 4h | Post-launch |
 | Live indicator (green dot) | 1h | Polish |
 | Sub Add-on checkout wiring | 1h | Post-launch |
-| App Store (eas.json + builds) | 4h | V2 |
+| Mobile EAS build (APK) | 1h | Ready now |
+| App Store (screenshots + description) | 4h | V2 |
 | SMS provider (Twilio) | 3h | V2 |
 | AI Chat Agent | TBD | V2 (post 10 projects) |
 
 **Web launch:** ✅ Ready after domain purchase + DNS config.
 **Field test:** ✅ Ready now with demo accounts (Pro unlocked).
+**Mobile:** ✅ Code ready for EAS build. PowerSync schema + sync rules updated.
 
 ---
 
-*ReadyBoard v5.4 — TASKS.md — Updated 2026-04-01 (hierarchy refactor + labor rates)*
+*ReadyBoard v5.5 — TASKS.md — Updated 2026-04-01 (invitations + labor rates UI + add areas modal)*
 *readyboard.ai*

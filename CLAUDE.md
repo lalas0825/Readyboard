@@ -14,7 +14,7 @@
 | Category | Done | Partial | Not Built | Broken |
 |----------|------|---------|-----------|--------|
 | Infrastructure | 10 | 0 | 0 | 0 |
-| Auth & Onboarding | 11 | 0 | 0 | 0 |
+| Auth & Invitations | 14 | 0 | 0 | 0 |
 | Stripe Billing | 10 | 1 | 1 | 0 |
 | Dashboard Navigation | 11 | 0 | 0 | 0 |
 | Dashboard Pages | 11 | 0 | 0 | 0 |
@@ -26,23 +26,25 @@
 | Notifications | 5 | 2 | 2 | 0 |
 | Email System | 6 | 1 | 0 | 0 |
 | AI Morning Briefing | 2 | 0 | 5 | 0 |
-| Labor Rates | 4 | 0 | 3 | 0 |
+| Labor Rates | 7 | 0 | 0 | 0 |
 | Demo Account | 4 | 0 | 0 | 0 |
 | Landing Page & Legal | 3 | 0 | 0 | 0 |
 | Security | 7 | 0 | 0 | 0 |
 | App Store Readiness | 1 | 1 | 4 | 0 |
-| **TOTALS** | **144** | **7** | **18** | **0** |
+| **TOTALS** | **153** | **4** | **12** | **0** |
 
-**Diagnostics:** ~700 files, 25 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
+**Diagnostics:** ~730 files, 27 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
 
 ### Recent Changes (March 30 — April 1, 2026)
 
 - **Hierarchy refactor:** Floor → Unit → Area (3-level collapsible grid, 156 units backfilled)
-- **Labor rates:** Per-trade, per-role NYC union rates + OT rules + crew composition
-- **Onboarding:** 25 area type chips, CSV import, unit auto-creation, area_code manual-only
+- **Labor rates:** Per-trade, per-role NYC union rates + OT rules + crew composition + Settings UI
+- **Onboarding:** 25 area type chips, CSV import, unit auto-creation, area_code manual per-type
 - **Floor-level areas:** Support floors without units (lobbies, mechanical, amenity)
+- **Invitations:** 5-role system (gc_pm, gc_super, sub_pm, superintendent, foreman), auto-email, resend/revoke
+- **Add Areas modal:** Post-onboarding area creation from Ready Board (units/floor/CSV modes)
 - **Security:** Auth bypass hardened, email verification, rate limiting, demo gating
-- **Grid:** Paginated fetch (8700+ rows), trade dedup, collapsible floors/units
+- **Grid:** Paginated fetch (8700+ rows), trade dedup, collapsible floors/units, area_code badges
 - **Deploy fixes:** .npmrc removal, Vercel build, onboarding navigation
 
 ---
