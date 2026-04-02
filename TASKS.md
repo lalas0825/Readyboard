@@ -91,9 +91,16 @@
 - [x] 5 floor-level presets: Lobby, Amenity, Mechanical, Parking, Retail
 - [x] `generateFloorAreas()` creates areas without unit_name (unit_id=NULL)
 
+#### Phase 6: Mobile UX + Project Assignment — ✅
+- [x] Mobile: area cards grouped by Floor → Unit (sections: "F2 · Unit 2A")
+- [x] Mobile: area_code badges on AreaCard
+- [x] Mobile: unit_name + description in AreaCard meta line
+- [x] `assign_user_to_project()` RPC: assigns ALL project areas atomically
+- [x] `redeemInviteToken`: calls assign_user_to_project for sub/super/foreman
+- [x] `addAreasToProject`: auto-assigns new areas to existing project members
+
 #### Remaining (P2):
 - [ ] 🔨 Clone Floor button (copies structure from Floor N to N+1)
-- [ ] 🔨 Mobile: group "My Areas" by unit (PowerSync schema ready)
 - [ ] 🔨 Settings: editable area_code field per area
 
 ### 7. NOD Email Dispatch — ✅ DONE
@@ -320,7 +327,7 @@ Audit result: 9 were already wired, 3 were added.
 |----------|--------|--------|
 | 🔴 P0 Critical | ✅ CLOSED | All 4 blockers resolved |
 | 🟡 P1 Launch | ✅ CLOSED | 14/14 items + hierarchy + invitations + labor rates |
-| 🟢 P2 Post-Launch | ✅ CORE DONE | Settings UI, Add Areas modal, forecast, notifications |
+| 🟢 P2 Post-Launch | ✅ CORE DONE | Settings UI, Add Areas, mobile Floor→Unit grouping, project assignment |
 | ⚪ P3 Future | ⏳ BACKLOG | App Store, SMS, AI Chat, Change Orders |
 
 ### Remaining Work (non-blocking)
@@ -347,5 +354,5 @@ Audit result: 9 were already wired, 3 were added.
 
 ---
 
-*ReadyBoard v5.5 — TASKS.md — Updated 2026-04-01 (invitations + labor rates UI + add areas modal)*
+*ReadyBoard v5.6 — TASKS.md — Updated 2026-04-02 (mobile fixes + project assignment + invite trade selector)*
 *readyboard.ai*

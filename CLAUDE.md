@@ -5,7 +5,7 @@
 > and operates offline-first in the foreman's language.
 >
 > **This is the single source of truth.** If CLAUDE.md says it, Claude Code follows it.
-> Last updated: 2026-04-01 — Post-hierarchy refactor (90% production-ready)
+> Last updated: 2026-04-02 — Post-invitations + mobile fixes (92% production-ready)
 
 ---
 
@@ -19,7 +19,7 @@
 | Dashboard Navigation | 11 | 0 | 0 | 0 |
 | Dashboard Pages | 11 | 0 | 0 | 0 |
 | Ready Board Grid | 14 | 0 | 0 | 0 |
-| Foreman Mobile | 16 | 0 | 0 | 0 |
+| Foreman Mobile | 18 | 0 | 0 | 0 |
 | Checklist System | 11 | 0 | 0 | 0 |
 | Legal Documentation | 15 | 0 | 0 | 0 |
 | Forecast Engine | 3 | 2 | 3 | 0 |
@@ -31,11 +31,11 @@
 | Landing Page & Legal | 3 | 0 | 0 | 0 |
 | Security | 7 | 0 | 0 | 0 |
 | App Store Readiness | 1 | 1 | 4 | 0 |
-| **TOTALS** | **153** | **4** | **12** | **0** |
+| **TOTALS** | **155** | **4** | **12** | **0** |
 
-**Diagnostics:** ~730 files, 27 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
+**Diagnostics:** ~730 files, 28 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
 
-### Recent Changes (March 30 — April 1, 2026)
+### Recent Changes (March 30 — April 2, 2026)
 
 - **Hierarchy refactor:** Floor → Unit → Area (3-level collapsible grid, 156 units backfilled)
 - **Labor rates:** Per-trade, per-role NYC union rates + OT rules + crew composition + Settings UI
@@ -45,6 +45,7 @@
 - **Add Areas modal:** Post-onboarding area creation from Ready Board (units/floor/CSV modes)
 - **Security:** Auth bypass hardened, email verification, rate limiting, demo gating
 - **Grid:** Paginated fetch (8700+ rows), trade dedup, collapsible floors/units, area_code badges
+- **Foreman Mobile:** Floor→Unit grouped sections, area_code badges, project-level assignment
 - **Deploy fixes:** .npmrc removal, Vercel build, onboarding navigation
 
 ---
