@@ -89,8 +89,7 @@ export function StepAreas() {
   const [addMode, setAddMode] = useState<'unit' | 'floor'>('unit');
   const [floorFrom, setFloorFrom] = useState('1');
   const [floorTo, setFloorTo] = useState('3');
-  const [unitFrom, setUnitFrom] = useState('A');
-  const [unitTo, setUnitTo] = useState('D');
+  const [unitNames, setUnitNames] = useState('A, B, C, D');
   const [selectedPreset, setSelectedPreset] = useState<string>('standard_2br');
   const [selectedFloorPreset, setSelectedFloorPreset] = useState<string>('');
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(['Bathroom', 'Kitchen']));
@@ -147,14 +146,17 @@ export function StepAreas() {
 
   // ─── Generate areas ───────────────────────────────
 
+  function parseUnitNames(input: string): string[] {
+    return input.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+
   function generateAreas() {
     const from = parseInt(floorFrom, 10);
     const to = parseInt(floorTo, 10);
     if (isNaN(from) || isNaN(to) || from > to) return;
 
-    const startChar = unitFrom.toUpperCase().charCodeAt(0);
-    const endChar = unitTo.toUpperCase().charCodeAt(0);
-    if (startChar > endChar || startChar < 65 || endChar > 90) return;
+    const units = parseUnitNames(unitNames);
+    if (units.length === 0) return;
 
     const allTypes = Array.from(selectedTypes);
     if (allTypes.length === 0) return;
@@ -162,16 +164,15 @@ export function StepAreas() {
     const generated: AreaEntry[] = [];
 
     for (let floor = from; floor <= to; floor++) {
-      for (let c = startChar; c <= endChar; c++) {
-        const unitLetter = String.fromCharCode(c);
-        const unitName = `${floor}${unitLetter}`;
+      for (const unit of units) {
+        const unitFullName = `${floor}${unit}`;
 
         for (const type of allTypes) {
           generated.push({
-            name: `${unitName} ${type}`,
+            name: `${unitFullName} ${type}`,
             floor: String(floor),
             area_type: normalizeAreaType(type),
-            unit_name: unitLetter,
+            unit_name: unit,
             area_code: typeCodes[type] || undefined,
           });
         }
@@ -364,7 +365,7 @@ export function StepAreas() {
         </div>
 
         {/* Floor range (always shown) */}
-        <div className={`grid ${addMode === 'unit' ? 'grid-cols-4' : 'grid-cols-2'} gap-3 items-end`}>
+        <div className="grid grid-cols-2 gap-3 items-end">
           <div>
             <label className="block text-xs text-zinc-400 mb-1">Floor From</label>
             <input type="number" min={1} value={floorFrom} onChange={(e) => setFloorFrom(e.target.value)}
@@ -376,18 +377,12 @@ export function StepAreas() {
               className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none" />
           </div>
           {addMode === 'unit' && (
-            <>
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1">Unit From</label>
-                <input type="text" maxLength={1} value={unitFrom} onChange={(e) => setUnitFrom(e.target.value.toUpperCase())}
-                  className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 uppercase focus:border-emerald-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1">Unit To</label>
-                <input type="text" maxLength={1} value={unitTo} onChange={(e) => setUnitTo(e.target.value.toUpperCase())}
-                  className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 uppercase focus:border-emerald-500 focus:outline-none" />
-              </div>
-            </>
+            <div className="col-span-2">
+              <label className="block text-xs text-zinc-400 mb-1">Units (comma-separated)</label>
+              <input type="text" value={unitNames} onChange={(e) => setUnitNames(e.target.value)}
+                placeholder="A, B, C, D  or  201, 202, 203  or  East, West"
+                className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none" />
+            </div>
           )}
         </div>
 

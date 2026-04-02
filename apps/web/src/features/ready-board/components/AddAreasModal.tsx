@@ -63,9 +63,10 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
   const [addMode, setAddMode] = useState<'unit' | 'floor' | 'csv'>('unit');
   const [floorFrom, setFloorFrom] = useState('');
   const [floorTo, setFloorTo] = useState('');
-  const [unitFrom, setUnitFrom] = useState('A');
-  const [unitTo, setUnitTo] = useState('D');
+  const [unitNames, setUnitNames] = useState('A, B, C, D');
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
+  const [customTypes, setCustomTypes] = useState<string[]>([]);
+  const [customInput, setCustomInput] = useState('');
   const [selectedPreset, setSelectedPreset] = useState('');
   const [typeCodes, setTypeCodes] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<AreaToAdd[]>([]);
@@ -88,6 +89,24 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
     if (presets[key]) setSelectedTypes(new Set(presets[key].areas));
   }
 
+  function addCustomType() {
+    const t = customInput.trim();
+    if (!t || customTypes.includes(t)) return;
+    setCustomTypes([...customTypes, t]);
+    setSelectedTypes((prev) => new Set([...prev, t]));
+    setCustomInput('');
+    setSelectedPreset('');
+  }
+
+  function removeCustomType(type: string) {
+    setCustomTypes(customTypes.filter((t) => t !== type));
+    setSelectedTypes((prev) => { const n = new Set(prev); n.delete(type); return n; });
+  }
+
+  function parseUnitNames(input: string): string[] {
+    return input.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+
   function generatePreview() {
     const from = parseInt(floorFrom, 10);
     const to = parseInt(floorTo, 10);
@@ -98,19 +117,18 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
     const generated: AreaToAdd[] = [];
 
     if (addMode === 'unit') {
-      const startChar = unitFrom.toUpperCase().charCodeAt(0);
-      const endChar = unitTo.toUpperCase().charCodeAt(0);
-      if (startChar > endChar || startChar < 65 || endChar > 90) return;
+      const units = parseUnitNames(unitNames);
+      if (units.length === 0) return;
 
       for (let floor = from; floor <= to; floor++) {
-        for (let c = startChar; c <= endChar; c++) {
-          const unitLetter = String.fromCharCode(c);
+        for (const unit of units) {
+          const unitFullName = `${floor}${unit}`;
           for (const type of types) {
             generated.push({
-              name: `${floor}${unitLetter} ${type}`,
+              name: `${unitFullName} ${type}`,
               floor: String(floor),
               area_type: normalizeAreaType(type),
-              unit_name: unitLetter,
+              unit_name: unit,
               area_code: typeCodes[type] || undefined,
             });
           }
@@ -195,7 +213,7 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
         {addMode !== 'csv' && (
           <div className="space-y-3">
             {/* Floor range */}
-            <div className={`grid ${addMode === 'unit' ? 'grid-cols-4' : 'grid-cols-2'} gap-3`}>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-zinc-400 mb-1">Floor From</label>
                 <input type="number" min={1} value={floorFrom} onChange={(e) => setFloorFrom(e.target.value)}
@@ -207,18 +225,12 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
                   className="block w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none" />
               </div>
               {addMode === 'unit' && (
-                <>
-                  <div>
-                    <label className="block text-xs text-zinc-400 mb-1">Unit From</label>
-                    <input type="text" maxLength={1} value={unitFrom} onChange={(e) => setUnitFrom(e.target.value.toUpperCase())}
-                      className="block w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 uppercase focus:border-emerald-500 focus:outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-zinc-400 mb-1">Unit To</label>
-                    <input type="text" maxLength={1} value={unitTo} onChange={(e) => setUnitTo(e.target.value.toUpperCase())}
-                      className="block w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 uppercase focus:border-emerald-500 focus:outline-none" />
-                  </div>
-                </>
+                <div className="col-span-2">
+                  <label className="block text-xs text-zinc-400 mb-1">Units (comma-separated)</label>
+                  <input type="text" value={unitNames} onChange={(e) => setUnitNames(e.target.value)}
+                    placeholder="A, B, C, D  or  201, 202, 203  or  East, West"
+                    className="block w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none" />
+                </div>
               )}
             </div>
 
@@ -246,6 +258,28 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
                 </button>
               ))}
             </div>
+
+            {/* Custom type input */}
+            <div className="flex gap-2">
+              <input type="text" value={customInput} onChange={(e) => setCustomInput(e.target.value)}
+                placeholder="Custom type (e.g., Walk-in Closet)"
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomType())}
+                className="flex-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none" />
+              <button type="button" onClick={addCustomType} disabled={!customInput.trim()}
+                className="rounded border border-zinc-600 px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-700 disabled:opacity-40">
+                + Add
+              </button>
+            </div>
+            {customTypes.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {customTypes.map((type) => (
+                  <span key={type} className="flex items-center gap-1 rounded-full border border-amber-600 bg-amber-950/30 px-2 py-0.5 text-[11px] text-amber-400">
+                    {type}
+                    <button type="button" onClick={() => removeCustomType(type)} className="text-amber-500 hover:text-amber-300">&times;</button>
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Per-type area codes */}
             {selectedTypes.size > 0 && (
