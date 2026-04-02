@@ -26,9 +26,8 @@ export async function redeemInviteToken(input: {
   if (invite.used_at) return { ok: false, error: 'Token already used.' };
   if (new Date(invite.expires_at) < new Date()) return { ok: false, error: 'Token expired.' };
 
-  // 2. Handle based on role
-  if (['gc_pm', 'gc_super', 'sub_pm', 'superintendent'].includes(invite.role)) {
-    // Add to project_members with trade_name
+  // 2. Add to project_members
+  if (['gc_pm', 'gc_super', 'sub_pm', 'superintendent', 'foreman'].includes(invite.role)) {
     const { error: memberErr } = await supabase
       .from('project_members')
       .upsert({
@@ -40,43 +39,23 @@ export async function redeemInviteToken(input: {
       }, { onConflict: 'project_id,user_id' });
 
     if (memberErr) return { ok: false, error: memberErr.message };
-  } else if (invite.role === 'foreman' && invite.area_id) {
-    // Get all trade sequences for this area's project + area_type
-    const { data: area } = await supabase
-      .from('areas')
-      .select('area_type, project_id')
-      .eq('id', invite.area_id)
-      .single();
-
-    if (area) {
-      const { data: trades } = await supabase
-        .from('trade_sequences')
-        .select('trade_name')
-        .eq('project_id', area.project_id)
-        .eq('area_type', area.area_type);
-
-      // Assign foreman to area for all trades
-      if (trades && trades.length > 0) {
-        const assignments = trades.map((t) => ({
-          user_id: input.userId,
-          area_id: invite.area_id!,
-          trade_name: t.trade_name,
-        }));
-
-        await supabase
-          .from('user_assignments')
-          .upsert(assignments, { onConflict: 'user_id,area_id,trade_name', ignoreDuplicates: true });
-      }
-    }
   }
 
-  // 3. Mark token as used
+  // 3. Assign ALL project areas (sub/super/foreman get full project access)
+  if (['sub_pm', 'superintendent', 'foreman'].includes(invite.role)) {
+    await supabase.rpc('assign_user_to_project', {
+      p_user_id: input.userId,
+      p_project_id: invite.project_id,
+    });
+  }
+
+  // 4. Mark token as used
   await supabase
     .from('invite_tokens')
     .update({ used_at: new Date().toISOString(), used_by: input.userId })
     .eq('id', invite.id);
 
-  // 4. Audit (fire-and-forget)
+  // 5. Audit (fire-and-forget)
   await supabase.from('audit_log').insert({
     table_name: 'invite_tokens',
     action: 'invite_redeemed',

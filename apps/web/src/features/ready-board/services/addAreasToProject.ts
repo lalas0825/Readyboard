@@ -96,5 +96,21 @@ export async function addAreasToProject(
     }
   }
 
+  // Auto-assign new areas to all existing project members (sub/super/foreman)
+  if (count > 0) {
+    const { data: members } = await supabase
+      .from('project_members')
+      .select('user_id')
+      .eq('project_id', projectId)
+      .in('role', ['sub_pm', 'superintendent', 'foreman']);
+
+    for (const member of members ?? []) {
+      await supabase.rpc('assign_user_to_project', {
+        p_user_id: member.user_id,
+        p_project_id: projectId,
+      });
+    }
+  }
+
   return { ok: true, count };
 }
