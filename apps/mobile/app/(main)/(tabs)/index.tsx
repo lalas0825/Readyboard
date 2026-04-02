@@ -101,11 +101,12 @@ export default function ForemanHome() {
     router.push('/report');
   }
 
-  // ─── Group areas into SectionList sections by unit_name ──────
+  // ─── Group areas by Floor → Unit ──────
   const sections = useMemo<UnitSection[]>(() => {
     const grouped = new Map<string, AssignedArea[]>();
     for (const area of areas) {
-      const key = area.unit_name ?? 'Common';
+      const unit = area.unit_name ?? 'Common';
+      const key = `F${area.floor} · ${unit === 'Common' ? 'Common' : `Unit ${unit}`}`;
       const existing = grouped.get(key);
       if (existing) {
         existing.push(area);
@@ -113,11 +114,13 @@ export default function ForemanHome() {
         grouped.set(key, [area]);
       }
     }
-    return Array.from(grouped.entries()).map(([title, data]) => ({
-      title,
-      data,
-      statusDots: buildStatusDots(data),
-    }));
+    return Array.from(grouped.entries())
+      .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+      .map(([title, data]) => ({
+        title,
+        data,
+        statusDots: buildStatusDots(data),
+      }));
   }, [areas]);
 
   const renderItem = useCallback(
@@ -131,7 +134,7 @@ export default function ForemanHome() {
     ({ section }: { section: UnitSection }) => (
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>
-          {section.title === 'Common' ? 'Common Areas' : `Unit ${section.title}`}
+          {section.title}
         </Text>
         {/* Status dots: one per area, colored by status */}
         <View style={styles.dotsRow}>
