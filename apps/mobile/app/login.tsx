@@ -91,23 +91,7 @@ export default function LoginScreen() {
     setPhoneStep('input');
   }
 
-  async function handleDemoLogin() {
-    setMode('email');
-    setEmail('demo-foreman@readyboard.ai');
-    setPassword('ReadyBoard2026!');
-    setLoading(true);
-    setError(null);
-    const result = await signInWithEmail('demo-foreman@readyboard.ai', 'ReadyBoard2026!');
-    setLoading(false);
-    if (result.error) {
-      setError(result.error);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-  }
-
-  return (
+return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -252,10 +236,6 @@ export default function LoginScreen() {
           </View>
         )}
 
-        {/* Demo quick-login */}
-        <Pressable style={styles.demoButton} onPress={handleDemoLogin} disabled={loading}>
-          <Text style={styles.demoText}>Demo — Foreman</Text>
-        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
@@ -378,18 +358,5 @@ const styles = StyleSheet.create({
     color: '#fecaca',
     fontSize: 14,
     textAlign: 'center',
-  },
-  demoButton: {
-    alignItems: 'center',
-    paddingVertical: 14,
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(71,85,105,0.5)',
-    borderRadius: 12,
-  },
-  demoText: {
-    color: '#94a3b8',
-    fontSize: 14,
-    fontWeight: '500',
   },
 });
