@@ -112,7 +112,10 @@ export default function LoginScreen() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.title}>ReadyBoard</Text>
+        <Text style={styles.title}>
+          <Text style={styles.titleReady}>Ready</Text>
+          <Text style={styles.titleBoard}>Board</Text>
+        </Text>
         <Text style={styles.subtitle}>{t('auth.loginSubtitle')}</Text>
 
         {/* Mode tabs */}
@@ -258,6 +261,16 @@ const styles = StyleSheet.create({
     color: '#f8fafc',
     textAlign: 'center',
     marginBottom: 4,
+  },
+  titleReady: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  titleBoard: {
+    fontSize: 28,
+    fontWeight: '300',
+    color: '#64748b',
   },
   subtitle: {
     fontSize: 15,
