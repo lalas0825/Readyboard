@@ -99,8 +99,8 @@ return (
       {/* Background image — platform-specific */}
       <Image
         source={Platform.OS === 'ios'
-          ? require('../assets/login-mobile-ios.jpg')
-          : require('../assets/login-mobile-android.jpg')
+          ? require('../assets/login-v2-ios.jpg')
+          : require('../assets/login-v2-android.jpg')
         }
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
