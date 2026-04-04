@@ -14,7 +14,7 @@
 > - 🔨 BUILD — Does not exist, create from scratch
 > - 🔌 WIRE — Code exists but not connected
 >
-> Last updated: 2026-04-01 (hierarchy refactor + labor rates)
+> Last updated: 2026-04-04 (demo seed + logo fixes + mobile login + EAS build ready)
 
 ---
 
@@ -275,11 +275,14 @@ Audit result: 9 were already wired, 3 were added.
 - [ ] 🔨 Update NEXT_PUBLIC_APP_URL + NEXT_PUBLIC_SITE_URL to https://readyboard.ai
 - [ ] 🔨 Test email deliverability from noreply@readyboard.ai
 
-### Demo Account — ✅ PRO UNLOCKED
+### Demo Account — ✅ FULLY SEEDED
 
 - [x] Demo GC (Tishman Speyer / 383 Madison) has active Pro subscription until 2027-12-31
 - [x] All features unlocked: Legal Docs, SHA-256, Checklist, Schedule, Audit Logs
 - [x] Demo briefing loads instantly (hardcoded, no API call)
+- [x] `scripts/seed-demo-full.ts` — 3-month historical data (Jan 5 → Apr 4 2026)
+- [x] Wave pattern Ready Board, 8 delay scenarios, legal docs, CAs, forecast snapshots
+- [x] Credentials: demo-gc / demo-sub / demo-foreman all at `demo1234`
 
 ---
 
@@ -287,10 +290,11 @@ Audit result: 9 were already wired, 3 were added.
 
 ### App Store Submission
 
-- [ ] 🔨 Configure `eas.json` (dev, preview, production profiles)
-- [ ] 🔨 Create app icon: 1024×1024 PNG (App Store) + adaptive icon (Android)
-- [ ] 🔨 Create splash screen: Floor Pulse logo on #0f172a background
-- [ ] 🔨 Build Android APK via EAS
+- [x] Configure `eas.json` (dev, preview, production profiles) — Node 20.18.0, APK for preview
+- [x] App icon + adaptive icon (Android) — assets/icon.png + assets/adaptive-icon.png exist
+- [x] Splash screen — assets/splash.png on #0f172a exists
+- [x] Login background images — login-v2-android.jpg + login-v2-ios.jpg wired correctly
+- [ ] 🔨 Build Android APK via EAS — run: `eas build --profile preview --platform android`
 - [ ] 🔨 Build iOS TestFlight via EAS
 - [ ] 🔨 App Store screenshots (6.7" + 5.5" for iOS, phone + tablet for Android)
 - [ ] 🔨 App Store description (EN + ES)
@@ -349,10 +353,10 @@ Audit result: 9 were already wired, 3 were added.
 | AI Chat Agent | TBD | V2 (post 10 projects) |
 
 **Web launch:** ✅ Ready after domain purchase + DNS config.
-**Field test:** ✅ Ready now with demo accounts (Pro unlocked).
-**Mobile:** ✅ Code ready for EAS build. PowerSync schema + sync rules updated.
+**Field test:** ✅ Ready now with demo accounts (Pro unlocked, full 3-month seed data).
+**Mobile:** ✅ Build ready — `eas build --profile preview --platform android`. Login images fixed. Node 20.
 
 ---
 
-*ReadyBoard v5.6 — TASKS.md — Updated 2026-04-02 (mobile fixes + project assignment + invite trade selector)*
+*ReadyBoard v5.7 — TASKS.md — Updated 2026-04-04 (demo seed + logo + mobile login fix + EAS build ready)*
 *readyboard.ai*

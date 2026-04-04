@@ -5,11 +5,11 @@
 > and operates offline-first in the foreman's language.
 >
 > **This is the single source of truth.** If CLAUDE.md says it, Claude Code follows it.
-> Last updated: 2026-04-02 — Post-invitations + mobile fixes (92% production-ready)
+> Last updated: 2026-04-04 — Demo seed data + logo consistency + mobile login fix + EAS build ready
 
 ---
 
-## Current Status — Updated April 1, 2026
+## Current Status — Updated April 4, 2026
 
 | Category | Done | Partial | Not Built | Broken |
 |----------|------|---------|-----------|--------|
@@ -35,7 +35,16 @@
 
 **Diagnostics:** ~730 files, 28 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
 
-### Recent Changes (March 30 — April 2, 2026)
+### Recent Changes (April 2 — April 4, 2026)
+
+- **Demo seed data:** `scripts/seed-demo-full.ts` — 3 months of simulated project history (Jan 5 → Apr 4 2026), wave pattern Ready Board, 8 delay scenarios, legal docs, CAs, field reports, forecast snapshots
+- **Demo credentials:** `demo-gc@readyboard.ai`, `demo-sub@readyboard.ai`, `demo-foreman@readyboard.ai` / password: `demo1234`
+- **Logo consistency:** Ready/Board split across all pages — sidebar (bold white + light 500 gray), landing nav, mobile login screen
+- **Team management:** All roles now assigned at project level (no per-area checkboxes in invite modal)
+- **Mobile login background:** Fixed asset paths — `login-v2-android.jpg` / `login-v2-ios.jpg`
+- **EAS build:** Node 20.18.0 in preview profile, APK ready via `eas build --profile preview --platform android`
+
+### Previous Changes (March 30 — April 2, 2026)
 
 - **Hierarchy refactor:** Floor → Unit → Area (3-level collapsible grid, 156 units backfilled)
 - **Labor rates:** Per-trade, per-role NYC union rates + OT rules + crew composition + Settings UI
@@ -496,10 +505,17 @@ All pages built and routed as separate `/dashboard/*` paths:
 
 ## Demo Account
 
-- ✅ demo-gc + demo-sub credentials
-- ✅ `scripts/seed-demo.ts` (idempotent upserts)
-- ✅ 383 Madison Ave, Tishman/Jantile, 9 floors, 14 trades
-- ✅ Field reports, delays, legal docs, CAs, verifications seeded
+| Account | Email | Password | Role |
+|---------|-------|----------|------|
+| GC | `demo-gc@readyboard.ai` | `demo1234` | gc_pm |
+| Sub | `demo-sub@readyboard.ai` | `demo1234` | sub_pm |
+| Foreman | `demo-foreman@readyboard.ai` | `demo1234` | foreman |
+
+- ✅ `scripts/seed-demo-full.ts` — full historical seed (3 months, Jan 5 → Apr 4 2026)
+- ✅ 383 Madison Ave, Tishman Speyer (GC) / Jantile (Sub), 9 floors, 14 trades, 780 areas
+- ✅ Wave pattern: lower floors complete, upper floors in-progress/pending
+- ✅ 8 delay scenarios (5 resolved, 3 active), legal docs, CAs, field reports, forecast snapshots
+- ✅ Demo GC has Pro subscription unlocked until 2027-12-31
 
 ---
 
