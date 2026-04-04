@@ -4,12 +4,11 @@ export default function SubSignupPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-8">
       <div className="w-full max-w-sm">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/readyboard-lockup-dark.svg"
-          alt="ReadyBoard"
-          className="mx-auto mb-10 h-10"
-        />
+        <div className="mx-auto mb-10 flex items-center justify-center gap-2.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/readyboard-icon-animated.svg" alt="" className="h-8 w-8" />
+          <span className="text-xl font-bold text-zinc-100">ReadyBoard</span>
+        </div>
         <h1 className="mb-2 text-center text-xl font-semibold text-zinc-100">
           Specialty Contractor
         </h1>
