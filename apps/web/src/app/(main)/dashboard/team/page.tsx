@@ -13,7 +13,7 @@ export default async function TeamPage() {
       <div className="mb-6">
         <h1 className="text-lg font-semibold text-zinc-100">Team</h1>
         <p className="mt-1 text-xs text-zinc-500">
-          Manage team members, invite new users, and assign foremen to areas.
+          Manage team members and invite new users to the project.
         </p>
       </div>
       <TeamManagementView

@@ -103,7 +103,6 @@ export function TeamManagementView({ data, userRole }: Props) {
       {showInviteModal && (
         <InviteModal
           projectId={data.projectId}
-          areas={data.areas}
           trades={data.trades}
           onClose={() => setShowInviteModal(false)}
         />
@@ -126,7 +125,6 @@ function MemberSection({ title, members }: { title: string; members: TeamMember[
               <th className="pb-2 font-medium">Role</th>
               <th className="pb-2 font-medium">Contact</th>
               <th className="pb-2 font-medium">Organization</th>
-              <th className="pb-2 font-medium">Assigned Areas</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800/50">
@@ -142,22 +140,6 @@ function MemberSection({ title, members }: { title: string; members: TeamMember[
                   {m.email ?? m.phone ?? '--'}
                 </td>
                 <td className="py-2.5 text-zinc-500">{m.orgName ?? '--'}</td>
-                <td className="py-2.5">
-                  {m.assignedAreas.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {m.assignedAreas.slice(0, 3).map((a, i) => (
-                        <span key={i} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">
-                          {a}
-                        </span>
-                      ))}
-                      {m.assignedAreas.length > 3 && (
-                        <span className="text-[10px] text-zinc-600">+{m.assignedAreas.length - 3}</span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-[10px] text-zinc-600">--</span>
-                  )}
-                </td>
               </tr>
             ))}
           </tbody>
@@ -211,9 +193,6 @@ function InviteRow({ invite, onRefresh }: { invite: PendingInvite; onRefresh?: (
         <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold border ${ROLE_COLORS[invite.role] ?? ''}`}>
           {ROLE_LABELS[invite.role] ?? invite.role}
         </span>
-        {invite.areaName && (
-          <span className="text-xs text-zinc-400">{invite.areaName}</span>
-        )}
         <span className="text-[10px] text-zinc-600">
           {invite.isExpired ? 'Expired' : `Expires ${new Date(invite.expiresAt).toLocaleDateString()}`}
         </span>
@@ -252,12 +231,10 @@ const INVITABLE_ROLES: { value: InviteRole; label: string; description: string; 
 
 function InviteModal({
   projectId,
-  areas,
   trades,
   onClose,
 }: {
   projectId: string;
-  areas: { id: string; name: string; floor: string; unit_name?: string }[];
   trades?: { trade_name: string; sequence_order: number }[];
   onClose: () => void;
 }) {
@@ -267,7 +244,6 @@ function InviteModal({
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [language, setLanguage] = useState('en');
-  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -275,17 +251,6 @@ function InviteModal({
   const roleConfig = INVITABLE_ROLES.find((r) => r.value === role);
   const isForeman = role === 'foreman';
   const needsTrade = roleConfig?.needsTrade ?? false;
-
-  // Group areas by floor → unit for the selector
-  const floorGroups = areas.reduce<Record<string, typeof areas>>((acc, a) => {
-    const key = a.floor;
-    (acc[key] ??= []).push(a);
-    return acc;
-  }, {});
-
-  const toggleArea = (id: string) => {
-    setSelectedAreas((prev) => prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]);
-  };
 
   const handleGenerate = async () => {
     if (!role) return;
@@ -297,7 +262,6 @@ function InviteModal({
     const result = await generateInviteLink({
       projectId,
       role,
-      areaId: selectedAreas[0] || undefined,
       email: !isForeman ? email : undefined,
       phone: isForeman ? phone : undefined,
       name: name || undefined,
@@ -396,32 +360,6 @@ function InviteModal({
                 </div>
               )}
 
-              {/* Area assignment (foreman + superintendent) */}
-              {(isForeman || role === 'superintendent') && (
-                <div>
-                  <label className="text-[10px] font-medium text-zinc-400">
-                    Assign to areas ({selectedAreas.length} selected)
-                  </label>
-                  <div className="mt-1 max-h-48 overflow-y-auto rounded-md border border-zinc-700 bg-zinc-800">
-                    {Object.entries(floorGroups)
-                      .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
-                      .map(([floor, floorAreas]) => (
-                        <div key={floor}>
-                          <div className="sticky top-0 bg-zinc-800 px-3 py-1 text-[10px] font-bold text-zinc-500 border-b border-zinc-700/50">
-                            Floor {floor}
-                          </div>
-                          {floorAreas.map((a) => (
-                            <label key={a.id} className="flex items-center gap-2 px-3 py-1 hover:bg-zinc-700/30 cursor-pointer">
-                              <input type="checkbox" checked={selectedAreas.includes(a.id)}
-                                onChange={() => toggleArea(a.id)} className="rounded border-zinc-600" />
-                              <span className="text-xs text-zinc-300">{a.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
             </>
           )}
 
