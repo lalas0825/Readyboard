@@ -205,7 +205,7 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
             <div className="flex items-center gap-2.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/readyboard-icon-animated.svg" alt="" className="h-6 w-6" />
-              <span className="text-sm font-semibold text-zinc-100">ReadyBoard</span>
+              <span className="text-sm font-bold text-zinc-100">Ready<span className="font-light text-zinc-500">Board</span></span>
             </div>
             <NotificationBell />
           </>
