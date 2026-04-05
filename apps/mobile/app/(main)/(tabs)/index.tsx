@@ -63,6 +63,7 @@ export default function ForemanHome() {
   const { session } = useAuth();
   const { areas, pendingNods, isLoading, isConnected, error, refresh } = useAreas(session?.user.id);
   const [expandedFloors, setExpandedFloors] = useState<Set<string>>(new Set());
+  const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
 
   useFocusEffect(
     useCallback(() => {
@@ -142,10 +143,13 @@ export default function ForemanHome() {
       });
   }, [areas]);
 
-  // Auto-expand first floor on initial load
+  // Auto-expand first floor + first unit on initial load
   useMemo(() => {
     if (floors.length > 0 && expandedFloors.size === 0) {
       setExpandedFloors(new Set([floors[0].floor]));
+      // Also expand first unit of first floor
+      const firstUnit = floors[0].units[0];
+      if (firstUnit) setExpandedUnits(new Set([`${floors[0].floor}:${firstUnit.unitKey}`]));
     }
   }, [floors.length > 0]);
 
@@ -155,6 +159,16 @@ export default function ForemanHome() {
       const next = new Set(prev);
       if (next.has(floor)) next.delete(floor);
       else next.add(floor);
+      return next;
+    });
+  }
+
+  function toggleUnit(unitKey: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setExpandedUnits((prev) => {
+      const next = new Set(prev);
+      if (next.has(unitKey)) next.delete(unitKey);
+      else next.add(unitKey);
       return next;
     });
   }
@@ -233,30 +247,38 @@ export default function ForemanHome() {
 
               {/* ─── Expanded: Units + Areas ─── */}
               {isExpanded &&
-                floorGroup.units.map((unit) => (
-                  <View key={unit.unitKey} style={styles.unitContainer}>
-                    {/* Unit header */}
-                    <View style={styles.unitHeader}>
-                      <Text style={styles.unitTitle}>{unit.unitLabel}</Text>
-                      <View style={styles.dotsRow}>
-                        {unit.areas.map((a, i) => (
-                          <View
-                            key={i}
-                            style={[styles.statusDot, { backgroundColor: STATUS_DOT_COLORS[a.status] }]}
-                          />
-                        ))}
-                      </View>
+                floorGroup.units.map((unit) => {
+                  const unitKey = `${floorGroup.floor}:${unit.unitKey}`;
+                  const isUnitExpanded = expandedUnits.has(unitKey);
+                  return (
+                    <View key={unit.unitKey} style={styles.unitContainer}>
+                      {/* Unit header — tappable to collapse */}
+                      <Pressable style={styles.unitHeader} onPress={() => toggleUnit(unitKey)}>
+                        <View style={styles.unitHeaderLeft}>
+                          <Text style={styles.unitChevron}>{isUnitExpanded ? '▾' : '▸'}</Text>
+                          <Text style={styles.unitTitle}>{unit.unitLabel}</Text>
+                          <Text style={styles.unitCount}>{unit.areas.length}</Text>
+                        </View>
+                        <View style={styles.dotsRow}>
+                          {unit.areas.map((a, i) => (
+                            <View
+                              key={i}
+                              style={[styles.statusDot, { backgroundColor: STATUS_DOT_COLORS[a.status] }]}
+                            />
+                          ))}
+                        </View>
+                      </Pressable>
+                      {/* Area cards — only when unit is expanded */}
+                      {isUnitExpanded && unit.areas.map((area) => (
+                        <AreaCard
+                          key={`${area.id}-${area.trade_name}`}
+                          area={area}
+                          onReport={handleReport}
+                        />
+                      ))}
                     </View>
-                    {/* Area cards */}
-                    {unit.areas.map((area) => (
-                      <AreaCard
-                        key={`${area.id}-${area.trade_name}`}
-                        area={area}
-                        onReport={handleReport}
-                      />
-                    ))}
-                  </View>
-                ))}
+                  );
+                })}
             </View>
           );
         })}
@@ -396,12 +418,31 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
   },
+  unitHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  unitChevron: {
+    fontSize: 11,
+    color: '#475569',
+  },
   unitTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#64748b',
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  unitCount: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '500',
+    backgroundColor: '#1e293b',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   dotsRow: {
     flexDirection: 'row',

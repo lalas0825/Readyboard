@@ -9,7 +9,7 @@
  * Carlos Standard: large icons, one-tap select, color feedback, camera in 1 tap.
  */
 
-import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Image, TextInput } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { useReportStore, type ReasonCode } from '@readyboard/shared';
@@ -26,6 +26,7 @@ const REASON_CODES: { code: ReasonCode; icon: string }[] = [
   { code: 'plumbing', icon: '\uD83D\uDD27' },
   { code: 'material', icon: '\uD83D\uDCE6' },
   { code: 'moisture', icon: '\uD83D\uDCA7' },
+  { code: 'other', icon: '\u2026' },
 ];
 
 type Props = {
@@ -39,9 +40,11 @@ export default function Step3Reason({ onReadyToSubmit }: Props) {
   const selectedReason = useReportStore((s) => s.formData.reason_code);
   const isSubmitting = useReportStore((s) => s.isSubmitting);
   const setReason = useReportStore((s) => s.setReason);
+  const setNotes = useReportStore((s) => s.setNotes);
   const setPhoto = useReportStore((s) => s.setPhoto);
   const setGps = useReportStore((s) => s.setGps);
   const prevStep = useReportStore((s) => s.prevStep);
+  const currentNotes = useReportStore((s) => s.formData.notes);
 
   const [showCamera, setShowCamera] = useState(false);
   const evidence = useFieldEvidence();
@@ -87,6 +90,7 @@ export default function Step3Reason({ onReadyToSubmit }: Props) {
 
   function handleSubmit() {
     if (!selectedReason || isSubmitting) return;
+    if (selectedReason === 'other' && !currentNotes?.trim()) return; // require note for "other"
 
     // Set GPS from evidence if available and not already set
     if (evidence.gps) {
@@ -128,25 +132,39 @@ export default function Step3Reason({ onReadyToSubmit }: Props) {
       </View>
 
       {/* Reason code grid */}
-      <ScrollView
-        contentContainerStyle={styles.grid}
-        showsVerticalScrollIndicator={false}
-      >
-        {REASON_CODES.map(({ code, icon }) => {
-          const isSelected = selectedReason === code;
-          return (
-            <Pressable
-              key={code}
-              style={[styles.reasonCard, isSelected && styles.reasonSelected]}
-              onPress={() => handleSelectReason(code)}
-            >
-              <Text style={styles.reasonIcon}>{icon}</Text>
-              <Text style={[styles.reasonLabel, isSelected && styles.reasonLabelSelected]}>
-                {t(`reasonCodes.${code}`)}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.grid}>
+          {REASON_CODES.map(({ code, icon }) => {
+            const isSelected = selectedReason === code;
+            return (
+              <Pressable
+                key={code}
+                style={[styles.reasonCard, isSelected && styles.reasonSelected]}
+                onPress={() => handleSelectReason(code)}
+              >
+                <Text style={styles.reasonIcon}>{icon}</Text>
+                <Text style={[styles.reasonLabel, isSelected && styles.reasonLabelSelected]}>
+                  {t(`reasonCodes.${code}`)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Free-text input — only shown when "Other" is selected */}
+        {selectedReason === 'other' && (
+          <TextInput
+            style={styles.otherInput}
+            placeholder={t('reasonCodes.otherPlaceholder')}
+            placeholderTextColor="#475569"
+            value={currentNotes ?? ''}
+            onChangeText={(text) => setNotes(text || null)}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+            autoFocus
+          />
+        )}
       </ScrollView>
 
       {/* Photo preview or capture button */}
@@ -184,9 +202,12 @@ export default function Step3Reason({ onReadyToSubmit }: Props) {
 
       {/* Submit */}
       <Pressable
-        style={[styles.submitButton, (!selectedReason || isSubmitting) && styles.submitDisabled]}
+        style={[
+          styles.submitButton,
+          (!selectedReason || isSubmitting || (selectedReason === 'other' && !currentNotes?.trim())) && styles.submitDisabled,
+        ]}
         onPress={handleSubmit}
-        disabled={!selectedReason || isSubmitting}
+        disabled={!selectedReason || isSubmitting || (selectedReason === 'other' && !currentNotes?.trim())}
       >
         {isSubmitting ? (
           <ActivityIndicator color="#fff" size="small" />
@@ -323,6 +344,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94a3b8',
     fontWeight: '500',
+  },
+  // ─── Other text input ─────────────
+  otherInput: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    color: '#f8fafc',
+    fontSize: 16,
+    padding: 14,
+    marginTop: 4,
+    marginBottom: 12,
+    minHeight: 80,
   },
   // ─── Submit ───────────────────────
   submitButton: {

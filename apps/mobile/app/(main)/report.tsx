@@ -106,6 +106,7 @@ export default function ReportScreen() {
         status,
         progress_pct: formData.progress_pct,
         reason_code: formData.reason_code ?? undefined,
+        notes: formData.notes ?? undefined,
         gps_lat: gpsLat ?? undefined,
         gps_lng: gpsLng ?? undefined,
         photo_url: photoUrl,

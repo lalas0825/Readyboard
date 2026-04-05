@@ -43,6 +43,7 @@ export type ReportFormData = {
   progress_pct: number;
   has_blockers: boolean | null; // null = not answered yet
   reason_code: ReasonCode | null;
+  notes: string | null; // free text for 'other' reason code
   photo_url: string | null;
   gps_lat: number | null;
   gps_lng: number | null;
@@ -72,6 +73,8 @@ type ReportStoreActions = {
   setBlockers: (hasBlockers: boolean) => void;
   /** Step 3: set reason code */
   setReason: (code: ReasonCode) => void;
+  /** Step 3: set free-text notes (for 'other' reason) */
+  setNotes: (text: string | null) => void;
   /** Step 3: set photo URL */
   setPhoto: (url: string | null) => void;
   /** Set GPS coordinates (captured at submit time) */
@@ -94,6 +97,7 @@ const INITIAL_FORM_DATA: ReportFormData = {
   progress_pct: 0,
   has_blockers: null,
   reason_code: null,
+  notes: null,
   photo_url: null,
   gps_lat: null,
   gps_lng: null,
@@ -142,7 +146,18 @@ export const useReportStore = create<ReportStoreState & ReportStoreActions>(
 
     setReason: (code) => {
       set((state) => ({
-        formData: { ...state.formData, reason_code: code },
+        formData: {
+          ...state.formData,
+          reason_code: code,
+          // Clear notes if switching away from 'other'
+          notes: code === 'other' ? state.formData.notes : null,
+        },
+      }));
+    },
+
+    setNotes: (text) => {
+      set((state) => ({
+        formData: { ...state.formData, notes: text },
       }));
     },
 

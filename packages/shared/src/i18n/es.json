@@ -105,7 +105,9 @@
     "inspection": "Inspección",
     "plumbing": "Plomería",
     "material": "Material",
-    "moisture": "Humedad"
+    "moisture": "Humedad",
+    "other": "Otro",
+    "otherPlaceholder": "Describe el problema..."
   },
   "correctiveAction": {
     "title": "Acción Correctiva",

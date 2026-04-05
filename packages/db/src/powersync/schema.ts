@@ -100,7 +100,8 @@ const field_reports = new Table({
   trade_name: column.text,
   status: column.text, // done | working | blocked
   progress_pct: column.integer, // 0-100
-  reason_code: column.text, // no_heat | prior_trade | no_access | inspection | plumbing | material | moisture
+  reason_code: column.text, // no_heat | prior_trade | no_access | inspection | plumbing | material | moisture | other
+  notes: column.text, // free text for 'other' reason code
   gps_lat: column.real,
   gps_lng: column.real,
   photo_url: column.text,

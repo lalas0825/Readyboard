@@ -105,7 +105,9 @@
     "inspection": "Inspection",
     "plumbing": "Plumbing",
     "material": "Material",
-    "moisture": "Moisture"
+    "moisture": "Moisture",
+    "other": "Other",
+    "otherPlaceholder": "Describe the issue..."
   },
   "correctiveAction": {
     "title": "Corrective Action",

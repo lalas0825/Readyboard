@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import type { GridCellData, CorrectiveActionData, CorrectiveActionStatus, DelayData } from '../types';
 import { STATUS_CONFIG } from '../types';
@@ -149,12 +149,16 @@ export function GridDetailPanel({
   const panelState = derivePanelState(cell, existingAction);
   const [safetyToggling, setSafetyToggling] = useState(false);
   const [showCAForm, setShowCAForm] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const isSafetyBlocked = cell.delay_reason === 'safety';
   const isBlockedOrHeld = cell.status === 'blocked' || cell.status === 'held';
+
+  const closeLightbox = useCallback(() => setLightboxUrl(null), []);
 
   // Reset CA form when cell changes
   useEffect(() => {
     setShowCAForm(false);
+    setLightboxUrl(null);
   }, [cell.area_id, cell.trade_type]);
 
   // Lazy-load GPS, photos, and report history
@@ -381,22 +385,54 @@ export function GridDetailPanel({
               <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 Photos ({details.photos.length})
               </h4>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 {details.photos.map((photo, i) => (
-                  <a
+                  <button
                     key={`${photo.created_at}-${i}`}
-                    href={photo.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative aspect-square overflow-hidden rounded-md bg-zinc-800"
+                    onClick={() => setLightboxUrl(photo.url)}
+                    className="group relative aspect-square overflow-hidden rounded-md bg-zinc-800 cursor-zoom-in"
                   >
                     <img
                       src={photo.url}
                       alt={`Report photo ${i + 1}`}
-                      className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
                     />
-                  </a>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+                      <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">Click to expand</span>
+                    </div>
+                  </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Photo Lightbox */}
+          {lightboxUrl && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+              onClick={closeLightbox}
+            >
+              <div className="relative max-w-4xl max-h-screen w-full p-4" onClick={(e) => e.stopPropagation()}>
+                <img
+                  src={lightboxUrl}
+                  alt="Report evidence"
+                  className="max-h-[85vh] w-full object-contain rounded-lg"
+                />
+                <button
+                  onClick={closeLightbox}
+                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold"
+                >
+                  ×
+                </button>
+                <a
+                  href={lightboxUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute bottom-6 right-6 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs px-3 py-1.5 rounded-md"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Open original ↗
+                </a>
               </div>
             </div>
           )}

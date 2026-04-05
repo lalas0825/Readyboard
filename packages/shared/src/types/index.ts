@@ -9,7 +9,8 @@ export type ReasonCode =
   | 'inspection'
   | 'plumbing'
   | 'material'
-  | 'moisture';
+  | 'moisture'
+  | 'other';
 
 /** User roles (match DB CHECK constraint) */
 export type UserRole =
@@ -30,6 +31,7 @@ export type FieldReportInput = {
   status: FieldReportStatus;
   progress_pct: number;
   reason_code?: ReasonCode;
+  notes?: string;
   gps_lat?: number;
   gps_lng?: number;
   photo_url?: string;

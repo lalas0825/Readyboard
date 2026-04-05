@@ -70,7 +70,7 @@ bucket_definitions:
 
     data:
       - SELECT id, area_id, user_id, trade_name, status, progress_pct,
-               reason_code, gps_lat, gps_lng, photo_url,
+               reason_code, notes, gps_lat, gps_lng, photo_url,
                device_id, app_version, offline_created_at, created_at
         FROM field_reports
         WHERE area_id = bucket.area_id

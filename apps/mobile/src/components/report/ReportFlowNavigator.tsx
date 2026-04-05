@@ -7,7 +7,7 @@
  * Carlos Standard: green checkmark, large text, single close button.
  */
 
-import { View, Text, Pressable, StyleSheet, SafeAreaView, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
@@ -122,6 +122,7 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#0f172a',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0,
   },
   topBar: {
     flexDirection: 'row',
