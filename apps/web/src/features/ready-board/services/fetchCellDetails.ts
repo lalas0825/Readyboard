@@ -13,6 +13,7 @@ export type AreaTask = {
   is_gate: boolean;
   status: string;
   completed_at: string | null;
+  photo_url: string | null;
 };
 
 export type CellDetailData = {
@@ -53,7 +54,7 @@ export async function fetchCellDetails(
         .limit(20),
       supabase
         .from('area_tasks')
-        .select('id, task_order, task_name_en, task_name_es, task_owner, is_gate, status, completed_at')
+        .select('id, task_order, task_name_en, task_name_es, task_owner, is_gate, status, completed_at, photo_url')
         .eq('area_id', areaId)
         .eq('trade_type', tradeName)
         .order('task_order', { ascending: true }),
@@ -70,27 +71,35 @@ export async function fetchCellDetails(
     const startedAt = statusResult.data?.started_at ?? null;
     const completedAt = statusResult.data?.completed_at ?? null;
 
-    if (!reports || reports.length === 0) {
-      return { ...empty, tasks, startedAt, completedAt };
-    }
-
-    // GPS: first non-null coordinates
-    const gpsReport = reports.find((r) => r.gps_lat != null && r.gps_lng != null);
+    // GPS: first non-null coordinates from reports
+    const gpsReport = (reports ?? []).find((r) => r.gps_lat != null && r.gps_lng != null);
     const gps = gpsReport
       ? { lat: Number(gpsReport.gps_lat), lng: Number(gpsReport.gps_lng) }
       : null;
 
-    // Photos: all non-null photo_urls
-    const photos = reports
+    // Photos from field_reports (blocker/progress photos submitted with report)
+    const reportPhotos = (reports ?? [])
       .filter((r) => r.photo_url)
       .map((r) => ({ url: r.photo_url!, created_at: r.created_at }));
 
+    // Photos from area_tasks (per-task progress photos taken in checklist)
+    const taskPhotos = tasks
+      .filter((t) => t.photo_url)
+      .map((t) => ({ url: t.photo_url!, created_at: t.completed_at ?? new Date().toISOString() }));
+
+    // Merge: task photos first (most granular), then report photos
+    const photos = [...taskPhotos, ...reportPhotos];
+
     // Report history: all reports as timeline events
-    const reportHistory = reports.map((r) => ({
+    const reportHistory = (reports ?? []).map((r) => ({
       status: r.status ?? 'unknown',
       progress_pct: Number(r.progress_pct ?? 0),
       created_at: r.created_at,
     }));
+
+    if (!reports || reports.length === 0) {
+      return { ...empty, tasks, photos, startedAt, completedAt };
+    }
 
     return { gps, photos, reportHistory, tasks, startedAt, completedAt };
   } catch {
