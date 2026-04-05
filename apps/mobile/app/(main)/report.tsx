@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useReportStore, useFieldReport } from '@readyboard/shared';
+import { useAuth } from '../../src/providers/AuthProvider';
 import { uploadPhoto } from '../../src/services/uploadPhoto';
 import ReportFlowNavigator from '../../src/components/report/ReportFlowNavigator';
 
@@ -25,6 +26,7 @@ export default function ReportScreen() {
   const router = useRouter();
   const store = useReportStore();
   const { createReport, createDelayLog } = useFieldReport();
+  const { supabase } = useAuth();
   const submittedRef = useRef(false);
 
   // Guard: if store has no context, redirect back
@@ -89,7 +91,7 @@ export default function ReportScreen() {
         try {
           const uploadResult = await uploadPhoto(
             photoUrl,
-            'reports',
+            supabase,
             store.context.area_id,
           );
           photoUrl = uploadResult.url;
