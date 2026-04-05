@@ -29,6 +29,7 @@ import {
   formatCurrency,
   computePdfHash,
 } from './pdfHelpers';
+import { formatRoleLabel } from './laborBreakdown';
 
 // ─── Types ──────────────────────────────────────────
 
@@ -54,6 +55,15 @@ export type ReaNodReference = {
   tradeName: string;
 };
 
+export type ReaLaborRate = {
+  tradeName: string;
+  role: string;
+  count: number;
+  ratePerHour: number;
+  hours: number;
+  subtotal: number;
+};
+
 export type ReaContext = {
   project: { name: string; address: string; jurisdiction: string; laborRate: number };
   org: { name: string };
@@ -63,6 +73,7 @@ export type ReaContext = {
   overheadMultiplier: number;
   totalClaimAmount: number;
   documentId: string;
+  laborRates?: ReaLaborRate[];
 };
 
 export type BuildReaPdfOptions = {
@@ -164,6 +175,50 @@ export async function buildReaPdf(
   y = drawLabelValue(page, fontBold, fontRegular, t.dateRange, `${formatDateShort(earliest, locale)} — ${formatDateShort(latest, locale)}`, MARGIN, y, 160);
   y -= 8;
   y = drawDivider(page, y);
+
+  // ─── Labor Rates Used (Cost Basis) ─────────────
+
+  if (ctx.laborRates && ctx.laborRates.length > 0) {
+    const costBasisHeader = locale === 'es' ? 'Base de Cálculo — Tarifas de Mano de Obra' : 'Cost Basis — Labor Rates Applied';
+    pCtx = { ...pCtx, page, y };
+    pCtx = addPageIfNeeded(pCtx, 80);
+    page = pCtx.page;
+    y = pCtx.y;
+
+    y = drawSectionHeader(page, fontBold, costBasisHeader, MARGIN, y);
+
+    const rateLabel = locale === 'es' ? 'Tarifa/hr' : 'Rate/hr';
+    const hoursLabel = locale === 'es' ? 'Horas/día' : 'Hours/Day';
+    const rateColumns: TableColumn[] = [
+      { header: locale === 'es' ? 'Oficio' : 'Trade', width: 90 },
+      { header: locale === 'es' ? 'Rol' : 'Role', width: 90 },
+      { header: locale === 'es' ? 'Cant.' : 'Count', width: 35, align: 'right' },
+      { header: rateLabel, width: 55, align: 'right' },
+      { header: hoursLabel, width: 55, align: 'right' },
+      { header: locale === 'es' ? 'Subtotal/día' : 'Daily Sub.', width: 65, align: 'right' },
+    ];
+
+    y = drawTableHeader(page, fontBold, rateColumns, MARGIN, y);
+
+    for (const rate of ctx.laborRates) {
+      pCtx = { ...pCtx, page, y };
+      pCtx = addPageIfNeeded(pCtx, 18);
+      page = pCtx.page;
+      y = pCtx.y;
+
+      y = drawTableRow(page, fontRegular, rateColumns, [
+        rate.tradeName,
+        formatRoleLabel(rate.role),
+        String(rate.count),
+        formatCurrency(rate.ratePerHour),
+        `${rate.hours}h`,
+        formatCurrency(rate.subtotal),
+      ], MARGIN, y, 7);
+    }
+
+    y -= 8;
+    y = drawDivider(page, y);
+  }
 
   // ─── Itemized Cost Table ────────────────────────
 

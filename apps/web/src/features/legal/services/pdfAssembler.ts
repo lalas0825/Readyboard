@@ -8,6 +8,8 @@ import { uploadEvidence } from './evidenceStorage';
 import type { SignatureInput } from './evidenceStorage';
 import type { PdfLocale } from './pdfTexts';
 import { PDF_TEXTS } from './pdfTexts';
+import { fetchLaborBreakdown, formatRoleLabel } from './laborBreakdown';
+import type { LaborBreakdown } from './laborBreakdown';
 import {
   MARGIN,
   PAGE_WIDTH,
@@ -20,6 +22,8 @@ import {
   drawFooterWithHash,
   embedSignatureBlock,
   drawDraftWatermark,
+  drawTableHeader,
+  drawTableRow,
   formatDate,
   formatReasonCode,
   formatCurrency,
@@ -66,6 +70,7 @@ export type DelayContext = {
   user: {
     name: string;
   };
+  laborBreakdown?: LaborBreakdown | null;
 };
 
 // ─── Assembler ──────────────────────────────────────
@@ -153,6 +158,9 @@ export async function fetchDelayContext(
   const project = area.projects as unknown as Record<string, unknown>;
   const org = project.gc_org as unknown as Record<string, unknown>;
 
+  const projectId = area.project_id as string;
+  const laborBreakdown = await fetchLaborBreakdown(supabase, projectId, log.trade_name);
+
   return {
     ok: true,
     data: {
@@ -183,6 +191,7 @@ export async function fetchDelayContext(
       user: {
         name: user.name,
       },
+      laborBreakdown,
     },
   };
 }
@@ -274,11 +283,57 @@ export async function buildPdf(
 
   y = drawSectionHeader(page, fontBold, t.costImpact, MARGIN, y);
 
-  y = drawLabelValue(page, fontBold, fontRegular, t.laborRate, `${formatCurrency(ctx.project.laborRate)}/${locale === 'es' ? 'hr' : 'hr'}`, MARGIN, y);
-  y = drawLabelValue(page, fontBold, fontRegular, t.manHours, `${ctx.delay.manHours.toFixed(2)} ${t.hours}`, MARGIN, y);
-  y = drawLabelValue(page, fontBold, fontRegular, t.dailyCost, formatCurrency(ctx.delay.dailyCost), MARGIN, y);
+  if (ctx.laborBreakdown && ctx.laborBreakdown.lines.length > 0) {
+    // ── Itemized role-by-role table ────────────────
+    const roleLabel = locale === 'es' ? 'Rol' : 'Role';
+    const countLabel = locale === 'es' ? 'Cant.' : 'Count';
+    const rateLabel = locale === 'es' ? 'Tarifa/hr' : 'Rate/hr';
+    const hoursLabel = locale === 'es' ? 'Horas' : 'Hours';
+    const subLabel = locale === 'es' ? 'Subtotal' : 'Subtotal';
 
-  // Cumulative cost — emphasized
+    const roleColumns = [
+      { header: roleLabel, width: 110 },
+      { header: countLabel, width: 40, align: 'right' as const },
+      { header: rateLabel, width: 60, align: 'right' as const },
+      { header: hoursLabel, width: 45, align: 'right' as const },
+      { header: subLabel, width: 70, align: 'right' as const },
+    ];
+
+    y = drawTableHeader(page, fontBold, roleColumns, MARGIN, y);
+
+    for (const line of ctx.laborBreakdown.lines) {
+      y = drawTableRow(page, fontRegular, roleColumns, [
+        formatRoleLabel(line.role),
+        String(line.count),
+        formatCurrency(line.ratePerHour),
+        `${line.hours}h`,
+        formatCurrency(line.subtotal),
+      ], MARGIN, y, 7);
+    }
+
+    // Daily cost total row
+    y -= 2;
+    page.drawLine({
+      start: { x: MARGIN, y: y + 6 },
+      end: { x: PAGE_WIDTH - MARGIN, y: y + 6 },
+      thickness: 0.5,
+      color: COLOR.mid,
+    });
+    const dailyTotalStr = formatCurrency(ctx.laborBreakdown.totalDailyCost);
+    const dtWidth = fontBold.widthOfTextAtSize(dailyTotalStr, 9);
+    page.drawText(`${t.dailyCost}:`, { x: MARGIN, y, size: 9, font: fontBold, color: COLOR.dark });
+    page.drawText(dailyTotalStr, { x: PAGE_WIDTH - MARGIN - dtWidth, y, size: 9, font: fontBold, color: COLOR.dark });
+    y -= 12;
+
+    y = drawLabelValue(page, fontBold, fontRegular, t.manHours, `${ctx.delay.manHours.toFixed(2)} ${t.hours}`, MARGIN, y);
+  } else {
+    // ── Fallback: flat rate display ────────────────
+    y = drawLabelValue(page, fontBold, fontRegular, t.laborRate, `${formatCurrency(ctx.project.laborRate)}/${locale === 'es' ? 'hr' : 'hr'}`, MARGIN, y);
+    y = drawLabelValue(page, fontBold, fontRegular, t.manHours, `${ctx.delay.manHours.toFixed(2)} ${t.hours}`, MARGIN, y);
+    y = drawLabelValue(page, fontBold, fontRegular, t.dailyCost, formatCurrency(ctx.delay.dailyCost), MARGIN, y);
+  }
+
+  // Cumulative cost — always emphasized
   y -= 4;
   page.drawText(`${t.cumulativeCost}:`, {
     x: MARGIN,

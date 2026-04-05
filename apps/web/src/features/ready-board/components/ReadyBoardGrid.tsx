@@ -364,6 +364,7 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
           projectId={projectId}
           onClose={() => setShowAddAreas(false)}
           onSuccess={refresh}
+          existingFloors={floorNumbers}
         />
       )}
 

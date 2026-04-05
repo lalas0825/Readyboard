@@ -105,7 +105,7 @@
 - [x] `addAreasToProject`: auto-assigns new areas to existing project members
 
 #### Remaining (P2):
-- [ ] 🔨 Clone Floor button (copies structure from Floor N to N+1)
+- [x] Clone Floor — onboarding StepAreas + post-onboarding AddAreasModal "Clone Floor" tab + `cloneFloor` server action
 - [ ] 🔨 Settings: editable area_code field per area
 
 ### 7. NOD Email Dispatch — ✅ DONE
@@ -232,8 +232,8 @@ Audit result: 9 were already wired, 3 were added.
 - [x] Onboarding: removed single rate field, replaced with info note
 
 #### Remaining (P2):
-- [ ] 🔨 `calculateDelayCost()` using per-trade rates + crew composition
-- [ ] 🔨 NOD/REA PDF: itemized role-by-role cost breakdown
+- [x] `calculateDelayCost()` using per-trade rates + crew composition (`apps/web/src/lib/costs/calculateDelayCost.ts`)
+- [x] NOD/REA PDF: itemized role-by-role cost breakdown — `laborBreakdown.ts` + NOD role table + REA "Cost Basis" section
 - [ ] 🔨 Mobile: per-trade daily cost on blocked area cards
 
 ### Invitation System — ✅ COMPLETE + HARDENED
@@ -274,7 +274,7 @@ Audit result: 9 were already wired, 3 were added.
 ### Dashboard Polish
 
 - [x] Collapsible sidebar: toggle button, icon-only mode (w-16), localStorage persistence
-- [ ] 🔨 Live indicator (green dot) in top bar
+- [x] Live indicator — pulsing green dot (LiveIndicator.tsx) tracking Supabase Realtime connectivity in top-right bar
 - [ ] 🔨 Email verification custom gate (currently Supabase built-in)
 
 ### DNS & Email Auth (manual — requires domain purchase)
@@ -350,13 +350,13 @@ Audit result: 9 were already wired, 3 were added.
 | Task | Est. | Trigger |
 |------|------|---------|
 | Buy domain + DNS/SPF/DKIM | Manual | Pre-launch |
-| `calculateDelayCost()` per-trade | 3h | Post-launch |
-| NOD/REA PDF itemized cost breakdown | 3h | Post-launch |
-| Clone Floor button | 2h | Post-launch |
+| ~~`calculateDelayCost()` per-trade~~ | ✅ Done | — |
+| ~~NOD/REA PDF itemized cost breakdown~~ | ✅ Done | — |
+| ~~Clone Floor button~~ | ✅ Done | — |
 | XLSX schedule import | 2h | Post-launch |
 | Crew performance UI | 3h | Post-launch |
 | Change order engine UI | 4h | Post-launch |
-| Live indicator (green dot) | 1h | Polish |
+| ~~Live indicator (green dot)~~ | ✅ Done | — |
 | Sub Add-on checkout wiring | 1h | Post-launch |
 | Mobile EAS build (APK) | 1h | Ready now |
 | App Store (screenshots + description) | 4h | V2 |

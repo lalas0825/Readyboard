@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { writeAuditEntry } from '@/lib/audit';
 import { buildReaPdf } from './reaBuilder';
-import type { ReaDelayItem, ReaNodReference, ReaContext } from './reaBuilder';
+import type { ReaDelayItem, ReaNodReference, ReaContext, ReaLaborRate } from './reaBuilder';
+import { fetchLaborBreakdown } from './laborBreakdown';
 import type { SignatureInput } from './evidenceStorage';
 import type { PdfLocale } from './pdfTexts';
 import { computePdfHash } from './pdfHelpers';
@@ -174,6 +175,27 @@ export async function generateRea(
   const subtotal = delayItems.reduce((sum, d) => sum + d.cumulativeCost, 0);
   const totalClaimAmount = Math.round(subtotal * overheadMultiplier * 100) / 100;
 
+  // ── 4b. Fetch per-trade labor rates for cost basis table ───
+
+  const uniqueTrades = [...new Set(delayItems.map((d) => d.tradeName))];
+  const laborRates: ReaLaborRate[] = [];
+
+  for (const tradeName of uniqueTrades) {
+    const breakdown = await fetchLaborBreakdown(supabase, input.projectId, tradeName);
+    if (breakdown) {
+      for (const line of breakdown.lines) {
+        laborRates.push({
+          tradeName,
+          role: line.role,
+          count: line.count,
+          ratePerHour: line.ratePerHour,
+          hours: line.hours,
+          subtotal: line.subtotal,
+        });
+      }
+    }
+  }
+
   // ── 5. Create legal_documents record first (need ID for PDF) ──
 
   const { data: legalDoc, error: insertError } = await supabase
@@ -217,6 +239,7 @@ export async function generateRea(
     overheadMultiplier,
     totalClaimAmount,
     documentId,
+    laborRates: laborRates.length > 0 ? laborRates : undefined,
   };
 
   const pdfBytes = await buildReaPdf(reaCtx, {

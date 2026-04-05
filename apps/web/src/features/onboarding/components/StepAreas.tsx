@@ -217,6 +217,39 @@ export function StepAreas() {
     setAreas([...areas, ...newAreas]);
   }
 
+  // ─── Clone floor ─────────────────────────────────
+
+  const [cloneSource, setCloneSource] = useState('');
+  const [cloneTarget, setCloneTarget] = useState('');
+  const [cloneSuccess, setCloneSuccess] = useState(false);
+
+  function cloneFloor() {
+    const srcAreas = areas.filter((a) => a.floor === cloneSource);
+    if (srcAreas.length === 0 || !cloneTarget.trim()) return;
+
+    const existingKeys = new Set(areas.map((a) => `${a.name}-${a.floor}`));
+    const cloned = srcAreas
+      .map((a) => {
+        // Rename: replace the source floor prefix in the name with the target floor
+        const newName = a.name.replace(
+          new RegExp(`^${cloneSource.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, ''),
+          cloneTarget,
+        );
+        return { ...a, floor: cloneTarget, name: newName };
+      })
+      .filter((a) => !existingKeys.has(`${a.name}-${a.floor}`));
+
+    if (cloned.length === 0) return;
+    setAreas([...areas, ...cloned]);
+    setCloneSuccess(true);
+    setTimeout(() => setCloneSuccess(false), 2000);
+  }
+
+  // Unique floors in current area list (sorted numerically)
+  const existingFloors = Array.from(new Set(areas.map((a) => a.floor))).sort(
+    (a, b) => Number(a) - Number(b) || a.localeCompare(b),
+  );
+
   // ─── Single add ───────────────────────────────────
 
   function addSingle() {
@@ -559,6 +592,49 @@ export function StepAreas() {
           </div>
         )}
       </div>
+
+      {/* ── Clone Floor ── */}
+      {existingFloors.length > 0 && (
+        <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 space-y-3">
+          <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Clone Floor</p>
+          <p className="text-xs text-zinc-500">
+            Copy all units &amp; areas from one floor to another. Renames the floor prefix in area names automatically.
+          </p>
+          <div className="grid grid-cols-3 gap-3 items-end">
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">Copy from floor</label>
+              <select
+                value={cloneSource}
+                onChange={(e) => setCloneSource(e.target.value)}
+                className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="">Select floor…</option>
+                {existingFloors.map((f) => (
+                  <option key={f} value={f}>Floor {f} ({areas.filter((a) => a.floor === f).length} areas)</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">To floor number</label>
+              <input
+                type="text"
+                value={cloneTarget}
+                onChange={(e) => setCloneTarget(e.target.value)}
+                placeholder="e.g., 5"
+                className="block w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={cloneFloor}
+              disabled={!cloneSource || !cloneTarget.trim()}
+              className="rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700 disabled:opacity-40"
+            >
+              {cloneSuccess ? '✓ Cloned' : 'Clone Floor'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Single Add ── */}
       <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 space-y-3">

@@ -5,6 +5,7 @@ import { Sidebar } from '@/features/dashboard/components/Sidebar';
 import { fetchProjectContext } from '@/features/dashboard/services/fetchProjectContext';
 import { TrialBanner } from '@/features/billing/components/TrialBanner';
 import { NotificationBell } from '@/features/dashboard/components/NotificationBell';
+import { LiveIndicator } from '@/features/dashboard/components/LiveIndicator';
 
 export default async function MainLayout({
   children,
@@ -76,8 +77,9 @@ export default async function MainLayout({
 
       {/* Main content */}
       <main className="flex-1 overflow-auto lg:ml-0">
-        {/* Top-right notification bell — fixed position, always visible */}
-        <div className="fixed right-4 top-3 z-40 hidden lg:block">
+        {/* Top-right controls — fixed position, always visible */}
+        <div className="fixed right-4 top-3 z-40 hidden items-center gap-3 lg:flex">
+          <LiveIndicator />
           <NotificationBell />
         </div>
         {/* Mobile top spacer for hamburger button */}

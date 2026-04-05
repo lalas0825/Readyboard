@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import Papa from 'papaparse';
 import { addAreasToProject } from '../services/addAreasToProject';
+import { cloneFloor } from '../services/cloneFloor';
 
 // ─── Area types ─────────────────────────────────────
 
@@ -57,10 +58,11 @@ type Props = {
   projectId: string;
   onClose: () => void;
   onSuccess: () => void;
+  existingFloors?: string[];
 };
 
-export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
-  const [addMode, setAddMode] = useState<'unit' | 'floor' | 'csv'>('unit');
+export function AddAreasModal({ projectId, onClose, onSuccess, existingFloors = [] }: Props) {
+  const [addMode, setAddMode] = useState<'unit' | 'floor' | 'csv' | 'clone'>('unit');
   const [floorFrom, setFloorFrom] = useState('');
   const [floorTo, setFloorTo] = useState('');
   const [unitNames, setUnitNames] = useState('A, B, C, D');
@@ -74,6 +76,8 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [csvError, setCsvError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cloneSource, setCloneSource] = useState('');
+  const [cloneTarget, setCloneTarget] = useState('');
 
   function toggleType(type: string) {
     setSelectedTypes((prev) => {
@@ -179,7 +183,19 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
     });
   }
 
+  async function handleCloneSubmit() {
+    if (!cloneSource || !cloneTarget.trim()) return;
+    setIsSubmitting(true);
+    setError(null);
+    const result = await cloneFloor(projectId, cloneSource, cloneTarget.trim());
+    setIsSubmitting(false);
+    if (!result.ok) { setError(result.error); return; }
+    onSuccess();
+    onClose();
+  }
+
   async function handleSubmit() {
+    if (addMode === 'clone') { await handleCloneSubmit(); return; }
     if (preview.length === 0) return;
     setIsSubmitting(true);
     setError(null);
@@ -199,13 +215,13 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
         </div>
 
         {/* Mode tabs */}
-        <div className="flex gap-2 mb-4">
-          {(['unit', 'floor', 'csv'] as const).map((m) => (
-            <button key={m} onClick={() => { setAddMode(m); setPreview([]); }}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {(['unit', 'floor', 'csv', 'clone'] as const).map((m) => (
+            <button key={m} onClick={() => { setAddMode(m); setPreview([]); setError(null); }}
               className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
                 addMode === m ? 'border-emerald-600 bg-emerald-950/40 text-emerald-400' : 'border-zinc-700 text-zinc-400 hover:border-zinc-600'
               }`}>
-              {m === 'unit' ? 'Units + Areas' : m === 'floor' ? 'Floor Areas' : 'CSV Import'}
+              {m === 'unit' ? 'Units + Areas' : m === 'floor' ? 'Floor Areas' : m === 'csv' ? 'CSV Import' : 'Clone Floor'}
             </button>
           ))}
         </div>
@@ -314,6 +330,53 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
           </div>
         )}
 
+        {/* Clone Floor mode */}
+        {addMode === 'clone' && (
+          <div className="space-y-4">
+            <p className="text-xs text-zinc-500">
+              Copies all units and areas from one floor to another. Area names have the floor prefix replaced automatically.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Copy from floor</label>
+                {existingFloors.length > 0 ? (
+                  <select
+                    value={cloneSource}
+                    onChange={(e) => setCloneSource(e.target.value)}
+                    className="block w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none"
+                  >
+                    <option value="">Select floor…</option>
+                    {existingFloors.map((f) => (
+                      <option key={f} value={f}>Floor {f}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={cloneSource}
+                    onChange={(e) => setCloneSource(e.target.value)}
+                    placeholder="e.g., 4"
+                    className="block w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">To floor number</label>
+                <input
+                  type="text"
+                  value={cloneTarget}
+                  onChange={(e) => setCloneTarget(e.target.value)}
+                  placeholder="e.g., 5"
+                  className="block w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-600">
+              All areas start at 0% — no statuses are copied. New floor begins blank.
+            </p>
+          </div>
+        )}
+
         {/* Preview */}
         {preview.length > 0 && (
           <div className="mt-4 space-y-2">
@@ -339,10 +402,20 @@ export function AddAreasModal({ projectId, onClose, onSuccess }: Props) {
           <button onClick={onClose} className="rounded border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-800">
             Cancel
           </button>
-          <button onClick={handleSubmit} disabled={preview.length === 0 || isSubmitting}
-            className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">
-            {isSubmitting ? 'Adding...' : `Add ${preview.length} Areas`}
-          </button>
+          {addMode === 'clone' ? (
+            <button
+              onClick={handleSubmit}
+              disabled={!cloneSource || !cloneTarget.trim() || isSubmitting}
+              className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Cloning...' : `Clone Floor ${cloneSource} → ${cloneTarget || '?'}`}
+            </button>
+          ) : (
+            <button onClick={handleSubmit} disabled={preview.length === 0 || isSubmitting}
+              className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">
+              {isSubmitting ? 'Adding...' : `Add ${preview.length} Areas`}
+            </button>
+          )}
         </div>
       </div>
     </div>
