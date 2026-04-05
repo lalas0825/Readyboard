@@ -96,12 +96,9 @@ return (
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Background image — platform-specific */}
+      {/* Background image */}
       <Image
-        source={Platform.OS === 'ios'
-          ? require('../assets/login-v2-ios.jpg')
-          : require('../assets/login-v2-android.jpg')
-        }
+        source={require('../assets/login_moble_image.png')}
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
       />
@@ -270,8 +267,8 @@ const styles = StyleSheet.create({
   },
   titleBoard: {
     fontSize: 28,
-    fontWeight: '300',
-    color: '#64748b',
+    fontWeight: '700',
+    color: '#f8fafc',
   },
   subtitle: {
     fontSize: 15,

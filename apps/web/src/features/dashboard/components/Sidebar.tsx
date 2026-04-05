@@ -205,7 +205,7 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/readyboard-icon-animated.svg" alt="" className="h-6 w-6" />
               <span className="text-sm font-bold text-zinc-100">Ready</span>
-              <span className="text-sm font-light text-zinc-500">Board</span>
+              <span className="text-sm font-bold text-zinc-100">Board</span>
             </div>
           </>
         )}
