@@ -112,7 +112,13 @@ export async function redeemInviteToken(input: {
     });
   }
 
-  // 5. Mark token as used
+  // 5. Mark user as onboarded (they joined via invite — no onboarding wizard needed)
+  await supabase
+    .from('users')
+    .update({ onboarding_complete: true })
+    .eq('id', resolvedUserId);
+
+  // 6. Mark token as used
   await supabase
     .from('invite_tokens')
     .update({ used_at: new Date().toISOString(), used_by: resolvedUserId })

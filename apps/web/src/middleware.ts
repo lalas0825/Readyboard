@@ -114,7 +114,7 @@ export async function middleware(request: NextRequest) {
   if (!profile) return response;
 
   const gcRoles = ['gc_super', 'gc_pm', 'gc_admin', 'owner'];
-  const subRoles = ['sub_pm', 'sub_super'];
+  const subRoles = ['sub_pm', 'sub_super', 'superintendent'];
 
   // GC dashboard — only GC roles
   if (pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard-sub')) {
