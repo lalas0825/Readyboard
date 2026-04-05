@@ -26,7 +26,41 @@ export async function redeemInviteToken(input: {
   if (invite.used_at) return { ok: false, error: 'Token already used.' };
   if (new Date(invite.expires_at) < new Date()) return { ok: false, error: 'Token expired.' };
 
-  // 2. Add to project_members
+  // 2. Ensure public.users row exists (may not if email confirmation pending or duplicate signUp)
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', input.userId)
+    .single();
+
+  if (!existingUser) {
+    // Fetch from auth.admin and create the profile manually
+    const { data: authUser } = await supabase.auth.admin.getUserById(input.userId);
+    if (!authUser?.user) return { ok: false, error: 'User account not found. Please try signing up again.' };
+
+    const meta = (authUser.user.user_metadata ?? {}) as Record<string, string>;
+    const userRole = meta.role ?? 'superintendent';
+    const orgType = ['gc_admin', 'gc_pm', 'gc_super', 'owner'].includes(userRole) ? 'gc' : 'sub';
+
+    // Create org if needed
+    const { data: org } = await supabase
+      .from('organizations')
+      .insert({ name: meta.org_name ?? `${meta.name ?? 'User'}'s Organization`, type: orgType, default_language: 'en' })
+      .select('id')
+      .single();
+
+    await supabase.from('users').upsert({
+      id: input.userId,
+      email: authUser.user.email,
+      name: meta.name ?? 'User',
+      role: userRole,
+      org_id: org?.id ?? null,
+      language: meta.language ?? 'en',
+      onboarding_complete: false,
+    });
+  }
+
+  // 3. Add to project_members
   if (['gc_pm', 'gc_super', 'sub_pm', 'superintendent', 'foreman'].includes(invite.role)) {
     const { error: memberErr } = await supabase
       .from('project_members')
@@ -41,7 +75,7 @@ export async function redeemInviteToken(input: {
     if (memberErr) return { ok: false, error: memberErr.message };
   }
 
-  // 3. Assign ALL project areas (sub/super/foreman get full project access)
+  // 4. Assign ALL project areas (sub/super/foreman get full project access)
   if (['sub_pm', 'superintendent', 'foreman'].includes(invite.role)) {
     await supabase.rpc('assign_user_to_project', {
       p_user_id: input.userId,
