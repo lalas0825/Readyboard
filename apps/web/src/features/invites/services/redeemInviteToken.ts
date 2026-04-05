@@ -104,12 +104,30 @@ export async function redeemInviteToken(input: {
     if (memberErr) return { ok: false, error: memberErr.message };
   }
 
-  // 4. Assign ALL project areas (sub/super/foreman get full project access)
+  // 4. Assign project areas — filtered by invited trade if specified
   if (['sub_pm', 'superintendent', 'foreman'].includes(invite.role)) {
-    await supabase.rpc('assign_user_to_project', {
-      p_user_id: resolvedUserId,
-      p_project_id: invite.project_id,
-    });
+    if (invite.trade_name) {
+      // Assign only areas for the invited trade (prevents PowerSync overload)
+      const { data: projectAreas } = await supabase
+        .from('areas')
+        .select('id')
+        .eq('project_id', invite.project_id);
+
+      if (projectAreas?.length) {
+        const rows = projectAreas.map((a) => ({
+          user_id: resolvedUserId,
+          area_id: a.id,
+          trade_name: invite.trade_name!,
+        }));
+        await supabase.from('user_assignments').upsert(rows, { onConflict: 'user_id,area_id,trade_name' });
+      }
+    } else {
+      // No specific trade — assign all areas × all trades
+      await supabase.rpc('assign_user_to_project', {
+        p_user_id: resolvedUserId,
+        p_project_id: invite.project_id,
+      });
+    }
 
     // 4b. Link sub org to project if not yet linked (needed for RLS visibility)
     const { data: userRow } = await supabase
