@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useTopBarActions } from '@/components/TopBarActionsProvider';
 import { useReadyBoardData } from '../hooks/useReadyBoardData';
 import { useActionObserver } from '../hooks/useActionObserver';
 import { actionBus } from '../lib/ActionEventBus';
@@ -11,7 +12,6 @@ import { GridRow } from './GridRow';
 import { GridLegend } from './GridLegend';
 import { GridFilterBar } from './GridFilterBar';
 import { GridDetailPanel } from './GridDetailPanel';
-import { GridPrintButton } from './GridPrintButton';
 import { EfficiencyDashboard } from './EfficiencyDashboard';
 import { AddAreasModal } from './AddAreasModal';
 import type { ReadyBoardInitialData, GridStatus, GridFloor, GridUnit, GridRow as GridRowType, GridCellData } from '../types';
@@ -60,6 +60,39 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
   const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set());
   const [problemsOnly, setProblemsOnly] = useState(false);
   const [showAddAreas, setShowAddAreas] = useState(false);
+
+  // ─── Inject action buttons into the layout top bar ────
+  const setTopBarActions = useTopBarActions();
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+
+  useEffect(() => {
+    setTopBarActions(
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => setShowAddAreas(true)}
+          className="rounded border border-emerald-700 bg-emerald-950/30 px-2.5 py-1 text-xs text-emerald-400 hover:bg-emerald-950/50 transition-colors"
+        >
+          + Add Areas
+        </button>
+        <button
+          onClick={() => window.print()}
+          className="rounded border border-zinc-700 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-colors"
+        >
+          Export PDF
+        </button>
+        <button
+          onClick={() => refreshRef.current()}
+          className="rounded border border-zinc-700 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-colors"
+        >
+          Refresh
+        </button>
+      </div>,
+    );
+    // Clear when unmounting (navigating away)
+    return () => setTopBarActions(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setTopBarActions]);
 
   const toggleFloorExpand = useCallback((floor: string) => {
     setExpandedFloors((prev) => {
@@ -246,26 +279,6 @@ export function ReadyBoardGrid({ initialData }: ReadyBoardGridProps) {
         <p className="text-sm text-gray-600">
           Printed {new Date().toLocaleDateString()} — {new Date().toLocaleTimeString()}
         </p>
-      </div>
-
-      {/* Header bar */}
-      <div className="flex items-center justify-between print:hidden">
-        <h2 className="text-lg font-semibold text-zinc-100">Ready Board</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowAddAreas(true)}
-            className="rounded-md border border-emerald-700 bg-emerald-950/30 px-3 py-1 text-xs text-emerald-400 transition-colors hover:bg-emerald-950/50"
-          >
-            + Add Areas
-          </button>
-          <GridPrintButton show={filteredFloors.length > 0} />
-          <button
-            onClick={refresh}
-            className="rounded-md border border-zinc-700 px-3 py-1 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
-          >
-            Refresh
-          </button>
-        </div>
       </div>
 
       {/* Navigation controls */}

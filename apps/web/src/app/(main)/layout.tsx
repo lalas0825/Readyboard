@@ -6,6 +6,7 @@ import { fetchProjectContext } from '@/features/dashboard/services/fetchProjectC
 import { TrialBanner } from '@/features/billing/components/TrialBanner';
 import { NotificationBell } from '@/features/dashboard/components/NotificationBell';
 import { LiveIndicator } from '@/features/dashboard/components/LiveIndicator';
+import { TopBarActionsProvider, TopBarActionsSlot } from '@/components/TopBarActionsProvider';
 
 export default async function MainLayout({
   children,
@@ -64,6 +65,7 @@ export default async function MainLayout({
   }
 
   return (
+    <TopBarActionsProvider>
     <div className="flex min-h-screen bg-zinc-950">
       <Sidebar
         user={{
@@ -81,8 +83,10 @@ export default async function MainLayout({
         <div className="flex h-12 shrink-0 items-center justify-between px-4 lg:justify-end">
           {/* Mobile hamburger spacer (actual hamburger is in Sidebar) */}
           <div className="lg:hidden" />
-          {/* Desktop: live indicator + notification bell */}
-          <div className="hidden items-center gap-3 lg:flex">
+          {/* Desktop: page actions + live indicator + notification bell */}
+          <div className="hidden items-center gap-2 lg:flex">
+            <TopBarActionsSlot />
+            <div className="mx-1 h-4 w-px bg-zinc-700" />
             <LiveIndicator />
             <NotificationBell />
           </div>
@@ -96,5 +100,6 @@ export default async function MainLayout({
         {children}
       </main>
     </div>
+    </TopBarActionsProvider>
   )
 }
