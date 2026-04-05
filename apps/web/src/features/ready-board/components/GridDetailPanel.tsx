@@ -444,9 +444,9 @@ export function GridDetailPanel({
           {/* Checklist Tasks */}
           {details && details.tasks.length > 0 && (() => {
             const tasks: AreaTask[] = details.tasks;
-            const completedCount = tasks.filter(t => t.status === 'completed').length;
+            const completedCount = tasks.filter(t => t.status === 'complete').length;
             const totalCount = tasks.length;
-            const pendingGCTasks = tasks.filter(t => t.task_owner === 'gc' && t.status !== 'completed');
+            const pendingGCTasks = tasks.filter(t => t.task_owner === 'gc' && t.status !== 'complete');
             const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
             return (
               <div className="border-t border-zinc-800 pt-4 space-y-2">
@@ -472,21 +472,21 @@ export function GridDetailPanel({
                     <div
                       key={task.id}
                       className={`flex items-start gap-2 px-1.5 py-1 rounded text-xs ${
-                        task.status === 'completed' ? 'text-zinc-600' : 'text-zinc-300'
+                        task.status === 'complete' ? 'text-zinc-600' : 'text-zinc-300'
                       }`}
                     >
                       {/* Checkbox icon (read-only for GC) */}
                       <span className={`mt-0.5 flex-shrink-0 w-3.5 h-3.5 rounded border flex items-center justify-center text-[9px] ${
-                        task.status === 'completed'
+                        task.status === 'complete'
                           ? 'bg-green-500/20 border-green-600 text-green-400'
                           : task.task_owner === 'gc'
                             ? 'bg-purple-500/10 border-purple-600/60'
                             : 'border-zinc-700'
                       }`}>
-                        {task.status === 'completed' && '✓'}
+                        {task.status === 'complete' && '✓'}
                       </span>
                       {/* Task name */}
-                      <span className={`flex-1 leading-tight ${task.status === 'completed' ? 'line-through' : ''}`}>
+                      <span className={`flex-1 leading-tight ${task.status === 'complete' ? 'line-through' : ''}`}>
                         {task.task_name_en}
                       </span>
                       {/* Badges */}
