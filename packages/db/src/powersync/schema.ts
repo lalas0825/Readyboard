@@ -90,6 +90,7 @@ const area_trade_status = new Table({
   all_gates_passed: column.integer, // boolean: 0/1. Gates block READY even at 99%
   gc_verification_pending: column.integer, // boolean: 0/1
   gc_verification_pending_since: column.text,
+  project_id: column.text, // denormalized for project-level sync
   updated_at: column.text,
 }, { indexes: {} });
 

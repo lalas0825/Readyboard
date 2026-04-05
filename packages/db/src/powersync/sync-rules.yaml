@@ -1,14 +1,17 @@
 # PowerSync Sync Rules for ReadyBoard
-# v5.3 — Units + area hierarchy + no subqueries
+# v6.0 — Project-level sync for areas/status (scales to 2000+ areas)
+#
+# Architecture:
+#   by_user    → user profile + assignments (lightweight)
+#   by_project → areas, area_trade_status, units, trades (bulk, 1 bucket per project)
+#   by_area    → field_reports, area_tasks, delay_logs (granular, per-area)
 #
 # Rules: data queries = single table, no JOINs, no subqueries.
 # Parameter queries = single table, no JOINs, no subqueries.
-# Use bucket.param to reference parameter values in data WHERE clauses.
-#
 # Deploy to PowerSync Dashboard (powersync.journeyapps.com)
 
 bucket_definitions:
-  # ── Bucket 1: User-scoped ──
+  # ── Bucket 1: User-scoped (lightweight) ──
   by_user:
     parameters:
       - SELECT token_parameters.user_id as user_id
@@ -22,25 +25,50 @@ bucket_definitions:
         FROM user_assignments
         WHERE user_id = bucket.user_id
 
-  # ── Bucket 2: Area-scoped (one instance per assigned area) ──
+  # ── Bucket 2: Project-scoped (bulk data — 1 bucket per project) ──
+  # Syncs ALL areas, status, units, trades for the project in ONE bucket.
+  # This scales to 2000+ areas without creating thousands of bucket instances.
+  by_project:
+    parameters:
+      - SELECT project_id FROM project_members
+        WHERE user_id = token_parameters.user_id
+
+    data:
+      - SELECT id, name, address, labor_rate_per_hour, legal_jurisdiction,
+               sha256_enabled, gc_org_id, sub_org_id, created_at
+        FROM projects
+        WHERE id = bucket.project_id
+
+      - SELECT id, project_id, area_type, trade_name, sequence_order
+        FROM trade_sequences
+        WHERE project_id = bucket.project_id
+
+      - SELECT id, project_id, floor, name, unit_type, sort_order,
+               created_at, updated_at
+        FROM units
+        WHERE project_id = bucket.project_id
+
+      - SELECT id, name, floor, area_type, project_id, total_sqft, original_sqft,
+               unit_id, area_code, description, sort_order, created_at
+        FROM areas
+        WHERE project_id = bucket.project_id
+
+      - SELECT id, area_id, trade_type, reporting_mode,
+               manual_pct, calculated_pct, effective_pct,
+               all_gates_passed, gc_verification_pending,
+               gc_verification_pending_since, project_id, updated_at
+        FROM area_trade_status
+        WHERE project_id = bucket.project_id
+
+  # ── Bucket 3: Area-scoped (granular — per assigned area) ──
+  # Only syncs write-heavy / infrequent-read tables per area.
+  # This keeps bucket count = unique assigned areas (not area × trade).
   by_area:
     parameters:
       - SELECT area_id FROM user_assignments
         WHERE user_id = token_parameters.user_id
 
     data:
-      - SELECT id, name, floor, area_type, project_id, total_sqft, original_sqft,
-               unit_id, area_code, description, sort_order, created_at
-        FROM areas
-        WHERE id = bucket.area_id
-
-      - SELECT id, area_id, trade_type, reporting_mode,
-               manual_pct, calculated_pct, effective_pct,
-               all_gates_passed, gc_verification_pending,
-               gc_verification_pending_since, updated_at
-        FROM area_trade_status
-        WHERE area_id = bucket.area_id
-
       - SELECT id, area_id, user_id, trade_name, status, progress_pct,
                reason_code, gps_lat, gps_lng, photo_url,
                device_id, app_version, offline_created_at, created_at
@@ -64,24 +92,3 @@ bucket_definitions:
                nod_draft_id, rea_id, receipt_confirmed
         FROM delay_logs
         WHERE area_id = bucket.area_id
-
-  # ── Bucket 3: Project-scoped (via project_members — has user_id + project_id) ──
-  by_project:
-    parameters:
-      - SELECT project_id FROM project_members
-        WHERE user_id = token_parameters.user_id
-
-    data:
-      - SELECT id, name, address, labor_rate_per_hour, legal_jurisdiction,
-               sha256_enabled, gc_org_id, sub_org_id, created_at
-        FROM projects
-        WHERE id = bucket.project_id
-
-      - SELECT id, project_id, area_type, trade_name, sequence_order
-        FROM trade_sequences
-        WHERE project_id = bucket.project_id
-
-      - SELECT id, project_id, floor, name, unit_type, sort_order,
-               created_at, updated_at
-        FROM units
-        WHERE project_id = bucket.project_id
