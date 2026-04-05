@@ -16,7 +16,7 @@ export function deriveStatus(
   priorCells: RawCellData[],
   delay: DelayData | undefined,
 ): GridStatus {
-  // 1. DONE
+  // 1. DONE — 100% AND all gates passed
   if (cell.effective_pct >= 100 && cell.all_gates_passed) {
     return 'done';
   }
@@ -26,8 +26,14 @@ export function deriveStatus(
     return 'held';
   }
 
-  // 2.5. IN PROGRESS — work started (1-99%) on this trade
-  if (cell.effective_pct > 0 && cell.effective_pct < 100) {
+  // 2.5. At 100% but gates not yet passed (awaiting GC verification) → in_progress
+  // Never show READY for a cell where the sub already reached 100%
+  if (cell.effective_pct >= 100) {
+    return 'in_progress';
+  }
+
+  // 2.6. Work started (1-99%) on this trade
+  if (cell.effective_pct > 0) {
     return 'in_progress';
   }
 
