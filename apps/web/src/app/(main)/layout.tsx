@@ -76,17 +76,23 @@ export default async function MainLayout({
       />
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto lg:ml-0">
-        {/* Top-right controls — fixed position, always visible */}
-        <div className="fixed right-4 top-3 z-40 hidden items-center gap-3 lg:flex">
-          <LiveIndicator />
-          <NotificationBell />
+      <main className="flex flex-1 flex-col overflow-auto lg:ml-0">
+        {/* Top bar — mobile: hamburger spacer | desktop: right-side controls */}
+        <div className="flex h-12 shrink-0 items-center justify-between px-4 lg:justify-end">
+          {/* Mobile hamburger spacer (actual hamburger is in Sidebar) */}
+          <div className="lg:hidden" />
+          {/* Desktop: live indicator + notification bell */}
+          <div className="hidden items-center gap-3 lg:flex">
+            <LiveIndicator />
+            <NotificationBell />
+          </div>
         </div>
-        {/* Mobile top spacer for hamburger button */}
-        <div className="h-14 lg:hidden" />
-        <div className="px-6 pt-2">
+
+        {/* Trial banner */}
+        <div className="px-6">
           <TrialBanner trialEndsAt={trialEndsAt} status={subStatus} />
         </div>
+
         {children}
       </main>
     </div>
