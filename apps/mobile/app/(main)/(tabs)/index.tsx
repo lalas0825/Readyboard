@@ -1,22 +1,21 @@
 /**
- * Foreman Home Screen — Areas assigned to the current user.
+ * Foreman/Superintendent Home Screen — Areas assigned to the current user.
  *
- * Phase 5: SectionList grouped by unit_name with aggregate status dots.
- * Each section header shows "Unit 24A" with colored dots per area status.
- * Areas without a unit are grouped under "Common".
+ * Phase 6: Collapsible Floor → Unit → Area hierarchy.
+ * Floors are collapsed by default (except the first). Tap to expand.
+ * Each floor header shows aggregate status dots + area count.
+ * Each unit header shows per-area status dots.
  *
- * NOD Banner: sticky purple banner when unsent NOD drafts exist.
- * Triple-tap on title → navigates to /debug (dev-only).
- * Offline indicator: subtle dot in header when PowerSync disconnected.
+ * Scales to 2000+ areas without infinite scrolling.
  *
  * Carlos Standard: 56px+ buttons, 20px+ text, high contrast, zero menus.
  */
 
-import { useRef, useCallback, useMemo } from 'react';
+import { useRef, useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  SectionList,
+  ScrollView,
   StyleSheet,
   Pressable,
   ActivityIndicator,
@@ -41,22 +40,30 @@ const STATUS_DOT_COLORS: Record<AreaStatus, string> = {
   blocked: '#ef4444',
 };
 
-type UnitSection = {
-  title: string;
-  data: AssignedArea[];
-  statusDots: { color: string }[];
+type UnitGroup = {
+  unitKey: string;
+  unitLabel: string;
+  areas: AssignedArea[];
 };
 
-/** Build colored dots summarizing area statuses in a unit */
-function buildStatusDots(areas: AssignedArea[]): { color: string }[] {
-  return areas.map((a) => ({ color: STATUS_DOT_COLORS[a.status] }));
+type FloorGroup = {
+  floor: string;
+  units: UnitGroup[];
+  totalAreas: number;
+  statusSummary: Record<AreaStatus, number>;
+};
+
+function buildStatusSummary(areas: AssignedArea[]): Record<AreaStatus, number> {
+  const counts: Record<AreaStatus, number> = { ready: 0, almost: 0, working: 0, held: 0, blocked: 0 };
+  for (const a of areas) counts[a.status]++;
+  return counts;
 }
 
 export default function ForemanHome() {
   const { session } = useAuth();
   const { areas, pendingNods, isLoading, isConnected, error, refresh } = useAreas(session?.user.id);
+  const [expandedFloors, setExpandedFloors] = useState<Set<string>>(new Set());
 
-  // Instant refresh when screen regains focus (after report submit, back navigation, etc.)
   useFocusEffect(
     useCallback(() => {
       refresh();
@@ -101,83 +108,56 @@ export default function ForemanHome() {
     router.push('/report');
   }
 
-  // ─── Group areas by Floor → Unit ──────
-  const sections = useMemo<UnitSection[]>(() => {
-    const grouped = new Map<string, AssignedArea[]>();
+  // ─── Group areas: Floor → Unit → Areas ──────
+  const floors = useMemo<FloorGroup[]>(() => {
+    const floorMap = new Map<string, Map<string, AssignedArea[]>>();
+
     for (const area of areas) {
-      const unit = area.unit_name ?? 'Common';
-      const key = `F${area.floor} · ${unit === 'Common' ? 'Common' : `Unit ${unit}`}`;
-      const existing = grouped.get(key);
-      if (existing) {
-        existing.push(area);
-      } else {
-        grouped.set(key, [area]);
-      }
+      const floor = area.floor;
+      if (!floorMap.has(floor)) floorMap.set(floor, new Map());
+      const unitMap = floorMap.get(floor)!;
+      const unitKey = area.unit_name ?? '__common__';
+      if (!unitMap.has(unitKey)) unitMap.set(unitKey, []);
+      unitMap.get(unitKey)!.push(area);
     }
-    return Array.from(grouped.entries())
+
+    return Array.from(floorMap.entries())
       .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
-      .map(([title, data]) => ({
-        title,
-        data,
-        statusDots: buildStatusDots(data),
-      }));
+      .map(([floor, unitMap]) => {
+        const units: UnitGroup[] = Array.from(unitMap.entries())
+          .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+          .map(([unitKey, unitAreas]) => ({
+            unitKey,
+            unitLabel: unitKey === '__common__' ? 'Common' : `Unit ${unitKey}`,
+            areas: unitAreas,
+          }));
+
+        const allAreas = units.flatMap((u) => u.areas);
+        return {
+          floor,
+          units,
+          totalAreas: allAreas.length,
+          statusSummary: buildStatusSummary(allAreas),
+        };
+      });
   }, [areas]);
 
-  const renderItem = useCallback(
-    ({ item }: { item: AssignedArea }) => (
-      <AreaCard area={item} onReport={handleReport} />
-    ),
-    []
-  );
+  // Auto-expand first floor on initial load
+  useMemo(() => {
+    if (floors.length > 0 && expandedFloors.size === 0) {
+      setExpandedFloors(new Set([floors[0].floor]));
+    }
+  }, [floors.length > 0]);
 
-  const renderSectionHeader = useCallback(
-    ({ section }: { section: UnitSection }) => (
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>
-          {section.title}
-        </Text>
-        {/* Status dots: one per area, colored by status */}
-        <View style={styles.dotsRow}>
-          {section.statusDots.map((dot, i) => (
-            <View
-              key={i}
-              style={[styles.statusDot, { backgroundColor: dot.color }]}
-            />
-          ))}
-        </View>
-      </View>
-    ),
-    []
-  );
-
-  const keyExtractor = useCallback(
-    (item: AssignedArea) => `${item.id}-${item.trade_name}`,
-    []
-  );
-
-  const ListHeader = useCallback(
-    () => (
-      <>
-        <NodBanner nods={pendingNods} />
-      </>
-    ),
-    [pendingNods]
-  );
-
-  const ListEmpty = useCallback(
-    () =>
-      isLoading ? null : (
-        <View style={styles.empty}>
-          <Text style={styles.emptyText}>
-            {error ? t('common.error') : t('common.noAreasAssigned')}
-          </Text>
-          {error && (
-            <Text style={styles.errorDetail}>{error}</Text>
-          )}
-        </View>
-      ),
-    [isLoading, error, t]
-  );
+  function toggleFloor(floor: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setExpandedFloors((prev) => {
+      const next = new Set(prev);
+      if (next.has(floor)) next.delete(floor);
+      else next.add(floor);
+      return next;
+    });
+  }
 
   return (
     <View style={styles.safe}>
@@ -209,18 +189,78 @@ export default function ForemanHome() {
         </View>
       )}
 
-      {/* Area list grouped by unit */}
-      <SectionList
-        sections={sections}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
-        keyExtractor={keyExtractor}
-        ListHeaderComponent={ListHeader}
-        ListEmptyComponent={ListEmpty}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        stickySectionHeadersEnabled={false}
-      />
+      {/* Empty state */}
+      {!isLoading && areas.length === 0 && (
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>
+            {error ? t('common.error') : t('common.noAreasAssigned')}
+          </Text>
+          {error && <Text style={styles.errorDetail}>{error}</Text>}
+        </View>
+      )}
+
+      {/* Floor → Unit → Area hierarchy */}
+      <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+        <NodBanner nods={pendingNods} />
+
+        {floors.map((floorGroup) => {
+          const isExpanded = expandedFloors.has(floorGroup.floor);
+
+          return (
+            <View key={floorGroup.floor} style={styles.floorContainer}>
+              {/* ─── Floor Header (tappable) ─── */}
+              <Pressable
+                onPress={() => toggleFloor(floorGroup.floor)}
+                style={[styles.floorHeader, isExpanded && styles.floorHeaderExpanded]}
+              >
+                <View style={styles.floorHeaderLeft}>
+                  <Text style={styles.floorChevron}>{isExpanded ? '▼' : '▶'}</Text>
+                  <Text style={styles.floorTitle}>Floor {floorGroup.floor}</Text>
+                  <Text style={styles.floorCount}>{floorGroup.totalAreas}</Text>
+                </View>
+                {/* Status summary dots */}
+                <View style={styles.statusBar}>
+                  {(Object.entries(floorGroup.statusSummary) as [AreaStatus, number][])
+                    .filter(([, count]) => count > 0)
+                    .map(([status, count]) => (
+                      <View key={status} style={styles.statusChip}>
+                        <View style={[styles.statusChipDot, { backgroundColor: STATUS_DOT_COLORS[status] }]} />
+                        <Text style={styles.statusChipText}>{count}</Text>
+                      </View>
+                    ))}
+                </View>
+              </Pressable>
+
+              {/* ─── Expanded: Units + Areas ─── */}
+              {isExpanded &&
+                floorGroup.units.map((unit) => (
+                  <View key={unit.unitKey} style={styles.unitContainer}>
+                    {/* Unit header */}
+                    <View style={styles.unitHeader}>
+                      <Text style={styles.unitTitle}>{unit.unitLabel}</Text>
+                      <View style={styles.dotsRow}>
+                        {unit.areas.map((a, i) => (
+                          <View
+                            key={i}
+                            style={[styles.statusDot, { backgroundColor: STATUS_DOT_COLORS[a.status] }]}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                    {/* Area cards */}
+                    {unit.areas.map((area) => (
+                      <AreaCard
+                        key={`${area.id}-${area.trade_name}`}
+                        area={area}
+                        onReport={handleReport}
+                      />
+                    ))}
+                  </View>
+                ))}
+            </View>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
@@ -275,18 +315,88 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     alignItems: 'center',
   },
-  // ─── Section headers (unit grouping) ──────────
-  sectionHeader: {
+  // ─── Floor headers (collapsible) ──────────
+  floorContainer: {
+    marginBottom: 8,
+  },
+  floorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    minHeight: 56,
+  },
+  floorHeaderExpanded: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    backgroundColor: '#1e293b',
+  },
+  floorHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  floorChevron: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  floorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#e2e8f0',
+  },
+  floorCount: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+    backgroundColor: '#334155',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  // ─── Status summary chips ──────────
+  statusBar: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  statusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  statusChipDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusChipText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '600',
+  },
+  // ─── Unit headers ──────────
+  unitContainer: {
+    backgroundColor: '#0f172a',
+    borderLeftWidth: 2,
+    borderLeftColor: '#334155',
+    marginLeft: 8,
+    paddingLeft: 12,
+  },
+  unitHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 10,
-    marginTop: 16,
+    marginTop: 12,
     marginBottom: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
   },
-  sectionTitle: {
+  unitTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#64748b',
