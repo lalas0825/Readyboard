@@ -20,6 +20,8 @@ export type CellDetailData = {
   photos: { url: string; created_at: string }[];
   reportHistory: { status: string; progress_pct: number; created_at: string }[];
   tasks: AreaTask[];
+  startedAt: string | null;    // Fix 2: when sub first reported > 0%
+  completedAt: string | null;  // Fix 2: when sub reached 100%
 };
 
 /**
@@ -35,8 +37,13 @@ export async function fetchCellDetails(
     ? createServiceClient()
     : await createClient();
 
+  const empty: CellDetailData = {
+    gps: null, photos: [], reportHistory: [], tasks: [],
+    startedAt: null, completedAt: null,
+  };
+
   try {
-    const [reportsResult, tasksResult] = await Promise.all([
+    const [reportsResult, tasksResult, statusResult] = await Promise.all([
       supabase
         .from('field_reports')
         .select('gps_lat, gps_lng, photo_url, status, progress_pct, created_at')
@@ -50,13 +57,21 @@ export async function fetchCellDetails(
         .eq('area_id', areaId)
         .eq('trade_type', tradeName)
         .order('task_order', { ascending: true }),
+      supabase
+        .from('area_trade_status')
+        .select('started_at, completed_at')
+        .eq('area_id', areaId)
+        .eq('trade_type', tradeName)
+        .maybeSingle(),
     ]);
 
     const reports = reportsResult.data;
     const tasks = (tasksResult.data ?? []) as AreaTask[];
+    const startedAt = statusResult.data?.started_at ?? null;
+    const completedAt = statusResult.data?.completed_at ?? null;
 
     if (!reports || reports.length === 0) {
-      return { gps: null, photos: [], reportHistory: [], tasks };
+      return { ...empty, tasks, startedAt, completedAt };
     }
 
     // GPS: first non-null coordinates
@@ -77,8 +92,8 @@ export async function fetchCellDetails(
       created_at: r.created_at,
     }));
 
-    return { gps, photos, reportHistory, tasks };
+    return { gps, photos, reportHistory, tasks, startedAt, completedAt };
   } catch {
-    return { gps: null, photos: [], reportHistory: [], tasks: [] };
+    return empty;
   }
 }

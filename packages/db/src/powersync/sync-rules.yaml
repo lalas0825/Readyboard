@@ -56,7 +56,8 @@ bucket_definitions:
       - SELECT id, area_id, trade_type, reporting_mode,
                manual_pct, calculated_pct, effective_pct,
                all_gates_passed, gc_verification_pending,
-               gc_verification_pending_since, project_id, updated_at
+               gc_verification_pending_since, project_id,
+               started_at, completed_at, updated_at
         FROM area_trade_status
         WHERE project_id = bucket.project_id
 
@@ -70,7 +71,7 @@ bucket_definitions:
 
     data:
       - SELECT id, area_id, user_id, trade_name, status, progress_pct,
-               reason_code, notes, gps_lat, gps_lng, photo_url,
+               reason_code, notes, gps_lat, gps_lng, photo_url, photo_type,
                device_id, app_version, offline_created_at, created_at
         FROM field_reports
         WHERE area_id = bucket.area_id

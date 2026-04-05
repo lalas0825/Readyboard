@@ -35,6 +35,7 @@ export type FieldReportInput = {
   gps_lat?: number;
   gps_lng?: number;
   photo_url?: string;
+  photo_type?: 'progress' | 'blocker' | 'evidence' | 'safety';
   device_id?: string;
   app_version?: string;
 };

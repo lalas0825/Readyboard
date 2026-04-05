@@ -91,6 +91,8 @@ const area_trade_status = new Table({
   gc_verification_pending: column.integer, // boolean: 0/1
   gc_verification_pending_since: column.text,
   project_id: column.text, // denormalized for project-level sync
+  started_at: column.text,   // Fix 2: when sub first reported progress > 0%
+  completed_at: column.text, // Fix 2: when sub reached 100%, cleared on regression
   updated_at: column.text,
 }, { indexes: {} });
 
@@ -105,6 +107,7 @@ const field_reports = new Table({
   gps_lat: column.real,
   gps_lng: column.real,
   photo_url: column.text,
+  photo_type: column.text, // Fix 3: progress | blocker | evidence | safety
   device_id: column.text,
   app_version: column.text,
   offline_created_at: column.text, // device timestamp for conflict resolution

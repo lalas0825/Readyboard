@@ -112,6 +112,7 @@ export default function ReportScreen() {
         gps_lat: gpsLat ?? undefined,
         gps_lng: gpsLng ?? undefined,
         photo_url: photoUrl,
+        photo_type: formData.has_blockers ? 'blocker' : 'progress',
       });
 
       // Atomic delay_log: only if blocked, non-blocking if it fails

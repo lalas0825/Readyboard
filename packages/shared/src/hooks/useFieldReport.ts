@@ -27,9 +27,9 @@ export function useFieldReport() {
     await db.execute(
       `INSERT INTO field_reports (
         id, area_id, user_id, trade_name, status, progress_pct,
-        reason_code, notes, gps_lat, gps_lng, photo_url,
+        reason_code, notes, gps_lat, gps_lng, photo_url, photo_type,
         device_id, app_version, offline_created_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.area_id,
@@ -42,6 +42,7 @@ export function useFieldReport() {
         input.gps_lat ?? null,
         input.gps_lng ?? null,
         input.photo_url ?? null,
+        input.photo_type ?? 'progress',
         input.device_id ?? null,
         input.app_version ?? null,
         now,

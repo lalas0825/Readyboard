@@ -23,9 +23,10 @@ type Props = {
   userRole: 'sub' | 'gc';
   lang: string;
   onToggle: (taskId: string) => void;
+  onPhoto?: (taskId: string) => void;
 };
 
-export default function TaskItem({ task, userRole, lang, onToggle }: Props) {
+export default function TaskItem({ task, userRole, lang, onToggle, onPhoto }: Props) {
   const { t } = useTranslation();
   const taskName = lang === 'es' ? task.task_name_es : task.task_name_en;
   const isComplete = task.status === 'complete';
@@ -104,6 +105,20 @@ export default function TaskItem({ task, userRole, lang, onToggle }: Props) {
 
       {/* Weight badge */}
       <Text style={styles.weight}>{Math.round(task.weight)}</Text>
+
+      {/* Camera icon — only for sub tasks, always optional */}
+      {task.task_owner === 'sub' && onPhoto && (
+        <Pressable
+          onPress={() => onPhoto(task.id)}
+          style={styles.cameraBtn}
+          hitSlop={8}
+        >
+          <Text style={[styles.cameraIcon, task.photo_url ? styles.cameraIconActive : null]}>
+            {'\uD83D\uDCF7'}
+          </Text>
+          {task.photo_url && <View style={styles.photoDot} />}
+        </Pressable>
+      )}
     </Pressable>
   );
 }
@@ -222,5 +237,27 @@ const styles = StyleSheet.create({
     color: '#64748b',
     minWidth: 24,
     textAlign: 'right',
+  },
+
+  // Per-task camera icon
+  cameraBtn: {
+    position: 'relative',
+    paddingLeft: 8,
+  },
+  cameraIcon: {
+    fontSize: 18,
+    opacity: 0.4,
+  },
+  cameraIconActive: {
+    opacity: 1,
+  },
+  photoDot: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#4ade80',
   },
 });

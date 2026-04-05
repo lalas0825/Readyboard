@@ -139,7 +139,8 @@ export const useReportStore = create<ReportStoreState & ReportStoreActions>(
           has_blockers: hasBlockers,
           // Clear reason if user switches back to "no blockers"
           reason_code: hasBlockers ? state.formData.reason_code : null,
-          photo_url: hasBlockers ? state.formData.photo_url : null,
+          // Keep photo_url — a progress photo may have been taken before answering
+          // photo_type is derived at submit time from has_blockers
         },
       }));
     },

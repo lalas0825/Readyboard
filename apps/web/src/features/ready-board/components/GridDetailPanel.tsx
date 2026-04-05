@@ -441,82 +441,148 @@ export function GridDetailPanel({
             </div>
           )}
 
-          {/* Checklist Tasks */}
+          {/* Checklist Tasks — Fix 1: Split sub/GC sections */}
           {details && details.tasks.length > 0 && (() => {
             const tasks: AreaTask[] = details.tasks;
-            const completedCount = tasks.filter(t => t.status === 'complete').length;
-            const totalCount = tasks.length;
-            const pendingGCTasks = tasks.filter(t => t.task_owner === 'gc' && t.status !== 'complete');
-            const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+            const subTasks = tasks.filter(t => t.task_owner === 'sub');
+            const gcTasks = tasks.filter(t => t.task_owner === 'gc');
+            const completedSubCount = subTasks.filter(t => t.status === 'complete').length;
+            const totalSubCount = subTasks.length;
+            const pendingGCTasks = gcTasks.filter(t => t.status !== 'complete');
+            const subPct = totalSubCount > 0 ? Math.round((completedSubCount / totalSubCount) * 100) : 0;
             return (
               <div className="border-t border-zinc-800 pt-4 space-y-2">
+                {/* Sub tasks header */}
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                    Tasks ({completedCount}/{totalCount})
+                    Sub Tasks ({completedSubCount}/{totalSubCount})
                   </h4>
-                  <span className="text-xs text-zinc-500">{pct}%</span>
+                  <span className="text-xs text-zinc-500">{subPct}%</span>
                 </div>
-                {/* Progress bar */}
+                {/* Sub progress bar */}
                 <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{
-                      width: `${pct}%`,
-                      backgroundColor: completedCount === totalCount ? '#4ade80' : '#60a5fa',
+                      width: `${subPct}%`,
+                      backgroundColor: completedSubCount === totalSubCount ? '#4ade80' : '#60a5fa',
                     }}
                   />
                 </div>
-                {/* Task list */}
-                <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
-                  {tasks.map(task => (
+                {/* Sub task list */}
+                <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                  {subTasks.map(task => (
                     <div
                       key={task.id}
                       className={`flex items-start gap-2 px-1.5 py-1 rounded text-xs ${
                         task.status === 'complete' ? 'text-zinc-600' : 'text-zinc-300'
                       }`}
                     >
-                      {/* Checkbox icon (read-only for GC) */}
                       <span className={`mt-0.5 flex-shrink-0 w-3.5 h-3.5 rounded border flex items-center justify-center text-[9px] ${
                         task.status === 'complete'
                           ? 'bg-green-500/20 border-green-600 text-green-400'
-                          : task.task_owner === 'gc'
-                            ? 'bg-purple-500/10 border-purple-600/60'
-                            : 'border-zinc-700'
+                          : 'border-zinc-700'
                       }`}>
                         {task.status === 'complete' && '✓'}
                       </span>
-                      {/* Task name */}
                       <span className={`flex-1 leading-tight ${task.status === 'complete' ? 'line-through' : ''}`}>
                         {task.task_name_en}
                       </span>
-                      {/* Badges */}
-                      <span className="flex gap-1 flex-shrink-0">
-                        {task.is_gate && (
-                          <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">
-                            GATE
-                          </span>
-                        )}
-                        {task.task_owner === 'gc' && task.status !== 'completed' && (
-                          <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-400 font-bold">
-                            GC
-                          </span>
-                        )}
-                      </span>
+                      {task.is_gate && (
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold flex-shrink-0">
+                          GATE
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
-                {/* GC VERIFY CTA */}
-                {pendingGCTasks.length > 0 && (
-                  <button
-                    onClick={() => router.push('/dashboard/verifications')}
-                    className="mt-1 w-full py-1.5 text-xs font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/30 rounded-lg hover:bg-purple-500/20 transition-colors"
-                  >
-                    {pendingGCTasks.length} verification{pendingGCTasks.length > 1 ? 's' : ''} pending →
-                  </button>
+
+                {/* GC Verification section */}
+                {gcTasks.length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex-1 h-px bg-zinc-800" />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-500">
+                        GC Verification
+                      </span>
+                      <div className="flex-1 h-px bg-zinc-800" />
+                    </div>
+                    {gcTasks.map(task => {
+                      const verified = task.status === 'complete';
+                      return (
+                        <div
+                          key={task.id}
+                          className={`flex items-start gap-2 px-2 py-1.5 rounded text-xs ${
+                            verified
+                              ? 'bg-green-500/5 border border-green-900/40'
+                              : 'bg-purple-500/5 border border-purple-900/40'
+                          }`}
+                        >
+                          <span className={`mt-0.5 flex-shrink-0 w-3.5 h-3.5 rounded border flex items-center justify-center text-[9px] ${
+                            verified
+                              ? 'bg-green-500/20 border-green-600 text-green-400'
+                              : 'bg-purple-500/10 border-purple-600/60 border-dashed'
+                          }`}>
+                            {verified && '✓'}
+                          </span>
+                          <span className={`flex-1 leading-tight ${verified ? 'text-zinc-500 line-through' : 'text-purple-300'}`}>
+                            {task.task_name_en}
+                          </span>
+                          <span className={`text-[9px] px-1 py-0.5 rounded font-bold flex-shrink-0 ${
+                            verified
+                              ? 'bg-green-500/20 text-green-400'
+                              : 'bg-purple-500/20 text-purple-400'
+                          }`}>
+                            {verified ? 'DONE' : 'PENDING'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {/* GC VERIFY CTA */}
+                    {pendingGCTasks.length > 0 && (
+                      <button
+                        onClick={() => router.push('/dashboard/verifications')}
+                        className="mt-1 w-full py-1.5 text-xs font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/30 rounded-lg hover:bg-purple-500/20 transition-colors"
+                      >
+                        {pendingGCTasks.length} verification{pendingGCTasks.length > 1 ? 's' : ''} pending →
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             );
           })()}
+
+          {/* Fix 2: Started / Completed dates */}
+          {details && (details.startedAt || details.completedAt) && (
+            <div className="border-t border-zinc-800 pt-4 space-y-1">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Work Dates</h4>
+              {details.startedAt && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-zinc-500">Started</span>
+                  <span className="text-zinc-300">{new Date(details.startedAt).toLocaleDateString()}</span>
+                </div>
+              )}
+              {details.completedAt && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-zinc-500">Completed</span>
+                  <span className="text-green-400">{new Date(details.completedAt).toLocaleDateString()}</span>
+                </div>
+              )}
+              {details.startedAt && details.completedAt && (() => {
+                const days = Math.round(
+                  (new Date(details.completedAt!).getTime() - new Date(details.startedAt!).getTime())
+                  / (1000 * 60 * 60 * 24)
+                );
+                return (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-500">Duration</span>
+                    <span className="text-zinc-300">{days} day{days !== 1 ? 's' : ''}</span>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           {/* Status Timeline */}
           {timelineEvents.length > 0 && (
