@@ -385,20 +385,21 @@ export function GridDetailPanel({
               <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 Photos ({details.photos.length})
               </h4>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
                 {details.photos.map((photo, i) => (
                   <button
                     key={`${photo.created_at}-${i}`}
                     onClick={() => setLightboxUrl(photo.url)}
-                    className="group relative aspect-square overflow-hidden rounded-md bg-zinc-800 cursor-zoom-in"
+                    className="group relative block w-full rounded-md overflow-hidden bg-zinc-800 cursor-zoom-in"
+                    style={{ height: '120px' }}
                   >
                     <img
                       src={photo.url}
                       alt={`Report photo ${i + 1}`}
-                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-                      <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">Click to expand</span>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 transition-opacity">
+                      <span className="text-white text-xs font-semibold bg-black/50 px-2 py-1 rounded">Expand</span>
                     </div>
                   </button>
                 ))}
