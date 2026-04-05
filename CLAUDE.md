@@ -5,11 +5,11 @@
 > and operates offline-first in the foreman's language.
 >
 > **This is the single source of truth.** If CLAUDE.md says it, Claude Code follows it.
-> Last updated: 2026-04-05 — PowerSync v6 scaling + invite fixes + mobile watch() + dev build workflow
+> Last updated: 2026-04-06 — GC task exclusion from %, work date tracking, progress photos
 
 ---
 
-## Current Status — Updated April 5, 2026
+## Current Status — Updated April 6, 2026
 
 | Category | Done | Partial | Not Built | Broken |
 |----------|------|---------|-----------|--------|
@@ -18,9 +18,9 @@
 | Stripe Billing | 10 | 1 | 1 | 0 |
 | Dashboard Navigation | 11 | 0 | 0 | 0 |
 | Dashboard Pages | 11 | 0 | 0 | 0 |
-| Ready Board Grid | 15 | 0 | 0 | 0 |
-| Foreman Mobile | 23 | 0 | 0 | 0 |
-| Checklist System | 11 | 0 | 0 | 0 |
+| Ready Board Grid | 16 | 0 | 0 | 0 |
+| Foreman Mobile | 25 | 0 | 0 | 0 |
+| Checklist System | 13 | 0 | 0 | 0 |
 | Legal Documentation | 15 | 0 | 0 | 0 |
 | Forecast Engine | 3 | 2 | 3 | 0 |
 | Notifications | 5 | 2 | 2 | 0 |
@@ -31,22 +31,28 @@
 | Landing Page & Legal | 3 | 0 | 0 | 0 |
 | Security | 8 | 0 | 0 | 0 |
 | App Store Readiness | 2 | 0 | 4 | 0 |
-| **TOTALS** | **162** | **4** | **12** | **0** |
+| **TOTALS** | **167** | **4** | **12** | **0** |
 
-**Diagnostics:** ~730 files, 31 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
+**Diagnostics:** ~740 files, 34 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
 
-### Recent Changes (April 5, 2026)
+### Recent Changes (April 6, 2026)
 
-- **Photo upload fix:** `uploadPhoto.ts` was creating an unauthenticated Supabase client → storage RLS rejected INSERTs. Fixed: now accepts the authenticated `SupabaseClient` from `useAuth()`. Also fixed `project_members_can_upload_legal_docs` storage policy that had infinite recursion (self-referencing `storage.objects` in its own policy, error 42P17). Storage policies: SELECT (public), INSERT + UPDATE (authenticated) on `field-reports` bucket.
-- **Mobile: "Other" reason code + free-text notes:** Added `other` to `ReasonCode` union + DB CHECK constraint. Step3Reason shows TextInput when "Other" selected. `notes` column added to `field_reports` table + PowerSync schema + sync rules.
-- **Mobile: collapsible unit sections:** Home screen Floor → Unit → Area all tappable. Units collapsed by default (first unit of first floor auto-expanded). Chevron + count badge on unit headers.
-- **Mobile: Android status bar fix:** `ReportFlowNavigator` top bar was overlapping Android status bar. Added `paddingTop: StatusBar.currentHeight` for Android.
-- **Web: photo lightbox in GridDetailPanel:** Thumbnails now 120px height with 2-col grid. Click opens full-screen lightbox overlay with close button + "Open original" link.
-- **PowerSync v6 architecture:** `by_project` bucket now syncs areas + area_trade_status (was per-area). Scales to 2000+ areas. `area_trade_status.project_id` column added + backfilled (8540 rows) + INSERT trigger. Sync rules deployed to PowerSync dashboard.
-- **Mobile: collapsible Floor → Unit → Area hierarchy:** Home screen rebuilt — floors collapse/expand with status summary chips, unit headers with dot rows. Handles 2000+ areas without infinite scroll.
-- **Mobile: `useAreas` → `db.watch()`:** Replaced `db.getAll()` polling (2s interval) with PowerSync's reactive `db.watch()`. Fixes SQLite lock during large initial sync (580+ areas). Data appears progressively as sync streams in.
-- **Invite system hardening:** Fixed end-to-end flow — Supabase anti-enumeration (fake userId on duplicate email), FK violations on project_members, superintendent redirect loop (added to subRoles in middleware + layout), `projects.sub_org_id` auto-linked on invite redeem, trade-filtered assignments (only invited trade, not all 14).
-- **Development build workflow:** `eas.json` development profile now includes EXPO_PUBLIC_* env vars. Use `eas build --profile development` once → then `npx expo start` for hot reload without burning builds.
+- **Fix 1 — GC VERIFY excluded from sub progress %:** `calculate_effective_pct` DB trigger now counts `task_owner = 'sub'` tasks only. Gate cap only triggers when a SUB gate is incomplete (GC gate blocks DONE status but not progress %). Mobile checklist splits into "Your tasks (X/Y)" section + "GC Verification Required" purple cards. Web GC detail panel splits into "Sub Tasks" + "GC Verification" sections with PENDING/DONE badges.
+- **Fix 2 — Auto start/end date tracking:** `area_trade_status.started_at` auto-set when sub progress first goes >0. `completed_at` set at 100%, cleared on regression (GC correction). Web detail panel shows "Work Dates" → Started · Completed · Duration.
+- **Fix 3 — Optional progress photos (not just blockers):** Step2Blockers now has an optional camera button before the blocker question. TaskChecklist has a 📷 icon on each sub task row that opens camera, compresses, uploads to Supabase Storage, and saves to `area_tasks.photo_url`. `photo_type` column added to `field_reports` (`progress | blocker | evidence | safety`). Derived at submit: `has_blockers=true → 'blocker'`, else `'progress'`.
+- **Bug fix — Checklist status mismatch:** `GridDetailPanel.tsx` filtered `status === 'completed'` but DB uses `'complete'`. Fixed 5 occurrences — tasks now show correctly in GC web panel.
+- **Bug fix — Foreman task updates reverting:** `get_accessible_area_ids()` was only checking org membership, missing foremen assigned via `user_assignments` directly. Added `UNION SELECT area_id FROM user_assignments WHERE user_id = auth.uid()`.
+- **⚠️ PowerSync sync rules:** `sync-rules.yaml` updated (adds `started_at`, `completed_at` to area_trade_status; adds `photo_type` to field_reports). Must redeploy manually at powersync.journeyapps.com.
+
+### Previous Changes (April 5, 2026)
+
+- **Photo upload fix:** `uploadPhoto.ts` now accepts the authenticated `SupabaseClient` from `useAuth()`. Fixed `project_members_can_upload_legal_docs` storage policy infinite recursion (error 42P17).
+- **Mobile: "Other" reason code + free-text notes:** `other` added to `ReasonCode`, TextInput shown in Step3Reason, `notes` column on `field_reports`.
+- **Mobile: collapsible unit sections + Android status bar fix**
+- **Web: photo lightbox in GridDetailPanel**
+- **PowerSync v6 architecture:** `by_project` bucket scales to 2000+ areas.
+- **Invite system hardening:** anti-enumeration, FK fix, superintendent routing, sub_org_id auto-link, trade-filtered assignments.
+- **Development build workflow:** `eas build --profile development` once → `npx expo start` for hot reload.
 
 ### Previous Changes (April 2 — April 4, 2026)
 
@@ -392,11 +398,14 @@ Each trade has per-role hourly rates + OT rules + crew composition. NYC Union Pr
 
 *Tile helper = Tile Finisher (separate skilled classification)
 
+### Built
+
+- ✅ Settings UI: editable rate matrix (Trades & Costs tab)
+- ✅ `calculateDelayCost()` function using per-trade rates
+- ✅ NOD/REA PDF: itemized role-by-role cost breakdown (`laborBreakdown.ts`)
+
 ### Not Yet Built
 
-- [ ] Settings UI: editable rate matrix (Trades & Costs tab)
-- [ ] `calculateDelayCost()` function using per-trade rates
-- [ ] NOD/REA PDF: itemized role-by-role cost breakdown
 - [ ] Mobile: per-trade daily cost on blocked areas
 
 ---
@@ -438,7 +447,7 @@ All pages built and routed as separate `/dashboard/*` paths:
 💳 Billing           ✅ — plan card, upgrade/manage, feature comparison
 ```
 
-**Nav items:** Notification bell ✅, Collapsible sidebar ✅. Missing: Live indicator (green dot) ❌
+**Nav items:** Notification bell ✅, Collapsible sidebar ✅, Live indicator (green dot) ✅
 
 ---
 
@@ -577,5 +586,5 @@ Landing page currently shows 3 pricing cards (Starter $399, Pro $699, Sub $59).
 
 ---
 
-*ReadyBoard v5.4 — CLAUDE.md — Updated 2026-04-01 post-hierarchy refactor*
+*ReadyBoard v6.0 — CLAUDE.md — Updated 2026-04-06 — GC task exclusion + work dates + progress photos*
 *readyboard.ai*

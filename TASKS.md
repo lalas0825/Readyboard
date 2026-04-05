@@ -369,5 +369,65 @@ Audit result: 9 were already wired, 3 were added.
 
 ---
 
-*ReadyBoard v5.8 — TASKS.md — Updated 2026-04-05 (PowerSync v6 + invite hardening + mobile watch() + dev build)*
+---
+
+## Recent Changes (April 6, 2026)
+
+### Bug fixes committed April 5-6:
+- [x] **Checklist tasks in GC web panel showing 0 completed** — `GridDetailPanel.tsx` was filtering `status === 'completed'` (wrong) instead of `'complete'`. Fixed all 5 occurrences.
+- [x] **Checklist taps reverting on mobile** — `get_accessible_area_ids()` only checked org membership, not direct `user_assignments`. Foremen (direct-assigned, no org) got empty result set → RLS rejected every task UPDATE → PowerSync reverted. Fixed: added `UNION SELECT area_id FROM user_assignments WHERE user_id = auth.uid()`.
+- [x] **42P17 storage recursion error** — `project_members_can_upload_legal_docs` storage policy had self-referencing `storage.objects` in its own WITH CHECK. Removed recursion; policy now checks `bucket_id = 'field-reports'` only.
+- [x] **Live indicator + notification bell overlapping page content** — Was `position: fixed`. Replaced with in-flow `h-12` top bar in layout.
+
+### 3 Improvements (THREE_IMPROVEMENTS_PROMPT.md):
+- [x] **Fix 1 — GC VERIFY excluded from sub progress %**
+  - `calculate_effective_pct` DB trigger now counts `task_owner = 'sub'` tasks only
+  - Gate cap only applies when there's an incomplete SUB gate (GC gate blocks DONE, not %)
+  - Mobile: checklist split into "Your tasks (X/Y)" + "GC Verification Required" cards (purple)
+  - Web GC panel: "Sub Tasks" section + "GC Verification" section with PENDING/DONE badges
+- [x] **Fix 2 — Auto start_date + completed_at on area_trade_status**
+  - `started_at`: set when sub effective_pct goes 0 → >0 for the first time
+  - `completed_at`: set at 100%, cleared if progress regresses (GC correction)
+  - Web detail panel: "Work Dates" section → Started · Completed · Duration in days
+  - `fetchCellDetails` queries `area_trade_status` for both dates
+- [x] **Fix 3 — Optional progress photos (not just blockers)**
+  - `Step2Blockers`: camera button (optional) before blocker question — `photo_type='progress'`
+  - `TaskChecklist`: 📷 icon on each sub task row → camera → upload → `area_tasks.photo_url`
+  - `photo_type` column on `field_reports` (`progress | blocker | evidence | safety`)
+  - `photo_type` derived at submit: `has_blockers=true → 'blocker'`, else `'progress'`
+  - PowerSync schema.ts + sync-rules.yaml updated (⚠️ redeploy to PowerSync dashboard needed)
+
+### Migrations applied (via Supabase MCP):
+- `20260405120000_fix_get_accessible_area_ids.sql` — foreman RLS fix
+- `20260406100000_fix1_fix2_gc_tasks_and_dates.sql` — GC task exclusion + started_at/completed_at
+- `20260406100001_fix3_photo_type.sql` — photo_type column on field_reports
+
+### ⚠️ Manual action required:
+- PowerSync Dashboard → Sync Rules → redeploy `sync-rules.yaml` (adds `started_at`, `completed_at` to area_trade_status + `photo_type` to field_reports)
+
+---
+
+## Remaining Work
+
+| Task | Est. | Priority |
+|------|------|----------|
+| Buy domain + DNS/SPF/DKIM | Manual | Pre-launch |
+| PowerSync sync rules redeploy | 5min | ⚠️ NOW |
+| XLSX schedule import | 2h | Post-launch |
+| Crew performance UI | 3h | Post-launch |
+| Change order engine UI | 4h | Post-launch |
+| Sub Add-on checkout wiring | 1h | Post-launch |
+| Mobile EAS production build (APK) | 1h | Ready now |
+| App Store (screenshots + description) | 4h | V2 |
+| SMS provider (Twilio) for foreman OTP | 3h | V2 |
+| Settings: editable area_code per area | 2h | Post-launch |
+| Mobile: per-trade daily cost on blocked areas | 2h | Post-launch |
+| AI Chat Agent | TBD | V2 (post 10 projects) |
+
+**Web launch:** ✅ Ready after domain + DNS.
+**Mobile field test:** ✅ Ready. Development build running, PowerSync v6, invite flow end-to-end tested.
+
+---
+
+*ReadyBoard v6.0 — TASKS.md — Updated 2026-04-06 (GC task exclusion + work dates + progress photos)*
 *readyboard.ai*
