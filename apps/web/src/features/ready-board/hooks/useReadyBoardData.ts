@@ -317,6 +317,12 @@ export function gridReducer(state: GridState, action: GridAction): GridState {
       const areaIds = new Set(rawCells.map((c) => c.area_id));
       const floors = buildAllFloors(cellMap, delayMap, actionMap, trades);
 
+      // Preserve selectedCell across polls — find the refreshed cell in new floors
+      const prevSelected = state.selectedCell;
+      const selectedCell = prevSelected
+        ? (findCellInFloors(floors, prevSelected.area_id, prevSelected.trade_type) ?? null)
+        : null;
+
       return {
         cellMap,
         delayMap,
@@ -325,7 +331,7 @@ export function gridReducer(state: GridState, action: GridAction): GridState {
         floors,
         trades,
         areaIds,
-        selectedCell: null,
+        selectedCell,
         isLoading: false,
         error: null,
       };
