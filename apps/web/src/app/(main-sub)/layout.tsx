@@ -14,7 +14,7 @@ export default async function SubLayout({
     redirect('/login');
   }
 
-  const subRoles = ['sub_pm', 'sub_super'];
+  const subRoles = ['sub_pm', 'sub_super', 'superintendent'];
   if (!session.isDevBypass && !subRoles.includes(session.user.role)) {
     redirect('/dashboard');
   }
