@@ -7,7 +7,8 @@ export type InviteTokenData = {
   token: string;
   projectId: string;
   projectName: string;
-  role: 'sub_pm' | 'foreman';
+  role: 'gc_pm' | 'gc_super' | 'sub_pm' | 'superintendent' | 'foreman';
+  tradeName: string | null;
   areaId: string | null;
   areaName: string | null;
   expiresAt: string;
@@ -32,6 +33,7 @@ export async function validateInviteToken(
       project_id,
       role,
       area_id,
+      trade_name,
       expires_at,
       used_at,
       projects!inner ( name )
@@ -68,7 +70,8 @@ export async function validateInviteToken(
       token: data.token,
       projectId: data.project_id,
       projectName: (project.name as string) ?? 'Unknown Project',
-      role: data.role as 'sub_pm' | 'foreman',
+      role: data.role as InviteTokenData['role'],
+      tradeName: data.trade_name ?? null,
       areaId: data.area_id,
       areaName,
       expiresAt: data.expires_at,

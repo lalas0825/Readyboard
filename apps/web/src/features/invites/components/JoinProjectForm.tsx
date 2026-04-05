@@ -6,6 +6,14 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { InviteTokenData } from '../services/validateInviteToken';
 
+const ROLE_LABELS: Record<InviteTokenData['role'], string> = {
+  gc_pm: 'GC Project Manager',
+  gc_super: 'GC Superintendent',
+  sub_pm: 'Specialty Contractor (PM)',
+  superintendent: 'Superintendent',
+  foreman: 'Foreman',
+};
+
 type Props = {
   invite: InviteTokenData;
 };
@@ -57,7 +65,7 @@ export function JoinProjectForm({ invite }: Props) {
         const res = await fetch('/api/invite/redeem', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: invite.token }),
+          body: JSON.stringify({ token: invite.token, userId: authData.user.id }),
         });
         if (!res.ok) {
           const data = await res.json();
@@ -84,8 +92,8 @@ export function JoinProjectForm({ invite }: Props) {
         <p className="text-xs text-emerald-400">You&apos;ve been invited to join</p>
         <p className="mt-1 text-lg font-semibold text-zinc-100">{invite.projectName}</p>
         <p className="mt-0.5 text-xs text-zinc-500">
-          as {isSub ? 'Specialty Contractor (PM)' : 'Foreman'}
-          {invite.areaName && ` — ${invite.areaName}`}
+          as {ROLE_LABELS[invite.role] ?? invite.role}
+          {invite.tradeName && ` — ${invite.tradeName}`}
         </p>
       </div>
 

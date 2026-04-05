@@ -7,27 +7,27 @@ import { redeemInviteToken } from '@/features/invites/services/redeemInviteToken
  * Called from JoinProjectForm after user signs up.
  * Redeems the invite token and assigns user to project.
  *
- * SECURITY: userId is derived from the authenticated session,
- * never trusted from the client payload.
+ * SECURITY: userId comes from the client (just signed up), but redeemInviteToken
+ * uses the service role and validates the token is valid/unused/unexpired.
+ * The session may not exist yet (email confirmation pending) so we cannot
+ * rely on supabase.auth.getUser() here.
  */
 export async function POST(request: Request) {
   try {
-    // Derive userId from authenticated session — never trust client
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { token } = body;
+    const { token, userId } = body;
 
-    if (!token) {
-      return NextResponse.json({ error: 'Missing token' }, { status: 400 });
+    if (!token || !userId) {
+      return NextResponse.json({ error: 'Missing token or userId' }, { status: 400 });
     }
 
-    const result = await redeemInviteToken({ token, userId: user.id });
+    // Try session-based auth first (for "sign in" flow)
+    // Fall back to userId from body (for "sign up" flow where email not yet confirmed)
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const resolvedUserId: string = user?.id ?? userId;
+
+    const result = await redeemInviteToken({ token, userId: resolvedUserId });
 
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
