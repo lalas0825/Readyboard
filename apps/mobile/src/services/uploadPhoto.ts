@@ -30,6 +30,12 @@ export async function uploadPhoto(
   areaId: string,
 ): Promise<UploadResult> {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.warn('[uploadPhoto] No auth session — using local URI');
+      return { url: localUri, isLocal: true };
+    }
+
     const timestamp = Date.now();
     const path = `${areaId}/${timestamp}.jpg`;
 
@@ -53,7 +59,7 @@ export async function uploadPhoto(
       });
 
     if (error) {
-      console.warn('[uploadPhoto] Storage upload failed, using local URI:', error.message);
+      console.warn('[uploadPhoto] Storage upload failed:', error.message);
       return { url: localUri, isLocal: true };
     }
 

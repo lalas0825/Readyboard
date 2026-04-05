@@ -18,8 +18,8 @@
 | Stripe Billing | 10 | 1 | 1 | 0 |
 | Dashboard Navigation | 11 | 0 | 0 | 0 |
 | Dashboard Pages | 11 | 0 | 0 | 0 |
-| Ready Board Grid | 14 | 0 | 0 | 0 |
-| Foreman Mobile | 20 | 0 | 0 | 0 |
+| Ready Board Grid | 15 | 0 | 0 | 0 |
+| Foreman Mobile | 23 | 0 | 0 | 0 |
 | Checklist System | 11 | 0 | 0 | 0 |
 | Legal Documentation | 15 | 0 | 0 | 0 |
 | Forecast Engine | 3 | 2 | 3 | 0 |
@@ -29,14 +29,19 @@
 | Labor Rates | 7 | 0 | 0 | 0 |
 | Demo Account | 4 | 0 | 0 | 0 |
 | Landing Page & Legal | 3 | 0 | 0 | 0 |
-| Security | 7 | 0 | 0 | 0 |
+| Security | 8 | 0 | 0 | 0 |
 | App Store Readiness | 2 | 0 | 4 | 0 |
-| **TOTALS** | **157** | **4** | **12** | **0** |
+| **TOTALS** | **162** | **4** | **12** | **0** |
 
-**Diagnostics:** ~730 files, 29 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
+**Diagnostics:** ~730 files, 31 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
 
 ### Recent Changes (April 5, 2026)
 
+- **Photo upload fix:** `uploadPhoto.ts` was creating an unauthenticated Supabase client → storage RLS rejected INSERTs. Fixed: now accepts the authenticated `SupabaseClient` from `useAuth()`. Also fixed `project_members_can_upload_legal_docs` storage policy that had infinite recursion (self-referencing `storage.objects` in its own policy, error 42P17). Storage policies: SELECT (public), INSERT + UPDATE (authenticated) on `field-reports` bucket.
+- **Mobile: "Other" reason code + free-text notes:** Added `other` to `ReasonCode` union + DB CHECK constraint. Step3Reason shows TextInput when "Other" selected. `notes` column added to `field_reports` table + PowerSync schema + sync rules.
+- **Mobile: collapsible unit sections:** Home screen Floor → Unit → Area all tappable. Units collapsed by default (first unit of first floor auto-expanded). Chevron + count badge on unit headers.
+- **Mobile: Android status bar fix:** `ReportFlowNavigator` top bar was overlapping Android status bar. Added `paddingTop: StatusBar.currentHeight` for Android.
+- **Web: photo lightbox in GridDetailPanel:** Thumbnails now 120px height with 2-col grid. Click opens full-screen lightbox overlay with close button + "Open original" link.
 - **PowerSync v6 architecture:** `by_project` bucket now syncs areas + area_trade_status (was per-area). Scales to 2000+ areas. `area_trade_status.project_id` column added + backfilled (8540 rows) + INSERT trigger. Sync rules deployed to PowerSync dashboard.
 - **Mobile: collapsible Floor → Unit → Area hierarchy:** Home screen rebuilt — floors collapse/expand with status summary chips, unit headers with dot rows. Handles 2000+ areas without infinite scroll.
 - **Mobile: `useAreas` → `db.watch()`:** Replaced `db.getAll()` polling (2s interval) with PowerSync's reactive `db.watch()`. Fixes SQLite lock during large initial sync (580+ areas). Data appears progressively as sync streams in.
