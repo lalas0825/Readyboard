@@ -65,7 +65,7 @@ export function JoinProjectForm({ invite }: Props) {
         const res = await fetch('/api/invite/redeem', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: invite.token, userId: authData.user.id }),
+          body: JSON.stringify({ token: invite.token, userId: authData.user.id, email }),
         });
         if (!res.ok) {
           const data = await res.json();

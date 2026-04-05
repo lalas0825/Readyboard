@@ -15,7 +15,7 @@ import { redeemInviteToken } from '@/features/invites/services/redeemInviteToken
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { token, userId } = body;
+    const { token, userId, email } = body;
 
     if (!token || !userId) {
       return NextResponse.json({ error: 'Missing token or userId' }, { status: 400 });
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     const resolvedUserId: string = user?.id ?? userId;
 
-    const result = await redeemInviteToken({ token, userId: resolvedUserId });
+    const result = await redeemInviteToken({ token, userId: resolvedUserId, email });
 
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });

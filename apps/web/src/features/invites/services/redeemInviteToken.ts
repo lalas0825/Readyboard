@@ -11,6 +11,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 export async function redeemInviteToken(input: {
   token: string;
   userId: string;
+  email?: string;
   orgId?: string;
 }): Promise<{ ok: true; projectId: string; role: string } | { ok: false; error: string }> {
   const supabase = createServiceClient();
@@ -26,38 +27,66 @@ export async function redeemInviteToken(input: {
   if (invite.used_at) return { ok: false, error: 'Token already used.' };
   if (new Date(invite.expires_at) < new Date()) return { ok: false, error: 'Token expired.' };
 
-  // 2. Ensure public.users row exists (may not if email confirmation pending or duplicate signUp)
+  // 2. Resolve the real userId — Supabase returns a fake ID on duplicate signUp (anti-enumeration)
+  //    If public.users doesn't have this ID, look up by email to find the real user.
+  let resolvedUserId = input.userId;
+
   const { data: existingUser } = await supabase
     .from('users')
     .select('id')
-    .eq('id', input.userId)
+    .eq('id', resolvedUserId)
     .single();
 
   if (!existingUser) {
-    // Fetch from auth.admin and create the profile manually
-    const { data: authUser } = await supabase.auth.admin.getUserById(input.userId);
-    if (!authUser?.user) return { ok: false, error: 'User account not found. Please try signing up again.' };
+    // Try to find real user by email first
+    if (input.email) {
+      const { data: listData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+      const realUser = listData?.users?.find(
+        (u) => u.email?.toLowerCase() === input.email!.toLowerCase()
+      );
+      if (realUser) {
+        resolvedUserId = realUser.id;
+      }
+    }
 
-    const meta = (authUser.user.user_metadata ?? {}) as Record<string, string>;
-    const userRole = meta.role ?? 'superintendent';
-    const orgType = ['gc_admin', 'gc_pm', 'gc_super', 'owner'].includes(userRole) ? 'gc' : 'sub';
-
-    // Create org if needed
-    const { data: org } = await supabase
-      .from('organizations')
-      .insert({ name: meta.org_name ?? `${meta.name ?? 'User'}'s Organization`, type: orgType, default_language: 'en' })
+    // Check again with resolved ID
+    const { data: userAfterResolve } = await supabase
+      .from('users')
       .select('id')
+      .eq('id', resolvedUserId)
       .single();
 
-    await supabase.from('users').upsert({
-      id: input.userId,
-      email: authUser.user.email,
-      name: meta.name ?? 'User',
-      role: userRole,
-      org_id: org?.id ?? null,
-      language: meta.language ?? 'en',
-      onboarding_complete: false,
-    });
+    if (!userAfterResolve) {
+      // Last resort: create the public.users row from auth data
+      const { data: authUser } = await supabase.auth.admin.getUserById(resolvedUserId);
+      if (!authUser?.user) {
+        return { ok: false, error: 'Account not found. Please check your email for a confirmation link, then try again.' };
+      }
+
+      const meta = (authUser.user.user_metadata ?? {}) as Record<string, string>;
+      const userRole = meta.role ?? invite.role;
+      const orgType = ['gc_admin', 'gc_pm', 'gc_super', 'owner'].includes(userRole) ? 'gc' : 'sub';
+
+      const { data: org } = await supabase
+        .from('organizations')
+        .insert({
+          name: meta.org_name ?? `${meta.name ?? 'User'}'s Organization`,
+          type: orgType,
+          default_language: 'en',
+        })
+        .select('id')
+        .single();
+
+      await supabase.from('users').upsert({
+        id: resolvedUserId,
+        email: authUser.user.email,
+        name: meta.name ?? 'User',
+        role: userRole,
+        org_id: org?.id ?? null,
+        language: 'en',
+        onboarding_complete: false,
+      });
+    }
   }
 
   // 3. Add to project_members
@@ -66,7 +95,7 @@ export async function redeemInviteToken(input: {
       .from('project_members')
       .upsert({
         project_id: invite.project_id,
-        user_id: input.userId,
+        user_id: resolvedUserId,
         org_id: input.orgId ?? null,
         role: invite.role,
         trade_name: invite.trade_name ?? null,
@@ -78,22 +107,22 @@ export async function redeemInviteToken(input: {
   // 4. Assign ALL project areas (sub/super/foreman get full project access)
   if (['sub_pm', 'superintendent', 'foreman'].includes(invite.role)) {
     await supabase.rpc('assign_user_to_project', {
-      p_user_id: input.userId,
+      p_user_id: resolvedUserId,
       p_project_id: invite.project_id,
     });
   }
 
-  // 4. Mark token as used
+  // 5. Mark token as used
   await supabase
     .from('invite_tokens')
-    .update({ used_at: new Date().toISOString(), used_by: input.userId })
+    .update({ used_at: new Date().toISOString(), used_by: resolvedUserId })
     .eq('id', invite.id);
 
-  // 5. Audit (fire-and-forget)
+  // 6. Audit (fire-and-forget)
   await supabase.from('audit_log').insert({
     table_name: 'invite_tokens',
     action: 'invite_redeemed',
-    changed_by: input.userId,
+    changed_by: resolvedUserId,
     record_id: invite.project_id,
     new_value: { role: invite.role, areaId: invite.area_id },
   });
