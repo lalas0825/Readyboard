@@ -5,21 +5,21 @@
 > and operates offline-first in the foreman's language.
 >
 > **This is the single source of truth.** If CLAUDE.md says it, Claude Code follows it.
-> Last updated: 2026-04-04 — Demo seed data + logo consistency + mobile login fix + EAS build ready
+> Last updated: 2026-04-05 — PowerSync v6 scaling + invite fixes + mobile watch() + dev build workflow
 
 ---
 
-## Current Status — Updated April 4, 2026
+## Current Status — Updated April 5, 2026
 
 | Category | Done | Partial | Not Built | Broken |
 |----------|------|---------|-----------|--------|
 | Infrastructure | 10 | 0 | 0 | 0 |
-| Auth & Invitations | 14 | 0 | 0 | 0 |
+| Auth & Invitations | 16 | 0 | 0 | 0 |
 | Stripe Billing | 10 | 1 | 1 | 0 |
 | Dashboard Navigation | 11 | 0 | 0 | 0 |
 | Dashboard Pages | 11 | 0 | 0 | 0 |
 | Ready Board Grid | 14 | 0 | 0 | 0 |
-| Foreman Mobile | 18 | 0 | 0 | 0 |
+| Foreman Mobile | 20 | 0 | 0 | 0 |
 | Checklist System | 11 | 0 | 0 | 0 |
 | Legal Documentation | 15 | 0 | 0 | 0 |
 | Forecast Engine | 3 | 2 | 3 | 0 |
@@ -30,12 +30,20 @@
 | Demo Account | 4 | 0 | 0 | 0 |
 | Landing Page & Legal | 3 | 0 | 0 | 0 |
 | Security | 7 | 0 | 0 | 0 |
-| App Store Readiness | 1 | 1 | 4 | 0 |
-| **TOTALS** | **155** | **4** | **12** | **0** |
+| App Store Readiness | 2 | 0 | 4 | 0 |
+| **TOTALS** | **157** | **4** | **12** | **0** |
 
-**Diagnostics:** ~730 files, 28 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
+**Diagnostics:** ~730 files, 29 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
 
-### Recent Changes (April 2 — April 4, 2026)
+### Recent Changes (April 5, 2026)
+
+- **PowerSync v6 architecture:** `by_project` bucket now syncs areas + area_trade_status (was per-area). Scales to 2000+ areas. `area_trade_status.project_id` column added + backfilled (8540 rows) + INSERT trigger. Sync rules deployed to PowerSync dashboard.
+- **Mobile: collapsible Floor → Unit → Area hierarchy:** Home screen rebuilt — floors collapse/expand with status summary chips, unit headers with dot rows. Handles 2000+ areas without infinite scroll.
+- **Mobile: `useAreas` → `db.watch()`:** Replaced `db.getAll()` polling (2s interval) with PowerSync's reactive `db.watch()`. Fixes SQLite lock during large initial sync (580+ areas). Data appears progressively as sync streams in.
+- **Invite system hardening:** Fixed end-to-end flow — Supabase anti-enumeration (fake userId on duplicate email), FK violations on project_members, superintendent redirect loop (added to subRoles in middleware + layout), `projects.sub_org_id` auto-linked on invite redeem, trade-filtered assignments (only invited trade, not all 14).
+- **Development build workflow:** `eas.json` development profile now includes EXPO_PUBLIC_* env vars. Use `eas build --profile development` once → then `npx expo start` for hot reload without burning builds.
+
+### Previous Changes (April 2 — April 4, 2026)
 
 - **Demo seed data:** `scripts/seed-demo-full.ts` — 3 months of simulated project history (Jan 5 → Apr 4 2026), wave pattern Ready Board, 8 delay scenarios, legal docs, CAs, field reports, forecast snapshots
 - **Demo credentials:** `demo-gc@readyboard.ai`, `demo-sub@readyboard.ai`, `demo-foreman@readyboard.ai` / password: `demo1234`
@@ -43,19 +51,6 @@
 - **Team management:** All roles now assigned at project level (no per-area checkboxes in invite modal)
 - **Mobile login background:** Fixed asset paths — `login-v2-android.jpg` / `login-v2-ios.jpg`
 - **EAS build:** Node 20.18.0 in preview profile, APK ready via `eas build --profile preview --platform android`
-
-### Previous Changes (March 30 — April 2, 2026)
-
-- **Hierarchy refactor:** Floor → Unit → Area (3-level collapsible grid, 156 units backfilled)
-- **Labor rates:** Per-trade, per-role NYC union rates + OT rules + crew composition + Settings UI
-- **Onboarding:** 25 area type chips, CSV import, unit auto-creation, area_code manual per-type
-- **Floor-level areas:** Support floors without units (lobbies, mechanical, amenity)
-- **Invitations:** 5-role system (gc_pm, gc_super, sub_pm, superintendent, foreman), auto-email, resend/revoke
-- **Add Areas modal:** Post-onboarding area creation from Ready Board (units/floor/CSV modes)
-- **Security:** Auth bypass hardened, email verification, rate limiting, demo gating
-- **Grid:** Paginated fetch (8700+ rows), trade dedup, collapsible floors/units, area_code badges
-- **Foreman Mobile:** Floor→Unit grouped sections, area_code badges, project-level assignment
-- **Deploy fixes:** .npmrc removal, Vercel build, onboarding navigation
 
 ---
 

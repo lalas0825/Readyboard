@@ -14,7 +14,7 @@
 > - 🔨 BUILD — Does not exist, create from scratch
 > - 🔌 WIRE — Code exists but not connected
 >
-> Last updated: 2026-04-04 (demo seed + logo fixes + mobile login + EAS build ready)
+> Last updated: 2026-04-05 (PowerSync v6 + invite fixes + mobile watch() + dev build workflow)
 
 ---
 
@@ -67,7 +67,10 @@
 - [x] `useReadyBoardData.ts`: buildAllFloors groups floor → unit → area
 - [x] Types: GridUnit, GridFloor.units[], RawCellData + GridRow + GridCellData expanded
 - [x] PowerSync: `units` table + `area_code/description/sort_order/unit_id` on areas
-- [x] Sync rules: 3 buckets (by_user, by_area, by_project) — no JOINs/subqueries
+- [x] Sync rules v6: 3 buckets (by_user, by_project, by_area) — scales to 2000+ areas
+  - `by_project`: areas + area_trade_status + units + trade_sequences (1 bucket per project)
+  - `by_area`: field_reports + area_tasks + delay_logs (granular per assigned area)
+  - `area_trade_status.project_id` column added + backfilled 8540 rows + INSERT trigger
 
 #### Phase 3: Grid UI — ✅
 - [x] 3-level collapsible hierarchy: FloorSection → UnitSection → GridRow
@@ -92,11 +95,13 @@
 - [x] `generateFloorAreas()` creates areas without unit_name (unit_id=NULL)
 
 #### Phase 6: Mobile UX + Project Assignment — ✅
-- [x] Mobile: area cards grouped by Floor → Unit (sections: "F2 · Unit 2A")
+- [x] Mobile: collapsible Floor → Unit → Area hierarchy (ScrollView + floor headers with status chips)
+- [x] Mobile: first floor auto-expanded, rest collapsed — scales to 2000+ areas
 - [x] Mobile: area_code badges on AreaCard
 - [x] Mobile: unit_name + description in AreaCard meta line
+- [x] `useAreas` hook: switched from `db.getAll()` polling to `db.watch()` — reactive, no SQLite lock issues during large initial sync
 - [x] `assign_user_to_project()` RPC: assigns ALL project areas atomically
-- [x] `redeemInviteToken`: calls assign_user_to_project for sub/super/foreman
+- [x] `redeemInviteToken`: calls assign_user_to_project for sub/super/foreman (trade-filtered if invite has trade_name)
 - [x] `addAreasToProject`: auto-assigns new areas to existing project members
 
 #### Remaining (P2):
@@ -231,7 +236,7 @@ Audit result: 9 were already wired, 3 were added.
 - [ ] 🔨 NOD/REA PDF: itemized role-by-role cost breakdown
 - [ ] 🔨 Mobile: per-trade daily cost on blocked area cards
 
-### Invitation System — ✅ COMPLETE
+### Invitation System — ✅ COMPLETE + HARDENED
 
 - [x] `invite_tokens` table: expanded roles (gc_pm, gc_super, sub_pm, superintendent, foreman)
 - [x] Added email, phone, name columns for tracking
@@ -243,6 +248,11 @@ Audit result: 9 were already wired, 3 were added.
 - [x] Pending invites list with Copy/Resend/Revoke buttons
 - [x] `/join/[token]` page: validates token, supports signup + foreman magic link
 - [x] `TeamInviteEmail` template (bilingual EN/ES)
+- [x] **Anti-enumeration fix:** Supabase returns fake userId on duplicate email signUp — now resolves real user via `auth.admin.listUsers()` + email lookup
+- [x] **FK fix:** Creates `public.users` row from auth data if missing before inserting project_members
+- [x] **Superintendent routing:** Added `superintendent` to `subRoles` in middleware.ts + (main-sub)/layout.tsx — was causing redirect loop
+- [x] **sub_org_id auto-link:** `redeemInviteToken` sets `projects.sub_org_id` when sub-side user joins (required for RLS visibility)
+- [x] **Trade-filtered assignments:** If invite has `trade_name`, only assigns that trade (not all 14) — prevents PowerSync overload
 - [ ] 🔨 V2: Twilio SMS for foreman invites (currently WhatsApp manual share)
 
 ### Add Areas (Post-Onboarding) — ✅ COMPLETE
@@ -290,11 +300,12 @@ Audit result: 9 were already wired, 3 were added.
 
 ### App Store Submission
 
-- [x] Configure `eas.json` (dev, preview, production profiles) — Node 20.18.0, APK for preview
+- [x] Configure `eas.json` (dev, preview, production profiles) — Node 20.18.0, env vars in dev + preview
+- [x] Development build workflow: `eas build --profile development` once → `npx expo start` for hot reload
 - [x] App icon + adaptive icon (Android) — assets/icon.png + assets/adaptive-icon.png exist
 - [x] Splash screen — assets/splash.png on #0f172a exists
 - [x] Login background images — login-v2-android.jpg + login-v2-ios.jpg wired correctly
-- [ ] 🔨 Build Android APK via EAS — run: `eas build --profile preview --platform android`
+- [ ] 🔨 Build production APK via EAS — run: `eas build --profile preview --platform android`
 - [ ] 🔨 Build iOS TestFlight via EAS
 - [ ] 🔨 App Store screenshots (6.7" + 5.5" for iOS, phone + tablet for Android)
 - [ ] 🔨 App Store description (EN + ES)
@@ -354,9 +365,9 @@ Audit result: 9 were already wired, 3 were added.
 
 **Web launch:** ✅ Ready after domain purchase + DNS config.
 **Field test:** ✅ Ready now with demo accounts (Pro unlocked, full 3-month seed data).
-**Mobile:** ✅ Build ready — `eas build --profile preview --platform android`. Login images fixed. Node 20.
+**Mobile:** ✅ Development build running with hot reload. PowerSync v6 syncing. Invite flow end-to-end tested.
 
 ---
 
-*ReadyBoard v5.7 — TASKS.md — Updated 2026-04-04 (demo seed + logo + mobile login fix + EAS build ready)*
+*ReadyBoard v5.8 — TASKS.md — Updated 2026-04-05 (PowerSync v6 + invite hardening + mobile watch() + dev build)*
 *readyboard.ai*
