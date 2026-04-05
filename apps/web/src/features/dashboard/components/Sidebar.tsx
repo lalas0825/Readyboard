@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { LogoutButton } from '@/features/auth/components/LogoutButton';
 import { fetchUnreadNotificationCount } from '../services/fetchNotifications';
 import { fetchVerificationCount } from '@/features/checklist/services/fetchVerificationCount';
-import { NotificationBell } from './NotificationBell';
 
 // ─── Types ───────────────────────────────────────────
 
@@ -208,7 +207,6 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
               <span className="text-sm font-bold text-zinc-100">Ready</span>
               <span className="text-sm font-light text-zinc-500">Board</span>
             </div>
-            <NotificationBell />
           </>
         )}
       </div>
