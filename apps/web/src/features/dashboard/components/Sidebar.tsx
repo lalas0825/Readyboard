@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { LogoutButton } from '@/features/auth/components/LogoutButton';
 import { fetchUnreadNotificationCount } from '../services/fetchNotifications';
 import { fetchVerificationCount } from '@/features/checklist/services/fetchVerificationCount';
+import { RBLogo } from '@/components/RBLogo';
 
 // ─── Types ───────────────────────────────────────────
 
@@ -201,12 +202,7 @@ export function Sidebar({ user, projects, currentProjectId }: SidebarProps) {
           <img src="/readyboard-icon-animated.svg" alt="" className="h-6 w-6" />
         ) : (
           <>
-            <div className="flex items-center gap-2.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/readyboard-icon-animated.svg" alt="" className="h-6 w-6" />
-              <span className="text-sm font-bold text-zinc-100">Ready</span>
-              <span className="text-sm font-bold text-zinc-100">Board</span>
-            </div>
+            <RBLogo size="sm" />
           </>
         )}
       </div>

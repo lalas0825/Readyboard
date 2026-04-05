@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { RBLogo } from '@/components/RBLogo';
 
 export default function LandingPage() {
   return (
@@ -6,12 +7,7 @@ export default function LandingPage() {
       {/* ─── Navbar ────────────────────────────── */}
       <nav className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/40 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/readyboard-icon-animated.svg" alt="" className="h-7 w-7" />
-            <span className="text-base font-bold text-zinc-100">Ready</span>
-            <span className="text-base font-bold text-zinc-100">Board</span>
-          </div>
+          <RBLogo size="md" />
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm text-zinc-300 transition-colors hover:text-white">
               Log In

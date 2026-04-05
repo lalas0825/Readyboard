@@ -1,15 +1,13 @@
 import { SubSignupForm } from '@/features/auth/components/SubSignupForm';
+import { RBLogo } from '@/components/RBLogo';
 
 export default function SubSignupPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-8">
       <div className="w-full max-w-sm">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/readyboard-lockup-dark.svg"
-          alt="ReadyBoard"
-          className="mx-auto mb-10 h-10"
-        />
+        <div className="mb-10 flex justify-center">
+          <RBLogo size="lg" />
+        </div>
         <h1 className="mb-2 text-center text-xl font-semibold text-zinc-100">
           Specialty Contractor
         </h1>

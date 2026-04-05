@@ -96,9 +96,12 @@ return (
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Background image */}
+      {/* Background image — platform-specific (neon floor status overlay) */}
       <Image
-        source={require('../assets/login_moble_image.png')}
+        source={Platform.OS === 'ios'
+          ? require('../assets/login-v2-ios.jpg')
+          : require('../assets/login-v2-android.jpg')
+        }
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
       />
