@@ -186,6 +186,19 @@ const area_tasks = new Table({
   updated_at: column.text,
 }, { indexes: {} });
 
+// --- Area Notes (per-area communication log) ---
+
+const area_notes = new Table({
+  project_id: column.text,
+  area_id: column.text,
+  author_id: column.text,
+  author_name: column.text,
+  author_role: column.text,
+  content: column.text,
+  is_system: column.integer, // boolean: 0/1
+  created_at: column.text,
+}, { indexes: {} });
+
 // --- Schema export ---
 
 export const AppSchema = new Schema({
@@ -201,6 +214,7 @@ export const AppSchema = new Schema({
   nod_drafts,
   corrective_actions,
   area_tasks,
+  area_notes,
 });
 
 export type Database = (typeof AppSchema)['types'];

@@ -28,10 +28,20 @@ function IconAreas({ focused }: { focused: boolean }) {
   );
 }
 
-function IconReport({ focused }: { focused: boolean }) {
+function IconToday({ focused }: { focused: boolean }) {
+  const color = focused ? '#f59e0b' : '#71717a';
   return (
-    <View style={[styles.reportIconOuter, focused && styles.reportIconOuterFocused]}>
-      <View style={[styles.reportIconInner, focused && styles.reportIconInnerFocused]} />
+    <View style={styles.iconBox}>
+      {/* Calendar icon */}
+      <View style={[styles.calendarOuter, { borderColor: color }]}>
+        <View style={[styles.calendarHeader, { backgroundColor: color }]} />
+        <View style={styles.calendarGrid}>
+          <View style={[styles.calendarDot, { backgroundColor: color }]} />
+          <View style={[styles.calendarDot, { backgroundColor: color }]} />
+          <View style={[styles.calendarDot, { backgroundColor: color }]} />
+          <View style={[styles.calendarDot, { backgroundColor: focused ? color : 'transparent', borderWidth: focused ? 0 : 1, borderColor: color }]} />
+        </View>
+      </View>
     </View>
   );
 }
@@ -87,15 +97,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="report-tab"
+        name="today"
         options={{
-          title: t('tabs.report'),
-          tabBarIcon: ({ focused }) => <IconReport focused={focused} />,
-          tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: '700',
-            color: '#f59e0b',
-          },
+          title: 'Today',
+          tabBarIcon: ({ focused }) => <IconToday focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -142,30 +147,31 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 1,
   },
-  // Report icon — prominent circle
-  reportIconOuter: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#292524',
+  // Calendar (Today) icon
+  calendarOuter: {
+    width: 20,
+    height: 20,
+    borderWidth: 1.5,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  calendarHeader: {
+    height: 5,
+    width: '100%',
+  },
+  calendarGrid: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 2,
+    gap: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -12,
-    borderWidth: 2,
-    borderColor: '#f59e0b40',
   },
-  reportIconOuterFocused: {
-    backgroundColor: '#f59e0b',
-    borderColor: '#f59e0b',
-  },
-  reportIconInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#f59e0b',
-  },
-  reportIconInnerFocused: {
-    backgroundColor: '#fff',
+  calendarDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 1,
   },
   // Legal icon
   legalIcon: {

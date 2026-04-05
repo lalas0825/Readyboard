@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { fetchCellDetails, type CellDetailData } from '../services/fetchCellDetails';
 
 type UseCellDetailsResult = {
   data: CellDetailData | null;
   isLoading: boolean;
+  refetch: () => void;
 };
 
 /**
@@ -18,6 +19,9 @@ export function useCellDetails(
 ): UseCellDetailsResult {
   const [data, setData] = useState<CellDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchTick, setFetchTick] = useState(0);
+
+  const refetch = useCallback(() => setFetchTick((t) => t + 1), []);
 
   useEffect(() => {
     if (!areaId || !tradeName) {
@@ -38,7 +42,7 @@ export function useCellDetails(
     return () => {
       cancelled = true;
     };
-  }, [areaId, tradeName]);
+  }, [areaId, tradeName, fetchTick]);
 
-  return { data, isLoading };
+  return { data, isLoading, refetch };
 }

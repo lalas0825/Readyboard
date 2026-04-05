@@ -12,6 +12,7 @@ import type { AreaTask } from '../services/fetchCellDetails';
 import { toggleSafetyBlock } from '../services/toggleSafetyBlock';
 import { acknowledgeCA } from '../services/acknowledgeCA';
 import { resolveCA } from '../services/resolveCA';
+import { addAreaNote } from '../services/addAreaNote';
 import { REASON_LABELS } from '@/lib/constants';
 
 type GridDetailPanelProps = {
@@ -153,6 +154,8 @@ export function GridDetailPanel({
   const [safetyToggling, setSafetyToggling] = useState(false);
   const [showCAForm, setShowCAForm] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [newNote, setNewNote] = useState('');
+  const [sendingNote, setSendingNote] = useState(false);
   const isSafetyBlocked = cell.delay_reason === 'safety';
   const isBlockedOrHeld = cell.status === 'blocked' || cell.status === 'held';
 
@@ -162,13 +165,27 @@ export function GridDetailPanel({
   useEffect(() => {
     setShowCAForm(false);
     setLightboxUrl(null);
+    setNewNote('');
   }, [cell.area_id, cell.trade_type]);
 
-  // Lazy-load GPS, photos, and report history
-  const { data: details, isLoading: detailsLoading } = useCellDetails(
+  // Lazy-load GPS, photos, report history, and notes
+  const { data: details, isLoading: detailsLoading, refetch: refetchDetails } = useCellDetails(
     cell.area_id,
     cell.trade_type,
   );
+
+  async function handleSendNote() {
+    if (!newNote.trim() || sendingNote) return;
+    setSendingNote(true);
+    const { error } = await addAreaNote(cell.area_id, projectId, newNote.trim());
+    setSendingNote(false);
+    if (error) {
+      toast.error(`Failed to send note: ${error}`);
+    } else {
+      setNewNote('');
+      refetchDetails();
+    }
+  }
 
   // Build timeline events from report history
   const timelineEvents: TimelineEvent[] = (details?.reportHistory ?? []).map((r) => ({
@@ -581,6 +598,61 @@ export function GridDetailPanel({
                   </div>
                 );
               })()}
+            </div>
+          )}
+
+          {/* ─── Area Notes ─── */}
+          {details && (
+            <div className="border-t border-zinc-800 pt-4 space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                Notes {details.notes.length > 0 && `(${details.notes.length})`}
+              </h4>
+
+              {details.notes.length > 0 && (
+                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                  {details.notes.map((note) => (
+                    <div
+                      key={note.id}
+                      className={`rounded-lg px-2.5 py-2 text-xs ${
+                        note.is_system
+                          ? 'text-zinc-500 italic'
+                          : 'bg-white/5'
+                      }`}
+                    >
+                      {!note.is_system && (
+                        <div className="flex justify-between mb-1">
+                          <span className="font-medium text-zinc-400">
+                            {note.author_name} · {note.author_role}
+                          </span>
+                          <span className="text-zinc-600 text-[10px]">
+                            {new Date(note.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
+                      <p className="text-zinc-300 leading-relaxed">{note.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Note input */}
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="Add a note…"
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendNote()}
+                  className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 focus:border-blue-500 focus:outline-none"
+                />
+                <button
+                  onClick={handleSendNote}
+                  disabled={!newNote.trim() || sendingNote}
+                  className="rounded-lg border border-blue-700 bg-blue-950/50 px-3 py-1.5 text-xs font-semibold text-blue-400 transition-colors hover:bg-blue-950 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  {sendingNote ? '…' : 'Send'}
+                </button>
+              </div>
             </div>
           )}
 

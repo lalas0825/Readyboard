@@ -93,3 +93,8 @@ bucket_definitions:
                nod_draft_id, rea_id, receipt_confirmed
         FROM delay_logs
         WHERE area_id = bucket.area_id
+
+      - SELECT id, project_id, area_id, author_id, author_name,
+               author_role, content, is_system, created_at
+        FROM area_notes
+        WHERE area_id = bucket.area_id

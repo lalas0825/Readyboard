@@ -16,13 +16,24 @@ export type AreaTask = {
   photo_url: string | null;
 };
 
+export type AreaNote = {
+  id: string;
+  author_name: string;
+  author_role: string;
+  author_id: string;
+  content: string;
+  is_system: boolean;
+  created_at: string;
+};
+
 export type CellDetailData = {
   gps: { lat: number; lng: number } | null;
   photos: { url: string; created_at: string }[];
   reportHistory: { status: string; progress_pct: number; created_at: string }[];
   tasks: AreaTask[];
-  startedAt: string | null;    // Fix 2: when sub first reported > 0%
-  completedAt: string | null;  // Fix 2: when sub reached 100%
+  startedAt: string | null;
+  completedAt: string | null;
+  notes: AreaNote[];
 };
 
 /**
@@ -40,11 +51,11 @@ export async function fetchCellDetails(
 
   const empty: CellDetailData = {
     gps: null, photos: [], reportHistory: [], tasks: [],
-    startedAt: null, completedAt: null,
+    startedAt: null, completedAt: null, notes: [],
   };
 
   try {
-    const [reportsResult, tasksResult, statusResult] = await Promise.all([
+    const [reportsResult, tasksResult, statusResult, notesResult] = await Promise.all([
       supabase
         .from('field_reports')
         .select('gps_lat, gps_lng, photo_url, status, progress_pct, created_at')
@@ -64,12 +75,27 @@ export async function fetchCellDetails(
         .eq('area_id', areaId)
         .eq('trade_type', tradeName)
         .maybeSingle(),
+      supabase
+        .from('area_notes')
+        .select('id, author_id, author_name, author_role, content, is_system, created_at')
+        .eq('area_id', areaId)
+        .order('created_at', { ascending: false })
+        .limit(20),
     ]);
 
     const reports = reportsResult.data;
     const tasks = (tasksResult.data ?? []) as AreaTask[];
     const startedAt = statusResult.data?.started_at ?? null;
     const completedAt = statusResult.data?.completed_at ?? null;
+    const notes: AreaNote[] = (notesResult.data ?? []).map((n) => ({
+      id: n.id,
+      author_id: n.author_id,
+      author_name: n.author_name,
+      author_role: n.author_role,
+      content: n.content,
+      is_system: Boolean(n.is_system),
+      created_at: n.created_at,
+    })).reverse(); // oldest first
 
     // GPS: first non-null coordinates from reports
     const gpsReport = (reports ?? []).find((r) => r.gps_lat != null && r.gps_lng != null);
@@ -98,10 +124,10 @@ export async function fetchCellDetails(
     }));
 
     if (!reports || reports.length === 0) {
-      return { ...empty, tasks, photos, startedAt, completedAt };
+      return { ...empty, tasks, photos, startedAt, completedAt, notes };
     }
 
-    return { gps, photos, reportHistory, tasks, startedAt, completedAt };
+    return { gps, photos, reportHistory, tasks, startedAt, completedAt, notes };
   } catch {
     return empty;
   }
