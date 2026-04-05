@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { GridCellData, CorrectiveActionData, CorrectiveActionStatus, DelayData } from '../types';
 import { STATUS_CONFIG } from '../types';
 import { CorrectiveActionForm } from './CorrectiveActionForm';
 import { StatusTimeline, type TimelineEvent } from './StatusTimeline';
 import { useCellDetails } from '../hooks/useCellDetails';
+import type { AreaTask } from '../services/fetchCellDetails';
 import { toggleSafetyBlock } from '../services/toggleSafetyBlock';
 import { acknowledgeCA } from '../services/acknowledgeCA';
 import { resolveCA } from '../services/resolveCA';
@@ -145,6 +147,7 @@ export function GridDetailPanel({
   onInsertRevert,
   onActionUpdate,
 }: GridDetailPanelProps) {
+  const router = useRouter();
   const config = STATUS_CONFIG[cell.status];
   const panelState = derivePanelState(cell, existingAction);
   const [safetyToggling, setSafetyToggling] = useState(false);
@@ -437,6 +440,83 @@ export function GridDetailPanel({
               </div>
             </div>
           )}
+
+          {/* Checklist Tasks */}
+          {details && details.tasks.length > 0 && (() => {
+            const tasks: AreaTask[] = details.tasks;
+            const completedCount = tasks.filter(t => t.status === 'completed').length;
+            const totalCount = tasks.length;
+            const pendingGCTasks = tasks.filter(t => t.task_owner === 'gc' && t.status !== 'completed');
+            const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+            return (
+              <div className="border-t border-zinc-800 pt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                    Tasks ({completedCount}/{totalCount})
+                  </h4>
+                  <span className="text-xs text-zinc-500">{pct}%</span>
+                </div>
+                {/* Progress bar */}
+                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${pct}%`,
+                      backgroundColor: completedCount === totalCount ? '#4ade80' : '#60a5fa',
+                    }}
+                  />
+                </div>
+                {/* Task list */}
+                <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
+                  {tasks.map(task => (
+                    <div
+                      key={task.id}
+                      className={`flex items-start gap-2 px-1.5 py-1 rounded text-xs ${
+                        task.status === 'completed' ? 'text-zinc-600' : 'text-zinc-300'
+                      }`}
+                    >
+                      {/* Checkbox icon (read-only for GC) */}
+                      <span className={`mt-0.5 flex-shrink-0 w-3.5 h-3.5 rounded border flex items-center justify-center text-[9px] ${
+                        task.status === 'completed'
+                          ? 'bg-green-500/20 border-green-600 text-green-400'
+                          : task.task_owner === 'gc'
+                            ? 'bg-purple-500/10 border-purple-600/60'
+                            : 'border-zinc-700'
+                      }`}>
+                        {task.status === 'completed' && '✓'}
+                      </span>
+                      {/* Task name */}
+                      <span className={`flex-1 leading-tight ${task.status === 'completed' ? 'line-through' : ''}`}>
+                        {task.task_name_en}
+                      </span>
+                      {/* Badges */}
+                      <span className="flex gap-1 flex-shrink-0">
+                        {task.is_gate && (
+                          <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">
+                            GATE
+                          </span>
+                        )}
+                        {task.task_owner === 'gc' && task.status !== 'completed' && (
+                          <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-400 font-bold">
+                            GC
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {/* GC VERIFY CTA */}
+                {pendingGCTasks.length > 0 && (
+                  <button
+                    onClick={() => router.push('/dashboard/verifications')}
+                    className="mt-1 w-full py-1.5 text-xs font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/30 rounded-lg hover:bg-purple-500/20 transition-colors"
+                  >
+                    {pendingGCTasks.length} verification{pendingGCTasks.length > 1 ? 's' : ''} pending →
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Status Timeline */}
           {timelineEvents.length > 0 && (

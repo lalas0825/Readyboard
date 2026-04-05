@@ -73,8 +73,8 @@ export async function fetchDelayDetails(
   }
   if (!pid) return emptyData();
 
-  // Parallel fetch: project info + delay logs + field reports for GPS/photos
-  const [projectResult, logsResult, reportsResult] = await Promise.all([
+  // Parallel fetch: project info + delay logs + field reports + per-trade rates
+  const [projectResult, logsResult, reportsResult, ratesResult, tradeConfigResult] = await Promise.all([
     supabase.from('projects').select('labor_rate_per_hour').eq('id', pid).single(),
     supabase
       .from('delay_logs')
@@ -91,10 +91,42 @@ export async function fetchDelayDetails(
       .select('area_id, trade_type, gps_lat, gps_lng, photo_url')
       .eq('status', 'blocked')
       .not('gps_lat', 'is', null),
+    supabase.from('labor_rates').select('trade_name, role, hourly_rate').eq('project_id', pid),
+    supabase.from('trade_sequences').select('trade_name, straight_time_hours, ot_multiplier, typical_crew').eq('project_id', pid),
   ]);
 
-  const laborRate = Number(projectResult.data?.labor_rate_per_hour ?? 0);
+  const fallbackRate = Number(projectResult.data?.labor_rate_per_hour ?? 0);
   const logs = logsResult.data ?? [];
+
+  // Build per-trade rate/config maps for in-memory cost computation
+  type RateRow = { role: string; hourly_rate: number };
+  const ratesByTrade = new Map<string, RateRow[]>();
+  for (const r of (ratesResult.data ?? [])) {
+    if (!ratesByTrade.has(r.trade_name)) ratesByTrade.set(r.trade_name, []);
+    ratesByTrade.get(r.trade_name)!.push({ role: r.role, hourly_rate: Number(r.hourly_rate) });
+  }
+  const configByTrade = new Map<string, { stHours: number; otMult: number; crew: Record<string, number> }>();
+  for (const t of (tradeConfigResult.data ?? [])) {
+    if (!configByTrade.has(t.trade_name)) {
+      configByTrade.set(t.trade_name, {
+        stHours: Number(t.straight_time_hours ?? 8),
+        otMult: Number(t.ot_multiplier ?? 1.5),
+        crew: (t.typical_crew as Record<string, number> | null) ?? { foreman: 1, journeyperson: 3, apprentice: 1 },
+      });
+    }
+  }
+
+  function computeDailyCost(tradeName: string): number {
+    const tradeRates = ratesByTrade.get(tradeName);
+    if (!tradeRates || tradeRates.length === 0) return Math.round(4 * fallbackRate * 8);
+    const cfg = configByTrade.get(tradeName) ?? { stHours: 8, otMult: 1.5, crew: { foreman: 1, journeyperson: 3, apprentice: 1 } };
+    return Object.entries(cfg.crew)
+      .filter(([, count]) => count > 0)
+      .reduce((sum, [role, count]) => {
+        const rate = tradeRates.find((r) => r.role === role)?.hourly_rate ?? 0;
+        return sum + Math.round(count * rate * cfg.stHours);
+      }, 0);
+  }
 
   // Build GPS/photo lookup: area_id:trade_name → { lat, lng, photo }
   const reportMap = new Map<string, { lat: number; lng: number; photo: string | null }>();
@@ -123,14 +155,17 @@ export async function fetchDelayDetails(
     let manHours: number;
     let cumulativeCost: number;
 
+    const dailyCost = Number(log.daily_cost) || computeDailyCost(log.trade_name);
+    const effectiveRate = crewSize > 0 ? dailyCost / (crewSize * 8) : fallbackRate;
+
     if (isLocked || !isActive) {
       durationHours = crewSize > 0 ? Number(log.man_hours) / crewSize : 0;
       manHours = Number(log.man_hours);
-      cumulativeCost = Number(log.cumulative_cost);
+      cumulativeCost = Number(log.cumulative_cost) || Math.round(manHours * effectiveRate);
     } else {
       durationHours = (now - new Date(log.started_at).getTime()) / MS_PER_HOUR;
       manHours = Math.round(durationHours * crewSize * 100) / 100;
-      cumulativeCost = Math.round(manHours * laborRate * 100) / 100;
+      cumulativeCost = Math.round(manHours * effectiveRate * 100) / 100;
     }
 
     tradeSet.add(log.trade_name);
@@ -150,7 +185,7 @@ export async function fetchDelayDetails(
       endedAt: log.ended_at,
       durationHours: Math.round(durationHours * 100) / 100,
       manHours,
-      dailyCost: Number(log.daily_cost),
+      dailyCost,
       cumulativeCost,
       isActive,
       legalStatus,
@@ -173,7 +208,7 @@ export async function fetchDelayDetails(
       totalDailyCost: round2(active.reduce((s, d) => s + d.dailyCost, 0)),
       totalCumulativeCost: round2(delays.reduce((s, d) => s + d.cumulativeCost, 0)),
     },
-    laborRate,
+    laborRate: fallbackRate,
     trades: Array.from(tradeSet).sort(),
     projectId: pid,
   };
