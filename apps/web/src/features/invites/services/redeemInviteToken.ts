@@ -110,6 +110,21 @@ export async function redeemInviteToken(input: {
       p_user_id: resolvedUserId,
       p_project_id: invite.project_id,
     });
+
+    // 4b. Link sub org to project if not yet linked (needed for RLS visibility)
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('org_id')
+      .eq('id', resolvedUserId)
+      .single();
+
+    if (userRow?.org_id) {
+      await supabase
+        .from('projects')
+        .update({ sub_org_id: userRow.org_id })
+        .eq('id', invite.project_id)
+        .is('sub_org_id', null);
+    }
   }
 
   // 5. Mark user as onboarded (they joined via invite — no onboarding wizard needed)
