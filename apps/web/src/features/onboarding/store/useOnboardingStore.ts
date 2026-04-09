@@ -61,6 +61,7 @@ type OnboardingActions = {
   setTrades: (trades: TradeEntry[]) => void;
   toggleTrade: (tradeName: string) => void;
   moveTrade: (from: number, to: number) => void;
+  addCustomTrade: (tradeName: string) => void;
   setAreas: (areas: AreaEntry[]) => void;
   addArea: (area: AreaEntry) => void;
   removeArea: (index: number) => void;
@@ -126,10 +127,21 @@ export const useOnboardingStore = create<OnboardingState & OnboardingActions>(
       set((s) => {
         const trades = [...s.trades];
         const [moved] = trades.splice(from, 1);
-        trades.splice(to, 0, moved);
+        if (moved) trades.splice(to, 0, moved);
         return {
           trades: trades.map((t, i) => ({ ...t, sequence_order: i + 1 })),
         };
+      }),
+    addCustomTrade: (tradeName) =>
+      set((s) => {
+        const name = tradeName.trim();
+        if (!name) return {};
+        if (s.trades.some((t) => t.trade_name === name)) return {};
+        const next = [
+          ...s.trades,
+          { trade_name: name, sequence_order: s.trades.length + 1, enabled: true },
+        ];
+        return { trades: next.map((t, i) => ({ ...t, sequence_order: i + 1 })) };
       }),
 
     setAreas: (areas) => set({ areas }),

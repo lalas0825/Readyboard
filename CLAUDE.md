@@ -5,11 +5,11 @@
 > and operates offline-first in the foreman's language.
 >
 > **This is the single source of truth.** If CLAUDE.md says it, Claude Code follows it.
-> Last updated: 2026-04-06 — GC task exclusion from %, work date tracking, progress photos
+> Last updated: 2026-04-09 — Custom trade sequences with phase duplication and drag-reorder
 
 ---
 
-## Current Status — Updated April 6, 2026
+## Current Status — Updated April 9, 2026
 
 | Category | Done | Partial | Not Built | Broken |
 |----------|------|---------|-----------|--------|
@@ -18,10 +18,11 @@
 | Stripe Billing | 10 | 1 | 1 | 0 |
 | Dashboard Navigation | 11 | 0 | 0 | 0 |
 | Dashboard Pages | 11 | 0 | 0 | 0 |
-| Ready Board Grid | 16 | 0 | 0 | 0 |
+| Ready Board Grid | 17 | 0 | 0 | 0 |
 | Foreman Mobile | 25 | 0 | 0 | 0 |
 | Checklist System | 13 | 0 | 0 | 0 |
 | Legal Documentation | 15 | 0 | 0 | 0 |
+| Trade Sequences | 5 | 0 | 0 | 0 |
 | Forecast Engine | 3 | 2 | 3 | 0 |
 | Notifications | 5 | 2 | 2 | 0 |
 | Email System | 6 | 1 | 0 | 0 |
@@ -31,11 +32,23 @@
 | Landing Page & Legal | 3 | 0 | 0 | 0 |
 | Security | 8 | 0 | 0 | 0 |
 | App Store Readiness | 2 | 0 | 4 | 0 |
-| **TOTALS** | **167** | **4** | **12** | **0** |
+| **TOTALS** | **172** | **4** | **12** | **0** |
 
-**Diagnostics:** ~740 files, 34 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
+**Diagnostics:** ~755 files, 35 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
 
-### Recent Changes (April 6, 2026)
+### Recent Changes (April 9, 2026 — Custom Trade Sequences)
+
+- **Feature: Phase-aware trade sequences** — GC can duplicate a trade to create "Phase 2" variants. Example: "Metal Stud Framing P1" → "Metal Stud Framing P2" for touch-up work. Composite key pattern `"{trade_name}::{phase_label}"` in `area_trade_status.trade_type` maintains backward compatibility.
+- **Feature: Custom trades with is_custom flag** — GC can add non-standard trades (e.g., "Glass & Glazing"). Flagged in DB, can be bulk deleted from Settings.
+- **UI: Drag-and-drop trade reordering** — TradeSequenceConfig.tsx uses `dnd-kit` library for visual reordering. Two-phase RPC (`reorder_trade_sequence`) avoids UNIQUE constraint conflicts.
+- **UI: DuplicatePhaseModal + AddTradeModal** — Dedicated modals for creating phases and custom trades.
+- **UI: Grid column headers with phase suffixes** — GridHeader displays "FRAM P2" when phases present. GridFilterBar handles composite keys in filter chips.
+- **UI: Onboarding custom trade support** — StepTradeSequence has "+ Add custom trade" input. completeOnboarding.ts flags non-default trades with `is_custom=true`.
+- **Backend: tradeSequenceActions.ts + checklistActions.ts** — Server actions for duplicateTradeAsPhase, createCustomTrade, deleteCustomTrade, saveTradeChecklist.
+- **Database: trade_sequences expanded** — Added `phase_label` (nullable, e.g., "Phase 2", "Touch-up"), `description` (optional notes), `is_custom` (true for non-default trades).
+- **RPC: reorder_trade_sequence** — Two-phase update: flip to negative offsets first, then assign final sequence_order. Prevents deadlock on (project_id, area_type, sequence_order) UNIQUE.
+
+### Previous Changes (April 6, 2026)
 
 - **Fix 1 — GC VERIFY excluded from sub progress %:** `calculate_effective_pct` DB trigger now counts `task_owner = 'sub'` tasks only. Gate cap only triggers when a SUB gate is incomplete (GC gate blocks DONE status but not progress %). Mobile checklist splits into "Your tasks (X/Y)" section + "GC Verification Required" purple cards. Web GC detail panel splits into "Sub Tasks" + "GC Verification" sections with PENDING/DONE badges.
 - **Fix 2 — Auto start/end date tracking:** `area_trade_status.started_at` auto-set when sub progress first goes >0. `completed_at` set at 100%, cleared on regression (GC correction). Web detail panel shows "Work Dates" → Started · Completed · Duration.
@@ -217,6 +230,126 @@ Two modes: **"Add Units with Areas"** and **"Add Areas to Floor (no unit)"**.
 - ✅ PowerSync: `units` table synced, new area columns synced
 - ✅ `complete_onboarding` RPC creates units atomically before areas
 - ✅ All existing queries still work (areas.floor preserved, unit_id nullable)
+
+---
+
+## Custom Trade Sequences — Phase Duplication & Custom Trades ✅ (April 9, 2026)
+
+### Architecture
+
+The `trade_sequences` table is expanded to support:
+- **Phase duplication:** GC duplicates a trade to create "Phase 2", "Phase 3" variants (e.g., rough-in → trim-out)
+- **Custom trades:** GC adds non-standard trades (e.g., "Glass & Glazing", flagged with `is_custom=true`)
+- **Composite trade keys:** In `area_trade_status.trade_type`, trades with phases use key format `"{trade_name}::{phase_label}"` (e.g., `"Metal Stud Framing::Phase 2"`)
+
+### Database
+
+**`trade_sequences` new columns:**
+- `phase_label` TEXT NULLABLE — e.g., "Phase 2", "Touch-up", null for standard trades
+- `description` TEXT NULLABLE — e.g., "rough-in work for MEP trim-out"
+- `is_custom` BOOLEAN DEFAULT false — true for non-canonical 14 trades
+
+**Composite key pattern:**
+- When phase_label is set, `area_trade_status.trade_type` stores `"{trade_name}::{phase_label}"`
+- Backward compatible: trades without phase_label work normally
+- Example grid column key: `"Metal Stud Framing::Phase 2"` → displays as "FRAM P2"
+
+### UI Components
+
+**TradeSequenceConfig.tsx** (Settings → Trades & Costs tab):
+- Drag-and-drop reordering via dnd-kit
+- Per-trade action buttons: Duplicate as Phase, Delete, Edit Custom
+- Floats custom trades at bottom (amber background)
+- Keyboard shortcut: Option+R to reorder mode
+
+**DuplicatePhaseModal.tsx:**
+- Select base trade → enter phase_label (e.g., "Phase 2", "Touch-up")
+- Auto-assigns sequence_order after last trade
+- Creates new checklist tasks (synced from base trade template)
+
+**AddTradeModal.tsx:**
+- Text input for custom trade name
+- Validates: not a duplicate, not empty
+- Flags as `is_custom=true` in DB
+- Cannot delete canonical 14 trades
+
+**GridHeader + GridFilterBar:**
+- GridHeader: displays "FRAM P2" for trades with phases (abbreviation + phase number)
+- GridFilterBar: composite keys parse into "Framing P2" filter chips
+
+**StepTradeSequence (Onboarding):**
+- "+ Add custom trade" input field + button
+- Custom trades appear as amber badge "Custom" next to name
+- All custom trades sent to `completeOnboarding` RPC
+
+### Server Actions
+
+**`tradeSequenceActions.ts`:**
+- `duplicateTradeAsPhase(project_id, base_trade_name, phase_label)` → calls RPC, returns new trade_sequence record
+- `createCustomTrade(project_id, trade_name)` → inserts, flags `is_custom=true`
+- `deleteCustomTrade(project_id, trade_name)` → soft-delete or hard-delete (RLS validates project ownership)
+
+**`checklistActions.ts`:**
+- `getTradeChecklist(project_id, trade_name)` → returns task templates
+- `saveTradeChecklist(project_id, trade_name, tasks)` → upserts task templates
+
+**`fetchGridData.ts`:**
+- Modified to generate composite keys when `trade_sequences.phase_label IS NOT NULL`
+- Backward compatible: null phase_label produces simple trade_name key
+
+### RPC: reorder_trade_sequence
+
+Two-phase update prevents UNIQUE constraint conflicts on (project_id, area_type, sequence_order):
+
+```sql
+-- Phase 1: Flip all affected rows to negative offsets (temporary)
+UPDATE trade_sequences 
+SET sequence_order = -sequence_order 
+WHERE project_id = p_project_id AND area_type = p_area_type;
+
+-- Phase 2: Assign final sequence_order based on new_order array
+UPDATE trade_sequences 
+SET sequence_order = array_position(p_new_order, trade_name) 
+WHERE project_id = p_project_id AND area_type = p_area_type;
+```
+
+### Workflow Examples
+
+**Example 1: Duplicate Framing for Phase 2**
+1. GC opens Settings → Trades & Costs
+2. Clicks "Duplicate Phase" on "Metal Stud Framing"
+3. Modal: choose phase_label = "Phase 2"
+4. New row: "Metal Stud Framing" with phase_label="Phase 2", sequence_order=14 (at bottom)
+5. Grid shows new column: "FRAM P2"
+6. Foreman reports "Metal Stud Framing::Phase 2" status independently
+
+**Example 2: Add Custom Trade (Glass & Glazing)**
+1. GC opens Settings → Trades & Costs
+2. Clicks "+ Add Custom Trade"
+3. Modal: type "Glass & Glazing"
+4. Trade inserted with `is_custom=true` at sequence_order=15
+5. Appears in grid with amber badge in Settings list
+6. Can be deleted; canonical 14 trades cannot
+
+**Example 3: Custom Trade in Onboarding**
+1. GC sets up new project
+2. Step 3 Trade Sequence: sees 14 default trades
+3. Inputs "+ Custom trade" = "Facade Work"
+4. Badge shows "Facade Work [Custom]"
+5. On completion, completeOnboarding RPC flags trade as `is_custom=true`
+
+### Backward Compatibility
+
+- Old projects with no phases continue to work (phase_label=NULL)
+- Grid queries filter on phase_label for phase-awareness
+- Task templates auto-sync when phase is duplicated (via `sync_task_templates_to_areas` RPC)
+- No migration required for existing projects (new columns are NULL-safe)
+
+### Remaining (P2)
+
+- [ ] 🔨 Bulk delete custom trades (Settings → select multiple, delete button)
+- [ ] 🔨 Edit phase_label after creation
+- [ ] 🔨 Copy all task assignments from base phase to new phase (currently empty)
 
 ---
 

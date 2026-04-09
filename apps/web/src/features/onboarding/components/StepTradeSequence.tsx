@@ -1,13 +1,40 @@
 'use client';
 
+import { useState } from 'react';
 import { useOnboardingStore } from '../store/useOnboardingStore';
 
 // Trade names in store are already human-readable (match DB exactly)
 
+const DEFAULT_TRADE_NAMES = new Set([
+  'Rough Plumbing',
+  'Metal Stud Framing',
+  'MEP Rough-In',
+  'Fire Stopping',
+  'Insulation & Drywall',
+  'Waterproofing',
+  'Tile / Stone',
+  'Paint',
+  'Ceiling Grid / ACT',
+  'MEP Trim-Out',
+  'Doors & Hardware',
+  'Millwork & Countertops',
+  'Flooring',
+  'Final Clean & Punch',
+]);
+
 export function StepTradeSequence() {
-  const { trades, toggleTrade, moveTrade, nextStep, prevStep } = useOnboardingStore();
+  const { trades, toggleTrade, moveTrade, addCustomTrade, nextStep, prevStep } =
+    useOnboardingStore();
+  const [customName, setCustomName] = useState('');
 
   const enabledCount = trades.filter((t) => t.enabled).length;
+
+  function handleAddCustom() {
+    const name = customName.trim();
+    if (!name) return;
+    addCustomTrade(name);
+    setCustomName('');
+  }
 
   return (
     <div className="space-y-6">
@@ -51,6 +78,11 @@ export function StepTradeSequence() {
             {/* Trade name */}
             <span className="flex-1 text-sm text-zinc-200">
               {trade.trade_name}
+              {!DEFAULT_TRADE_NAMES.has(trade.trade_name) && (
+                <span className="ml-2 rounded bg-purple-500/20 px-1.5 py-0.5 text-[10px] font-medium text-purple-300">
+                  Custom
+                </span>
+              )}
             </span>
 
             {/* Reorder buttons */}
@@ -78,6 +110,31 @@ export function StepTradeSequence() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Add custom trade */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={customName}
+          onChange={(e) => setCustomName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAddCustom();
+            }
+          }}
+          placeholder="Add custom trade (e.g. Glass & Glazing)"
+          className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500"
+        />
+        <button
+          type="button"
+          onClick={handleAddCustom}
+          disabled={!customName.trim()}
+          className="rounded-lg bg-green-500/20 px-4 py-2 text-sm font-bold text-green-400 disabled:opacity-30"
+        >
+          + Add
+        </button>
       </div>
 
       <p className="text-xs text-zinc-500">

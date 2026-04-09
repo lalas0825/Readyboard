@@ -7,7 +7,7 @@ import { LegalDocsTab } from './LegalDocsTab';
 import { fetchUnreadNotificationCount } from '../services/fetchNotifications';
 import { GCVerificationQueue } from '@/features/checklist';
 import { fetchVerificationCount } from '@/features/checklist/services/fetchVerificationCount';
-import { TradeConfig } from '@/features/settings';
+import { TradeSequenceConfig } from '@/features/settings';
 import { UpgradePrompt } from '@/features/billing/components/UpgradePrompt';
 import { BillingTab } from '@/features/billing/components/BillingTab';
 import type { PlanId } from '@/lib/stripe';
@@ -105,7 +105,7 @@ export function DashboardTabs({ gridData, dashboardData, planData }: DashboardTa
           ? <UpgradePrompt projectId={gridData.projectId} feature="Legal Documents" description="Generate NODs, REAs, and Evidence Packages with SHA-256 hashing and receipt tracking." />
           : <LegalDocsTab projectId={gridData.projectId} />
       )}
-      {activeTab === 'settings' && <TradeConfig projectId={gridData.projectId} />}
+      {activeTab === 'settings' && <TradeSequenceConfig projectId={gridData.projectId} />}
       {activeTab === 'billing' && (
         <BillingTab
           projectId={gridData.projectId}

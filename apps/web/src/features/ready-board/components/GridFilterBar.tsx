@@ -61,17 +61,25 @@ export function GridFilterBar({
         ))}
       </FilterRow>
 
-      {/* Trade chips */}
+      {/* Trade chips — handles composite keys "{trade_name}::{phase_label}" */}
       <FilterRow label="Trade">
-        {trades.map((trade) => (
-          <Chip
-            key={trade}
-            label={TRADE_SHORT[trade] ?? trade.slice(0, 5)}
-            title={trade}
-            active={selectedTrades.has(trade)}
-            onClick={() => onTradeToggle(trade)}
-          />
-        ))}
+        {trades.map((tradeKey) => {
+          const [name, phase] = tradeKey.split('::');
+          const safeName = name ?? tradeKey;
+          const baseLabel = TRADE_SHORT[safeName] ?? safeName.slice(0, 5);
+          const phaseNum = phase?.match(/\d+/)?.[0];
+          const label = phaseNum ? `${baseLabel} P${phaseNum}` : baseLabel;
+          const title = phase ? `${safeName} — ${phase}` : safeName;
+          return (
+            <Chip
+              key={tradeKey}
+              label={label}
+              title={title}
+              active={selectedTrades.has(tradeKey)}
+              onClick={() => onTradeToggle(tradeKey)}
+            />
+          );
+        })}
       </FilterRow>
 
       {/* Status chips */}

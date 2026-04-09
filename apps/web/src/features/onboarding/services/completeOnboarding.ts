@@ -43,6 +43,35 @@ export async function completeOnboarding(input: {
 
   const result = data as { ok: boolean; project_id: string; areas_created: number; tasks_cloned: number };
 
+  // Post-process: flag custom trades (any trade not in the canonical 14-trade default list)
+  // so they can be deleted later from Settings. Session 2 addition.
+  const DEFAULT_TRADE_NAMES = [
+    'Rough Plumbing',
+    'Metal Stud Framing',
+    'MEP Rough-In',
+    'Fire Stopping',
+    'Insulation & Drywall',
+    'Waterproofing',
+    'Tile / Stone',
+    'Paint',
+    'Ceiling Grid / ACT',
+    'MEP Trim-Out',
+    'Doors & Hardware',
+    'Millwork & Countertops',
+    'Flooring',
+    'Final Clean & Punch',
+  ];
+  const customNames = (input.trades ?? [])
+    .map((t) => t.trade_name)
+    .filter((name) => !DEFAULT_TRADE_NAMES.includes(name));
+  if (customNames.length > 0) {
+    await supabase
+      .from('trade_sequences')
+      .update({ is_custom: true })
+      .eq('project_id', result.project_id)
+      .in('trade_name', customNames);
+  }
+
   return {
     ok: true,
     projectId: result.project_id,

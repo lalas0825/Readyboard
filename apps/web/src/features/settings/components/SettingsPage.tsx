@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TradeConfig } from './TradeConfig';
+import { TradeSequenceConfig } from './TradeSequenceConfig';
 import { LaborRatesConfig } from './LaborRatesConfig';
 import { GeneralSection } from './GeneralSection';
 import { AuditLogSection } from './AuditLogSection';
@@ -79,10 +79,10 @@ export function SettingsPage({ projectSettings, planId }: Props) {
               <GeneralSection settings={projectSettings} />
             )}
             {activeTab === 'trades' && (
-              <>
-                <TradeConfig projectId={projectSettings.projectId} />
+              <div className="space-y-8">
+                <TradeSequenceConfig projectId={projectSettings.projectId} />
                 <LaborRatesConfig projectId={projectSettings.projectId} />
-              </>
+              </div>
             )}
             {activeTab === 'legal' && (
               <LegalSection settings={projectSettings} />

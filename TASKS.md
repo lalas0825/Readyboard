@@ -14,7 +14,7 @@
 > - 🔨 BUILD — Does not exist, create from scratch
 > - 🔌 WIRE — Code exists but not connected
 >
-> Last updated: 2026-04-05 (PowerSync v6 + invite fixes + mobile watch() + dev build workflow)
+> Last updated: 2026-04-09 (Custom Trade Sequences: phase duplication + custom trades + drag-reorder)
 
 ---
 
@@ -45,6 +45,50 @@
 ---
 
 ## 🟡 P1 — LAUNCH BLOCKERS (this week, ~20 hours)
+
+### 15. Custom Trade Sequences with Phase Duplication & Custom Trades — ✅ DONE (April 9, 2026)
+
+#### Database ✅
+- [x] `trade_sequences`: +phase_label (nullable), +description, +is_custom
+- [x] `reorder_trade_sequence` RPC with two-phase update (negative offset flip, then final assign)
+- [x] RPC: `duplicateTradeAsPhase(project_id, base_trade, phase_label)`
+- [x] RPC: `createCustomTrade(project_id, trade_name)` with `is_custom=true` flag
+- [x] RPC: `deleteCustomTrade(project_id, trade_name)` with RLS validation
+- [x] Task template sync: `sync_task_templates_to_areas` RPC runs on phase duplication
+
+#### Backend Services ✅
+- [x] `tradeSequenceActions.ts`: duplicateTradeAsPhase, createCustomTrade, deleteCustomTrade
+- [x] `checklistActions.ts`: getTradeChecklist, saveTradeChecklist
+- [x] `fetchGridData.ts`: generates composite keys when phase_label present (e.g., "Metal Stud Framing::Phase 2")
+
+#### UI Components ✅
+- [x] `TradeSequenceConfig.tsx`: drag-and-drop reordering via dnd-kit, action buttons, custom trades float at bottom
+- [x] `DuplicatePhaseModal.tsx`: select base trade, enter phase_label, auto-assign sequence_order
+- [x] `AddTradeModal.tsx`: text input for custom trade, validation, amber badge in list
+- [x] `ChecklistEditor.tsx`: modal for task CRUD per trade
+- [x] `SettingsPage.tsx`: updated to use TradeSequenceConfig instead of TradeConfig
+- [x] `DashboardTabs.tsx`: updated import to TradeSequenceConfig
+- [x] `GridHeader.tsx`: phase-aware display (e.g., "FRAM P2" with phase number suffix)
+- [x] `GridFilterBar.tsx`: parse composite keys, display phase info in filter chips
+- [x] `StepTradeSequence.tsx`: "+ Add custom trade" input, custom badge, flag trades in onboarding
+- [x] `completeOnboarding.ts`: post-process to flag non-default trades with `is_custom=true`
+
+#### Removed ✅
+- [x] Deleted `TradeConfig.tsx`
+- [x] Deleted `fetchTradeConfigs.ts`
+- [x] Updated `settings/index.ts` to remove orphaned imports
+
+#### Testing ✅
+- [x] `npx tsc --noEmit` — 0 errors
+- [x] `npm run build` — ✅ success
+- [x] Manual testing: drag-and-drop reordering, phase duplication, custom trade creation
+
+#### Remaining (P2):
+- [ ] 🔨 Bulk delete custom trades
+- [ ] 🔨 Edit phase_label after creation
+- [ ] 🔨 Copy task assignments from base phase to new phase
+
+
 
 ### 5. IN PROGRESS Status on Ready Board Grid — ✅ DONE
 
@@ -371,6 +415,46 @@ Audit result: 9 were already wired, 3 were added.
 
 ---
 
+## Recent Changes (April 9, 2026 — Custom Trade Sequences)
+
+### Feature: Custom Trade Sequences — Phase Duplication + Custom Trades ✅
+
+**Database migrations applied:**
+- (None required — new columns nullable, backward compatible)
+
+**Files created:**
+- `apps/web/src/features/settings/components/TradeSequenceConfig.tsx` — drag-and-drop trade reordering
+- `apps/web/src/features/settings/components/DuplicatePhaseModal.tsx` — modal for phase creation
+- `apps/web/src/features/settings/components/AddTradeModal.tsx` — modal for custom trades
+- `apps/web/src/features/settings/components/ChecklistEditor.tsx` — task CRUD modal
+- `apps/web/src/features/settings/services/tradeSequenceActions.ts` — server actions (duplicate, create, delete)
+- `apps/web/src/features/checklist/services/checklistActions.ts` — checklist server actions
+
+**Files modified:**
+- `apps/web/src/features/settings/page.tsx` — use TradeSequenceConfig
+- `apps/web/src/features/dashboard/components/DashboardTabs.tsx` — import TradeSequenceConfig
+- `apps/web/src/features/ready-board/services/fetchGridData.ts` — composite key generation
+- `apps/web/src/features/ready-board/components/GridHeader.tsx` — phase-aware abbreviations
+- `apps/web/src/features/ready-board/components/GridFilterBar.tsx` — composite key parsing
+- `apps/web/src/features/onboarding/components/StepTradeSequence.tsx` — custom trade input
+- `apps/web/src/features/onboarding/services/completeOnboarding.ts` — flag custom trades
+
+**Files deleted:**
+- `apps/web/src/features/settings/components/TradeConfig.tsx`
+- `apps/web/src/features/settings/services/fetchTradeConfigs.ts`
+
+**Key patterns:**
+- Composite trade keys: `"{trade_name}::{phase_label}"` in area_trade_status.trade_type
+- Two-phase RPC update (negative offset flip) prevents UNIQUE constraint deadlock
+- Backward compatible: null phase_label works normally
+- Custom trades flagged with `is_custom=true` for bulk cleanup
+
+**Build status:**
+- `npx tsc --noEmit` — ✅ 0 errors
+- `npm run build` — ✅ success
+
+---
+
 ## Recent Changes (April 6, 2026)
 
 ### Bug fixes committed April 5-6:
@@ -429,5 +513,5 @@ Audit result: 9 were already wired, 3 were added.
 
 ---
 
-*ReadyBoard v6.0 — TASKS.md — Updated 2026-04-06 (GC task exclusion + work dates + progress photos)*
+*ReadyBoard v6.0 — TASKS.md — Updated 2026-04-09 (Custom Trade Sequences: phase duplication + custom trades + drag-reorder)*
 *readyboard.ai*

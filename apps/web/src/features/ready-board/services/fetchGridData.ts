@@ -96,19 +96,21 @@ export async function fetchGridData(
     return { rawCells: [], delays: [], trades: [], projectId: pid, actions: [], safetyGateEnabled: false, units: [] };
   }
 
-  // Trade sequence order
+  // Trade sequence order — phase-aware. Column keys are composite: "{trade_name}::{phase_label}"
+  // when a phase is present, otherwise just the plain trade_name. Matches area_trade_status.trade_type.
   const { data: seqRows } = await supabase
     .from('trade_sequences')
-    .select('trade_name, sequence_order')
+    .select('trade_name, phase_label, sequence_order')
     .eq('project_id', pid)
     .order('sequence_order');
 
   const seqMap = new Map<string, number>();
   const trades: string[] = [];
   for (const s of seqRows ?? []) {
-    if (!seqMap.has(s.trade_name)) {
-      seqMap.set(s.trade_name, s.sequence_order);
-      trades.push(s.trade_name);
+    const key = s.phase_label ? `${s.trade_name}::${s.phase_label}` : s.trade_name;
+    if (!seqMap.has(key)) {
+      seqMap.set(key, s.sequence_order);
+      trades.push(key);
     }
   }
 
