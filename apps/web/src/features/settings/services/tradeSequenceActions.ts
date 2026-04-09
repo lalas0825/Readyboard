@@ -2,6 +2,29 @@
 
 import { createServiceClient } from '@/lib/supabase/service';
 
+// ---------------------------------------------------------------------------
+// Default 14-trade sequence (NYC interior finish)
+// ---------------------------------------------------------------------------
+
+const DEFAULT_TRADES = [
+  { trade_name: 'Rough Plumbing', sequence_order: 1 },
+  { trade_name: 'Metal Stud Framing', sequence_order: 2 },
+  { trade_name: 'MEP Rough-In', sequence_order: 3 },
+  { trade_name: 'Fire Stopping', sequence_order: 4 },
+  { trade_name: 'Insulation & Drywall', sequence_order: 5 },
+  { trade_name: 'Waterproofing', sequence_order: 6 },
+  { trade_name: 'Tile / Stone', sequence_order: 7 },
+  { trade_name: 'Paint', sequence_order: 8 },
+  { trade_name: 'Ceiling Grid / ACT', sequence_order: 9 },
+  { trade_name: 'MEP Trim-Out', sequence_order: 10 },
+  { trade_name: 'Doors & Hardware', sequence_order: 11 },
+  { trade_name: 'Millwork & Countertops', sequence_order: 12 },
+  { trade_name: 'Flooring', sequence_order: 13 },
+  { trade_name: 'Final Clean & Punch', sequence_order: 14 },
+];
+
+const DEFAULT_AREA_TYPES = ['bathroom', 'kitchen', 'corridor', 'office'];
+
 /**
  * Trade-sequence mutations: duplicate as phase, create custom, delete custom.
  *
@@ -401,6 +424,77 @@ export async function deleteCustomTrade(params: {
       p_after_order: anchor.order,
       p_shift_by: -1,
     });
+  }
+
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Initialize default trades if project has none
+// ---------------------------------------------------------------------------
+
+export async function initializeDefaultTrades(projectId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = createServiceClient();
+
+  // Check if any trades exist
+  const { data: existing, error: checkErr } = await supabase
+    .from('trade_sequences')
+    .select('trade_name')
+    .eq('project_id', projectId)
+    .limit(1);
+
+  if (checkErr) return { ok: false, error: `Check failed: ${checkErr.message}` };
+  if (existing && existing.length > 0) {
+    return { ok: false, error: 'Project already has trades configured.' };
+  }
+
+  // Determine which area_types to use
+  // (If project has areas, use what's already there; otherwise use defaults)
+  let areaTypes: string[] = DEFAULT_AREA_TYPES;
+  const { data: projectAreas } = await supabase
+    .from('areas')
+    .select('area_type')
+    .eq('project_id', projectId);
+
+  if (projectAreas && projectAreas.length > 0) {
+    const set = new Set<string>();
+    for (const area of projectAreas) {
+      if (area.area_type) set.add(area.area_type);
+    }
+    if (set.size > 0) areaTypes = [...set];
+  }
+
+  // Insert trade_sequences for each (trade, area_type) combination
+  const rows = [];
+  for (const trade of DEFAULT_TRADES) {
+    for (const areaType of areaTypes) {
+      rows.push({
+        project_id: projectId,
+        area_type: areaType,
+        trade_name: trade.trade_name,
+        phase_label: null,
+        description: null,
+        sequence_order: trade.sequence_order,
+        straight_time_hours: 8,
+        ot_multiplier: 1.5,
+        dt_multiplier: 2.0,
+        saturday_rule: 'ot',
+        typical_crew: { foreman: 1, journeyperson: 2, apprentice: 1, helper: 0 },
+        is_custom: false,
+      });
+    }
+  }
+
+  const { error: insertErr } = await supabase.from('trade_sequences').insert(rows);
+  if (insertErr) return { ok: false, error: `Insert failed: ${insertErr.message}` };
+
+  // Create area_trade_status for each trade
+  for (const trade of DEFAULT_TRADES) {
+    const { error: statusErr } = await supabase.rpc('create_status_for_new_trade', {
+      p_project_id: projectId,
+      p_trade_type: trade.trade_name,
+    });
+    if (statusErr) return { ok: false, error: `Status creation failed: ${statusErr.message}` };
   }
 
   return { ok: true };

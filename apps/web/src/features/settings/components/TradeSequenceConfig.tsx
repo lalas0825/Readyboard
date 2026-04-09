@@ -22,7 +22,7 @@ import {
   reorderTradeSequence,
   type TradeSequenceItem,
 } from '../services/fetchTradeSequence';
-import { deleteCustomTrade } from '../services/tradeSequenceActions';
+import { deleteCustomTrade, initializeDefaultTrades } from '../services/tradeSequenceActions';
 import { updateTradeMode } from '../services/updateTradeMode';
 import { ChecklistEditor } from './ChecklistEditor';
 import { DuplicatePhaseModal } from './DuplicatePhaseModal';
@@ -134,6 +134,19 @@ export function TradeSequenceConfig({ projectId }: Props) {
     }
   }
 
+  async function handleInitializeDefaults() {
+    setBusy('init');
+    const result = await initializeDefaultTrades(projectId);
+    setBusy(null);
+
+    if (result.ok) {
+      toast.success('Initialized 14 default trades');
+      refresh();
+    } else {
+      toast.error(result.error);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -159,8 +172,25 @@ export function TradeSequenceConfig({ projectId }: Props) {
           Loading trade sequence…
         </div>
       ) : trades.length === 0 ? (
-        <div className="py-12 text-center text-sm text-zinc-500">
-          No trades configured. Click &quot;+ Add Trade&quot; to start.
+        <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-900/40 p-8 text-center">
+          <p className="text-sm text-zinc-400">
+            No trades configured yet. You can initialize the default 14-trade NYC interior finish sequence, or add custom trades one by one.
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={handleInitializeDefaults}
+              disabled={busy === 'init'}
+              className="rounded-lg bg-green-500 px-6 py-2.5 text-sm font-bold text-black disabled:opacity-50"
+            >
+              {busy === 'init' ? 'Initializing…' : 'Initialize Default Trades'}
+            </button>
+            <button
+              onClick={() => setShowAdd(true)}
+              className="rounded-lg border border-green-500/30 bg-green-500/20 px-6 py-2.5 text-sm font-medium text-green-400"
+            >
+              + Add Trade
+            </button>
+          </div>
         </div>
       ) : (
         <DndContext
