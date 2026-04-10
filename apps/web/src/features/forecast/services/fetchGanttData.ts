@@ -53,12 +53,18 @@ export async function fetchGanttData(projectId: string): Promise<GanttData> {
 
   const supabase = session.isDevBypass ? createServiceClient() : await createClient();
 
-  const [baselinesRes, actualsRes, tradesRes] = await Promise.all([
+  const [baselinesRes, scheduleItemsRes, actualsRes, tradesRes] = await Promise.all([
     supabase
       .from('schedule_baselines')
       .select('id, trade_name, floor, planned_start, planned_end')
       .eq('project_id', projectId)
       .order('planned_start'),
+    // Also fetch CSV-imported schedule_items (joined with areas to get floor)
+    supabase
+      .from('schedule_items')
+      .select('id, trade_name, planned_start, planned_finish, area_id, areas(floor)')
+      .eq('project_id', projectId)
+      .not('area_id', 'is', null),
     supabase
       .from('area_trade_status')
       .select(
@@ -72,9 +78,62 @@ export async function fetchGanttData(projectId: string): Promise<GanttData> {
       .order('sequence_order'),
   ]);
 
-  const baselines = baselinesRes.data ?? [];
+  const manualBaselines = baselinesRes.data ?? [];
+  const csvItems = scheduleItemsRes.data ?? [];
   const actuals = actualsRes.data ?? [];
   const trades = tradesRes.data ?? [];
+
+  // Merge sources: manual baselines take priority, CSV items fill gaps.
+  // Aggregate CSV items per floor × trade (multiple areas per floor×trade → use min start, max end)
+  type BaselineEntry = { id: string; trade_name: string; floor: string; planned_start: string | null; planned_end: string | null };
+  const baselineMap = new Map<string, BaselineEntry>();
+
+  // Add manual baselines first (priority)
+  for (const b of manualBaselines) {
+    const key = `${b.floor}||${b.trade_name}`;
+    baselineMap.set(key, {
+      id: b.id as string,
+      trade_name: b.trade_name as string,
+      floor: b.floor as string,
+      planned_start: (b.planned_start as string) ?? null,
+      planned_end: (b.planned_end as string) ?? null,
+    });
+  }
+
+  // Fill from CSV schedule_items (only if no manual baseline exists for that floor×trade)
+  for (const item of csvItems) {
+    const areaData = item.areas as unknown as { floor: string } | null;
+    if (!areaData?.floor) continue;
+    const floor = areaData.floor;
+    const tradeName = item.trade_name as string;
+    const key = `${floor}||${tradeName}`;
+
+    if (baselineMap.has(key)) continue; // manual takes priority
+
+    const existing = baselineMap.get(key);
+    const start = (item.planned_start as string) ?? null;
+    const end = (item.planned_finish as string) ?? null;
+
+    if (!existing) {
+      baselineMap.set(key, {
+        id: item.id as string,
+        trade_name: tradeName,
+        floor,
+        planned_start: start,
+        planned_end: end,
+      });
+    } else {
+      // Merge: earliest start, latest end
+      if (start && (!existing.planned_start || start < existing.planned_start)) {
+        existing.planned_start = start;
+      }
+      if (end && (!existing.planned_end || end > existing.planned_end)) {
+        existing.planned_end = end;
+      }
+    }
+  }
+
+  const baselines = Array.from(baselineMap.values());
 
   const tradeOrder = trades.map((t) => t.trade_name as string);
   const seqMap = new Map(trades.map((t) => [t.trade_name as string, t.sequence_order as number]));
