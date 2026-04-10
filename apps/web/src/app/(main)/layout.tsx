@@ -46,21 +46,26 @@ export default async function MainLayout({
 
   const projectCtx = await fetchProjectContext();
 
-  // Fetch trial info for banner
+  // Fetch trial info for banner — parallel with nothing (depends on projectCtx.currentProjectId)
+  // but isolated so it never blocks rendering if it fails.
   let trialEndsAt: string | null = null;
   let subStatus = 'active';
   if (projectCtx.currentProjectId && !session.isDevBypass) {
-    const supabase2 = createServiceClient();
-    const { data: sub } = await supabase2
-      .from('project_subscriptions')
-      .select('status, trial_ends_at')
-      .eq('project_id', projectCtx.currentProjectId)
-      .in('status', ['active', 'past_due', 'trialing'])
-      .limit(1)
-      .maybeSingle();
-    if (sub) {
-      trialEndsAt = sub.trial_ends_at;
-      subStatus = sub.status;
+    try {
+      const supabase2 = createServiceClient();
+      const { data: sub } = await supabase2
+        .from('project_subscriptions')
+        .select('status, trial_ends_at')
+        .eq('project_id', projectCtx.currentProjectId)
+        .in('status', ['active', 'past_due', 'trialing'])
+        .limit(1)
+        .maybeSingle();
+      if (sub) {
+        trialEndsAt = sub.trial_ends_at;
+        subStatus = sub.status;
+      }
+    } catch {
+      // Non-fatal — banner just won't show
     }
   }
 

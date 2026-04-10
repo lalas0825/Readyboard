@@ -43,13 +43,12 @@ export async function fetchGridData(
     return { rawCells: [], delays: [], trades: [], projectId: '', actions: [], safetyGateEnabled: false, units: [] };
   }
 
-  // Single query: areas + area_trade_status + trade_sequences
-  // Supabase default limit is 1000 rows. Large projects (40 floors × 20 areas × 14 trades)
-  // can exceed this. Fetch in pages of 5000 to handle up to ~50k cells.
-  let rawRows: Record<string, unknown>[] = [];
-  let gridError: { message: string } | null = null;
-  {
-    const PAGE_SIZE = 1000;
+  // Run grid, trade sequence, active delays, and units queries in parallel.
+  // Grid uses a pagination loop (internally sequential) but runs concurrently with the others.
+  const PAGE_SIZE = 1000;
+
+  async function fetchAllGridRows() {
+    let rows: Record<string, unknown>[] = [];
     let offset = 0;
     let hasMore = true;
     while (hasMore) {
@@ -80,33 +79,46 @@ export async function fetchGridData(
         `)
         .eq('areas.project_id', pid)
         .range(offset, offset + PAGE_SIZE - 1);
-
-      if (error) {
-        gridError = error;
-        break;
-      }
-      rawRows = rawRows.concat(page ?? []);
+      if (error) return { rows: null, error };
+      rows = rows.concat(page ?? []);
       hasMore = (page?.length ?? 0) === PAGE_SIZE;
       offset += PAGE_SIZE;
     }
+    return { rows, error: null };
   }
 
-  if (gridError) {
-    console.error('[ReadyBoard] Grid query failed:', gridError);
+  const [gridResult, seqResult, delayResult, unitResult] = await Promise.all([
+    fetchAllGridRows(),
+    supabase
+      .from('trade_sequences')
+      .select('trade_name, phase_label, sequence_order')
+      .eq('project_id', pid)
+      .order('sequence_order'),
+    supabase
+      .from('delay_logs')
+      .select('id, area_id, trade_name, reason_code, cumulative_cost, daily_cost, man_hours, crew_size, started_at, areas!inner(project_id)')
+      .eq('areas.project_id', pid)
+      .is('ended_at', null),
+    supabase
+      .from('units')
+      .select('id, name, floor, unit_type, sort_order')
+      .eq('project_id', pid)
+      .order('floor')
+      .order('sort_order'),
+  ]);
+
+  if (gridResult.error) {
+    console.error('[ReadyBoard] Grid query failed:', gridResult.error);
     return { rawCells: [], delays: [], trades: [], projectId: pid, actions: [], safetyGateEnabled: false, units: [] };
   }
 
+  const rawRows = gridResult.rows ?? [];
+
   // Trade sequence order — phase-aware. Column keys are composite: "{trade_name}::{phase_label}"
   // when a phase is present, otherwise just the plain trade_name. Matches area_trade_status.trade_type.
-  const { data: seqRows } = await supabase
-    .from('trade_sequences')
-    .select('trade_name, phase_label, sequence_order')
-    .eq('project_id', pid)
-    .order('sequence_order');
-
   const seqMap = new Map<string, number>();
   const trades: string[] = [];
-  for (const s of seqRows ?? []) {
+  for (const s of seqResult.data ?? []) {
     const key = s.phase_label ? `${s.trade_name}::${s.phase_label}` : s.trade_name;
     if (!seqMap.has(key)) {
       seqMap.set(key, s.sequence_order);
@@ -114,12 +126,8 @@ export async function fetchGridData(
     }
   }
 
-  // Active delays (ended_at IS NULL) — scoped to current project
-  const { data: delayRows } = await supabase
-    .from('delay_logs')
-    .select('id, area_id, trade_name, reason_code, cumulative_cost, daily_cost, man_hours, crew_size, started_at, areas!inner(project_id)')
-    .eq('areas.project_id', pid)
-    .is('ended_at', null);
+  // Active delays (ended_at IS NULL) — already fetched in parallel above
+  const delayRows = delayResult.data;
 
   // Transform raw rows
   const rawCells: RawCellData[] = (rawRows ?? []).map((row: Record<string, unknown>) => {
@@ -202,15 +210,8 @@ export async function fetchGridData(
     });
   }
 
-  // Fetch units for this project
-  const { data: unitRows } = await supabase
-    .from('units')
-    .select('id, name, floor, unit_type, sort_order')
-    .eq('project_id', pid)
-    .order('floor')
-    .order('sort_order');
-
-  const units: UnitData[] = (unitRows ?? []).map((u) => ({
+  // Units already fetched in parallel above
+  const units: UnitData[] = (unitResult.data ?? []).map((u) => ({
     id: u.id as string,
     name: u.name as string,
     floor: u.floor as string,
