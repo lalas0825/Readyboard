@@ -14,7 +14,7 @@
 > - 🔨 BUILD — Does not exist, create from scratch
 > - 🔌 WIRE — Code exists but not connected
 >
-> Last updated: 2026-04-09 (Performance: JWT auth + loading skeletons + parallel queries + toggle fix)
+> Last updated: 2026-04-10 (Schedule manual entry tab + CSV import)
 
 ---
 
@@ -226,6 +226,17 @@
 - [x] **Overview: removed extra `fetchGridData` call** — was fetching 780+ rows for just `projectId`
 - [x] **Billing past_due redirect moved to layout** — eliminates extra DB query in middleware on every nav
 - [x] **Settings toggle visibility fix** — PERCENTAGE/CHECKLIST toggle now amber/green with visible border
+
+### Schedule Manual Entry — ✅ COMPLETE (April 10, 2026)
+
+- [x] `schedule_baselines` table: `project_id × trade_name × floor` UNIQUE, `duration_days` generated column
+- [x] RLS: project members SELECT, GC roles ALL
+- [x] Schedule page: [✏️ Manual] + [📁 Import] tab toggle
+- [x] ManualEntryTab: inline date inputs, work-day duration, status/actual from ATS, delta
+- [x] "Apply to all floors" button per trade (offset by N work days, default 2d)
+- [x] `fetchFloorTradeMatrix`: aggregates ATS per floor × trade
+- [x] `upsertScheduleBaselines`: server action with onConflict upsert
+- [x] Page: 4 parallel fetches (items + plan + baselines + matrix)
 
 ### Forecast Engine Completion — ✅ CORE DONE
 
@@ -559,5 +570,5 @@ Audit result: 9 were already wired, 3 were added.
 
 ---
 
-*ReadyBoard v6.0 — TASKS.md — Updated 2026-04-09 (Custom Trade Sequences: phase duplication + custom trades + drag-reorder)*
+*ReadyBoard v6.0 — TASKS.md — Updated 2026-04-10 (Schedule manual entry tab + CSV import)*
 *readyboard.ai*

@@ -5,11 +5,11 @@
 > and operates offline-first in the foreman's language.
 >
 > **This is the single source of truth.** If CLAUDE.md says it, Claude Code follows it.
-> Last updated: 2026-04-09 — Performance: JWT auth + loading skeletons + parallel queries
+> Last updated: 2026-04-10 — Schedule manual entry tab + CSV import
 
 ---
 
-## Current Status — Updated April 9, 2026
+## Current Status — Updated April 10, 2026
 
 | Category | Done | Partial | Not Built | Broken |
 |----------|------|---------|-----------|--------|
@@ -35,9 +35,19 @@
 | App Store Readiness | 2 | 0 | 4 | 0 |
 | **TOTALS** | **177** | **4** | **12** | **0** |
 
-**Diagnostics:** ~290 TypeScript files (248 web + 31 mobile + 11 packages), 34 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
+**Diagnostics:** ~290 TypeScript files (248 web + 31 mobile + 11 packages), 35 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
 
-### Recent Changes (April 9, 2026 — Performance Optimizations)
+### Recent Changes (April 10, 2026 — Schedule Manual Entry)
+
+- **`schedule_baselines` table** — `project_id × trade_name × floor` (UNIQUE), `planned_start DATE`, `planned_end DATE`, `duration_days` auto-computed generated column. RLS: SELECT for project members, ALL for GC roles.
+- **Schedule page: 2-tab layout** — [✏️ Manual] shows inline editable floor × trade table; [📁 Import] shows existing CSV upload. Tab state managed client-side.
+- **ManualEntryTab** — Rows grouped by trade, each floor shows: editable Start/End date inputs, auto-computed work-day Duration, read-only Status/Actual Start/Actual End from `area_trade_status`, Delta (early/late in work days).
+- **"Apply to all floors"** button per trade — Takes first floor's dates, offsets each subsequent floor by N work days (configurable spinner, default 2d). Uses Mon–Fri work-day math.
+- **`fetchFloorTradeMatrix`** — Aggregates `area_trade_status` per floor × trade: worst-case status, earliest `started_at`, latest `completed_at`.
+- **`upsertScheduleBaselines`** — Server action, `onConflict: 'project_id,trade_name,floor'` upsert.
+- **Page parallelized** — `Promise.all([scheduleItems, plan, baselines, matrix])` — 4 parallel fetches.
+
+### Previous Changes (April 9, 2026 — Performance Optimizations)
 
 - **Middleware: 0 DB queries per navigation** — Removed `users` table query and `project_subscriptions` billing check from middleware. Now only calls `auth.getUser()` (JWT verified locally). Role + org_id read from `user.app_metadata` (set at signup via trigger). Saves ~172ms per navigation.
 - **RLS helpers use JWT claims** — `get_user_role()`, `get_user_org_id()`, `is_gc_role()` now read from `auth.jwt() -> 'app_metadata'` instead of querying `users` table. Eliminates per-RLS-check DB round-trip.
@@ -587,7 +597,7 @@ All pages built and routed as separate `/dashboard/*` paths:
 ⚖️ Legal Docs       ✅ — NOD/REA/Evidence list, receipt tracking, escalation alerts
 📈 Forecast          ✅ — 14-day trend, schedule delta, at-risk areas (needs burn rate calc)
 🔧 Corrective Actions ✅ — Kanban + table toggle, 4 columns, overdue tracking
-📅 Schedule          ✅ — CSV upload, preview, column mapper, import RPC
+📅 Schedule          ✅ — [✏️ Manual] + [📁 Import] tabs, inline floor×trade dates, "Apply to all floors", CSV upload
 👥 Team              ✅ — GC/Sub sections, invite, role badges, assigned areas
 ⚙️ Settings          ✅ — 6 tabs (General, Trades & Costs, Legal, Integrations, Roles, Audit Logs)
 💳 Billing           ✅ — plan card, upgrade/manage, feature comparison
