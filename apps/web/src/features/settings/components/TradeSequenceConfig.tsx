@@ -104,7 +104,11 @@ export function TradeSequenceConfig({ projectId }: Props) {
 
     if (result.ok) {
       toast.success(`${trade.tradeName} → ${newMode}`);
-      refresh();
+      await refresh();
+      // Auto-open ChecklistEditor when switching to checklist mode
+      if (newMode === 'checklist') {
+        setChecklistTarget(trade);
+      }
     } else {
       toast.error(result.error);
     }
@@ -337,14 +341,14 @@ function SortableTradeRow({
         <button
           onClick={onToggleMode}
           disabled={busy}
-          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold transition-colors disabled:opacity-30 ${
+          className={`shrink-0 rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 ${
             isChecklist
-              ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+              ? 'border-green-500/60 bg-green-500/20 text-green-300 hover:bg-green-500/30'
+              : 'border-amber-500/60 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
           }`}
-          title="Toggle reporting mode"
+          title="Click to toggle: Percentage ↔ Checklist"
         >
-          {isChecklist ? 'CHECKLIST' : 'PERCENTAGE'}
+          {isChecklist ? '☑ Checklist' : '% Percentage'}
         </button>
 
         {/* Task counts */}
