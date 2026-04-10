@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import type { GanttRow, GanttDependency } from '../services/fetchGanttData';
 
 // ─── Types ─────────────────────────────────────────
@@ -65,11 +65,13 @@ const LABEL_WIDTH = 208; // px for left label column
 export function GanttTimeline({ rows, dependencies, tradeOrder, initialFloor }: Props) {
   const [groupBy, setGroupBy] = useState<GroupBy>('floor');
   const [showActual, setShowActual] = useState(true);
-  const [showCritical, setShowCritical] = useState(true);
+  const [showCritical, setShowCritical] = useState(false);
   const [pxPerDay, setPxPerDay] = useState(12);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // ─── Group Data ────────────────────────────────
 
@@ -178,12 +180,54 @@ export function GanttTimeline({ rows, dependencies, tradeOrder, initialFloor }: 
 
   // ─── Bar color ─────────────────────────────────
 
-  const barColor = (delta: number | null) => {
+  const barColor = (delta: number | null, progress: number) => {
+    if (progress >= 100) return 'bg-green-500/60';
     if (delta === null) return 'bg-blue-500';
     if (delta > 0) return 'bg-red-500';
     if (delta < 0) return 'bg-green-500';
     return 'bg-blue-500';
   };
+
+  // ─── Dependency lookup (for hover) ─────────────
+
+  const depsByRow = useMemo(() => {
+    const map = new Map<string, typeof dependencies>();
+    for (const dep of dependencies) {
+      const from = map.get(dep.fromId) ?? [];
+      from.push(dep);
+      map.set(dep.fromId, from);
+      const to = map.get(dep.toId) ?? [];
+      to.push(dep);
+      map.set(dep.toId, to);
+    }
+    return map;
+  }, [dependencies]);
+
+  // ─── Auto-scroll to today on mount ─────────────
+
+  useEffect(() => {
+    if (!scrollAreaRef.current) return;
+    const todayX = daysBetween(minDate, today) * pxPerDay;
+    const viewWidth = scrollAreaRef.current.clientWidth;
+    // Position today at ~30% from the left
+    const target = Math.max(0, todayX - viewWidth * 0.3);
+    scrollAreaRef.current.scrollLeft = target;
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Month boundary lines ──────────────────────
+
+  const monthBoundaries = useMemo(() => {
+    const result: number[] = [];
+    const cur = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+    while (cur <= maxDate) {
+      const offset = daysBetween(minDate, cur) * pxPerDay;
+      if (offset >= 0) result.push(offset);
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    return result;
+  }, [minDate, maxDate, pxPerDay]);
 
   if (rows.length === 0) {
     return (
@@ -289,8 +333,14 @@ export function GanttTimeline({ rows, dependencies, tradeOrder, initialFloor }: 
                   group.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center truncate px-3 text-xs text-zinc-400"
+                      className={`flex items-center truncate px-3 text-xs transition-colors ${
+                        hoveredRow === item.id
+                          ? 'bg-white/[0.04] text-zinc-200'
+                          : 'text-zinc-400'
+                      }`}
                       style={{ height: ROW_HEIGHT }}
+                      onMouseEnter={() => setHoveredRow(item.id)}
+                      onMouseLeave={() => setHoveredRow(null)}
                     >
                       {groupBy === 'floor' ? item.tradeName : `Floor ${item.floor}`}
                     </div>
@@ -300,7 +350,7 @@ export function GanttTimeline({ rows, dependencies, tradeOrder, initialFloor }: 
           </div>
 
           {/* ─── RIGHT: Bars (scrollable) ──── */}
-          <div className="flex-1 overflow-x-auto">
+          <div ref={scrollAreaRef} className="flex-1 overflow-x-auto">
             {/* Date header */}
             <div
               className="sticky top-0 z-20 border-b border-zinc-700/50 bg-zinc-900/95"
@@ -333,26 +383,69 @@ export function GanttTimeline({ rows, dependencies, tradeOrder, initialFloor }: 
             {/* Bar area */}
             <div className="relative" style={{ width: totalWidth, height: totalHeight }}>
               {/* Today line */}
-              {todayOffset > 0 && todayOffset < totalWidth && (
+              {/* Month boundary lines */}
+              {monthBoundaries.map((offset, i) => (
                 <div
-                  className="absolute top-0 bottom-0 z-10 w-px bg-red-500/70"
-                  style={{ left: todayOffset }}
+                  key={`month-${i}`}
+                  className="absolute top-0 bottom-0 w-px bg-white/5"
+                  style={{ left: offset }}
                 />
-              )}
+              ))}
 
-              {/* Week gridlines */}
+              {/* Week gridlines (subtle) */}
               {Array.from({ length: Math.ceil(totalDays / 7) }, (_, i) => (
                 <div
-                  key={i}
-                  className="absolute top-0 bottom-0 w-px bg-zinc-800/20"
+                  key={`week-${i}`}
+                  className="absolute top-0 bottom-0 w-px bg-white/[0.02]"
                   style={{ left: (i + 1) * 7 * pxPerDay }}
                 />
               ))}
 
+              {/* Today line */}
+              {todayOffset > 0 && todayOffset < totalWidth && (
+                <>
+                  <div
+                    className="absolute top-0 bottom-0 z-20 w-0.5 bg-red-500/80"
+                    style={{ left: todayOffset }}
+                  />
+                  <div
+                    className="absolute z-30 -translate-x-1/2 rounded bg-zinc-950 px-1 text-[9px] font-bold text-red-400"
+                    style={{ left: todayOffset, top: 2 }}
+                  >
+                    TODAY
+                  </div>
+                </>
+              )}
+
               {/* Groups + Bars */}
               {groups.map((group) => {
+                const isCollapsed = collapsed.has(group.key);
                 const firstItemY = rowPositions.get(group.items[0]?.id ?? '');
-                const headerY = firstItemY != null ? firstItemY - HEADER_HEIGHT : 0;
+                // When collapsed there are no item positions — derive header Y by recomputing
+                let headerY = 0;
+                if (firstItemY != null) {
+                  headerY = firstItemY - HEADER_HEIGHT;
+                } else {
+                  // Count preceding groups' heights when collapsed
+                  let y = 0;
+                  for (const g of groups) {
+                    if (g.key === group.key) break;
+                    y += HEADER_HEIGHT;
+                    if (!collapsed.has(g.key)) y += g.items.length * ROW_HEIGHT;
+                  }
+                  headerY = y;
+                }
+
+                // Compute group date range for collapsed summary bar
+                let earliestStart: string | null = null;
+                let latestEnd: string | null = null;
+                for (const item of group.items) {
+                  const s = item.plannedStart ?? item.actualStart;
+                  const e = item.plannedEnd ?? item.actualEnd;
+                  if (s && (!earliestStart || s < earliestStart)) earliestStart = s;
+                  if (e && (!latestEnd || e > latestEnd)) latestEnd = e;
+                }
+                const summaryBar = barStyle(earliestStart, latestEnd);
 
                 return (
                   <div key={group.key}>
@@ -362,46 +455,70 @@ export function GanttTimeline({ rows, dependencies, tradeOrder, initialFloor }: 
                       style={{ top: headerY, height: HEADER_HEIGHT }}
                     />
 
+                    {/* Collapsed summary bar */}
+                    {isCollapsed && summaryBar.visible && (
+                      <div
+                        className="absolute top-2 h-3 rounded border border-white/15 bg-white/10"
+                        style={{
+                          left: summaryBar.left,
+                          width: summaryBar.width,
+                          top: headerY + 10,
+                        }}
+                      />
+                    )}
+
                     {/* Bars */}
-                    {!collapsed.has(group.key) &&
+                    {!isCollapsed &&
                       group.items.map((item) => {
                         const y = rowPositions.get(item.id) ?? 0;
                         const planned = barStyle(item.plannedStart, item.plannedEnd);
                         const actual = barStyle(item.actualStart, item.actualEnd);
+                        const hasActual = actual.visible && (item.actualStart != null);
+                        const isRowHovered = hoveredRow === item.id;
 
                         return (
                           <div
                             key={item.id}
-                            className="absolute left-0 right-0"
+                            className={`absolute left-0 right-0 transition-colors ${
+                              isRowHovered ? 'bg-white/[0.04]' : ''
+                            }`}
                             style={{ top: y, height: ROW_HEIGHT }}
                             onMouseEnter={(e) => {
                               const rect = e.currentTarget.getBoundingClientRect();
+                              setHoveredRow(item.id);
                               setTooltip({
                                 row: item,
                                 x: e.clientX - rect.left + 10,
                                 y: 0,
                               });
                             }}
-                            onMouseLeave={() => setTooltip(null)}
+                            onMouseLeave={() => {
+                              setHoveredRow(null);
+                              setTooltip(null);
+                            }}
                           >
-                            {/* Planned bar (gray, top) */}
+                            {/* Planned bar */}
                             {planned.visible && (
                               <div
-                                className="absolute top-1 h-2.5 rounded-sm bg-white/15"
+                                className={
+                                  hasActual && showActual
+                                    ? 'absolute top-1 h-2.5 rounded-sm bg-white/10'
+                                    : 'absolute top-[9px] h-2.5 rounded-sm border border-white/15 bg-white/5'
+                                }
                                 style={{ left: planned.left, width: planned.width }}
                               />
                             )}
 
-                            {/* Actual bar (colored, bottom) */}
-                            {showActual && actual.visible && (
+                            {/* Actual bar (colored, bottom) — only when has actual data */}
+                            {showActual && hasActual && (
                               <div
-                                className={`absolute top-[14px] h-2.5 rounded-sm ${barColor(item.delta)}`}
+                                className={`absolute top-[14px] h-2.5 rounded-sm ${barColor(item.delta, item.progress)}`}
                                 style={{ left: actual.left, width: actual.width }}
                               >
                                 {/* Progress overlay */}
                                 {item.progress > 0 && item.progress < 100 && (
                                   <div
-                                    className="absolute inset-y-0 left-0 rounded-sm bg-white/20"
+                                    className="absolute inset-y-0 left-0 rounded-sm bg-white/25"
                                     style={{ width: `${item.progress}%` }}
                                   />
                                 )}
@@ -415,62 +532,98 @@ export function GanttTimeline({ rows, dependencies, tradeOrder, initialFloor }: 
               })}
 
               {/* ─── Dependency Arrows (SVG) ───── */}
-              {showCritical && dependencies.length > 0 && (
-                <svg
-                  className="pointer-events-none absolute inset-0"
-                  style={{ width: totalWidth, height: totalHeight }}
-                >
-                  <defs>
-                    <marker
-                      id="arrow-gray"
-                      markerWidth="6"
-                      markerHeight="4"
-                      refX="6"
-                      refY="2"
-                      orient="auto"
-                    >
-                      <polygon points="0 0, 6 2, 0 4" fill="#4b5563" fillOpacity="0.4" />
-                    </marker>
-                    <marker
-                      id="arrow-red"
-                      markerWidth="6"
-                      markerHeight="4"
-                      refX="6"
-                      refY="2"
-                      orient="auto"
-                    >
-                      <polygon points="0 0, 6 2, 0 4" fill="#ef4444" />
-                    </marker>
-                  </defs>
-                  {dependencies.map((dep) => {
-                    const fromY = rowPositions.get(dep.fromId);
-                    const toY = rowPositions.get(dep.toId);
-                    if (fromY == null || toY == null) return null;
+              {(showCritical || hoveredRow) && dependencies.length > 0 && (() => {
+                // Determine which deps to draw:
+                //  - critical path (red dashed) when showCritical
+                //  - immediate predecessors/successors of hoveredRow (blue)
+                const criticalDeps = showCritical ? dependencies.filter((d) => d.isCritical) : [];
+                const hoverDeps = hoveredRow ? (depsByRow.get(hoveredRow) ?? []) : [];
+                const drawn = new Set<string>();
 
-                    const fromRow = rows.find((r) => r.id === dep.fromId);
-                    const toRow = rows.find((r) => r.id === dep.toId);
-                    if (!fromRow?.plannedEnd || !toRow?.plannedStart) return null;
+                const buildPath = (dep: typeof dependencies[number]) => {
+                  const fromY = rowPositions.get(dep.fromId);
+                  const toY = rowPositions.get(dep.toId);
+                  if (fromY == null || toY == null) return null;
+                  const fromRow = rows.find((r) => r.id === dep.fromId);
+                  const toRow = rows.find((r) => r.id === dep.toId);
+                  if (!fromRow?.plannedEnd || !toRow?.plannedStart) return null;
+                  const fromX = daysBetween(minDate, fromRow.plannedEnd) * pxPerDay;
+                  const toX = daysBetween(minDate, toRow.plannedStart) * pxPerDay;
+                  const fY = fromY + ROW_HEIGHT / 2;
+                  const tY = toY + ROW_HEIGHT / 2;
+                  const midX = fromX + (toX - fromX) * 0.5;
+                  return `M ${fromX} ${fY} H ${midX} V ${tY} H ${toX}`;
+                };
 
-                    const fromX = daysBetween(minDate, fromRow.plannedEnd) * pxPerDay;
-                    const toX = daysBetween(minDate, toRow.plannedStart) * pxPerDay;
-                    const fY = fromY + ROW_HEIGHT / 2;
-                    const tY = toY + ROW_HEIGHT / 2;
-                    const midX = fromX + (toX - fromX) * 0.5;
-
-                    return (
-                      <path
-                        key={`${dep.fromId}-${dep.toId}`}
-                        d={`M ${fromX} ${fY} H ${midX} V ${tY} H ${toX}`}
-                        fill="none"
-                        stroke={dep.isCritical ? '#ef4444' : '#4b556344'}
-                        strokeWidth={dep.isCritical ? 1.5 : 1}
-                        strokeDasharray={dep.isCritical ? undefined : '4 2'}
-                        markerEnd={`url(#${dep.isCritical ? 'arrow-red' : 'arrow-gray'})`}
-                      />
-                    );
-                  })}
-                </svg>
-              )}
+                return (
+                  <svg
+                    className="pointer-events-none absolute inset-0"
+                    style={{ width: totalWidth, height: totalHeight }}
+                  >
+                    <defs>
+                      <marker
+                        id="arrow-red"
+                        markerWidth="5"
+                        markerHeight="4"
+                        refX="5"
+                        refY="2"
+                        orient="auto"
+                      >
+                        <polygon points="0 0, 5 2, 0 4" fill="#ef4444" fillOpacity="0.7" />
+                      </marker>
+                      <marker
+                        id="arrow-blue"
+                        markerWidth="5"
+                        markerHeight="4"
+                        refX="5"
+                        refY="2"
+                        orient="auto"
+                      >
+                        <polygon points="0 0, 5 2, 0 4" fill="#60a5fa" />
+                      </marker>
+                    </defs>
+                    {/* Critical path (thin red dashed, bg) */}
+                    {criticalDeps.map((dep) => {
+                      const key = `crit-${dep.fromId}-${dep.toId}`;
+                      if (drawn.has(key)) return null;
+                      drawn.add(key);
+                      const d = buildPath(dep);
+                      if (!d) return null;
+                      return (
+                        <path
+                          key={key}
+                          d={d}
+                          fill="none"
+                          stroke="#ef4444"
+                          strokeOpacity="0.55"
+                          strokeWidth={1}
+                          strokeDasharray="4 3"
+                          markerEnd="url(#arrow-red)"
+                        />
+                      );
+                    })}
+                    {/* Hover deps (blue, on top) */}
+                    {hoverDeps.map((dep) => {
+                      const key = `hov-${dep.fromId}-${dep.toId}`;
+                      if (drawn.has(key)) return null;
+                      drawn.add(key);
+                      const d = buildPath(dep);
+                      if (!d) return null;
+                      return (
+                        <path
+                          key={key}
+                          d={d}
+                          fill="none"
+                          stroke="#60a5fa"
+                          strokeOpacity="0.9"
+                          strokeWidth={1.5}
+                          markerEnd="url(#arrow-blue)"
+                        />
+                      );
+                    })}
+                  </svg>
+                );
+              })()}
             </div>
           </div>
         </div>
