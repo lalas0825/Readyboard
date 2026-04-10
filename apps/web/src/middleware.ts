@@ -63,7 +63,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Create Supabase server client for middleware
+  // Create Supabase server client for middleware (cookie refresh only)
   const response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -82,6 +82,9 @@ export async function middleware(request: NextRequest) {
     },
   );
 
+  // auth.getUser() verifies the JWT locally — no extra DB round-trip.
+  // role and org_id are read directly from app_metadata (set at signup/role change),
+  // eliminating the previous users table query on every navigation.
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -95,60 +98,30 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=verify_email', request.url));
   }
 
-  // Role-based route protection (includes org_id for billing check)
-  // Resilient: if query fails (schema cache, RLS), allow through (layout guards will catch)
-  let profile: { role: string; org_id: string } | null = null;
-  try {
-    const { data } = await supabase
-      .from('users')
-      .select('role, org_id')
-      .eq('id', user.id)
-      .single();
-    profile = data;
-  } catch {
-    // Schema or RLS error — let through, layout-level guards will handle
-    return response;
-  }
-
-  // If profile query returned null (user exists in auth but not in users table yet)
-  if (!profile) return response;
-
+  // Read role + org_id from JWT app_metadata — zero DB queries.
+  // Falls back gracefully: if app_metadata is missing (pre-backfill session),
+  // the layout guards will catch it on re-auth.
+  const role = (user.app_metadata?.role as string) ?? '';
   const gcRoles = ['gc_super', 'gc_pm', 'gc_admin', 'owner'];
   const subRoles = ['sub_pm', 'sub_super', 'superintendent'];
 
   // GC dashboard — only GC roles
   if (pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard-sub')) {
-    if (!gcRoles.includes(profile.role)) {
-      // Sub users → redirect to sub dashboard
-      if (subRoles.includes(profile.role)) {
+    if (role && !gcRoles.includes(role)) {
+      if (subRoles.includes(role)) {
         return NextResponse.redirect(new URL('/dashboard-sub', request.url));
       }
       return NextResponse.redirect(new URL('/', request.url));
     }
-
-    // Past-due billing check — block GC admin features, NOT foreman operations
-    if (profile.org_id) {
-      const { data: pastDueSub } = await supabase
-        .from('project_subscriptions')
-        .select('status')
-        .eq('org_id', profile.org_id)
-        .eq('status', 'past_due')
-        .limit(1)
-        .maybeSingle();
-
-      if (pastDueSub) {
-        const url = new URL('/billing/payment-required', request.url);
-        url.searchParams.set('from', pathname);
-        return NextResponse.redirect(url);
-      }
-    }
+    // Past-due billing check moved to layout.tsx — it already fetches
+    // project_subscriptions for the trial banner, so we avoid a duplicate
+    // DB query here on every navigation.
   }
 
   // Sub dashboard — only sub roles
   if (pathname.startsWith('/dashboard-sub')) {
-    if (!subRoles.includes(profile.role)) {
-      // GC users → redirect to GC dashboard
-      if (gcRoles.includes(profile.role)) {
+    if (role && !subRoles.includes(role)) {
+      if (gcRoles.includes(role)) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
       return NextResponse.redirect(new URL('/', request.url));

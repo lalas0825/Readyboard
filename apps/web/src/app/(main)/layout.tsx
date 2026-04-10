@@ -48,6 +48,9 @@ export default async function MainLayout({
 
   // Fetch trial info for banner — parallel with nothing (depends on projectCtx.currentProjectId)
   // but isolated so it never blocks rendering if it fails.
+  // Fetch subscription once — used for both the trial banner AND past_due redirect.
+  // The past_due check was previously in middleware (extra DB query per navigation).
+  // Now it runs here where we already need this data for the trial banner.
   let trialEndsAt: string | null = null;
   let subStatus = 'active';
   if (projectCtx.currentProjectId && !session.isDevBypass) {
@@ -63,9 +66,14 @@ export default async function MainLayout({
       if (sub) {
         trialEndsAt = sub.trial_ends_at;
         subStatus = sub.status;
+        // Redirect past-due accounts to payment page (previously in middleware)
+        if (sub.status === 'past_due') {
+          const { redirect } = await import('next/navigation');
+          redirect('/billing/payment-required');
+        }
       }
     } catch {
-      // Non-fatal — banner just won't show
+      // Non-fatal — banner just won't show, past_due check skipped
     }
   }
 

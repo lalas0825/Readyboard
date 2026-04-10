@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { UserRole } from '@readyboard/shared';
 
@@ -21,13 +22,15 @@ export type Session = {
 /**
  * Resolves the current user session.
  *
+ * Wrapped in React cache() so auth.getUser() + users query run ONCE per
+ * render, even if getSession() is called from both layout and page.tsx.
+ * This eliminates the duplicate DB round-trip that previously happened on
+ * every navigation (middleware calls getUser, then layout calls it again).
+ *
  * - With real auth: reads Supabase session cookie → queries users table
  * - Dev bypass (NODE_ENV=development, no session): returns first gc_pm from seed data
- *
- * The dev bypass uses a REAL user from the DB so org_id, role, etc. are valid
- * for downstream queries. When real auth is added, the bypass block is never reached.
  */
-export async function getSession(): Promise<Session | null> {
+export const getSession = cache(async (): Promise<Session | null> => {
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
 
@@ -78,4 +81,4 @@ export async function getSession(): Promise<Session | null> {
   }
 
   return null;
-}
+});
