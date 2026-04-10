@@ -1,13 +1,18 @@
 import { fetchGridData } from '@/features/ready-board';
 import { fetchScheduleItems } from '@/features/forecast/services/fetchSchedule';
+import { fetchScheduleBaselines } from '@/features/forecast/services/fetchScheduleBaselines';
+import { fetchFloorTradeMatrix } from '@/features/forecast/services/fetchFloorTradeMatrix';
 import { getPlanForProject } from '@/features/billing/services/getPlanForProject';
-import { ScheduleUpload } from '@/features/forecast/components/ScheduleUpload';
+import { SchedulePageClient } from '@/features/forecast/components/SchedulePageClient';
 
 export default async function SchedulePage() {
   const gridData = await fetchGridData();
-  const [items, plan] = await Promise.all([
+
+  const [items, plan, baselines, matrix] = await Promise.all([
     fetchScheduleItems(gridData.projectId),
     getPlanForProject(gridData.projectId),
+    fetchScheduleBaselines(gridData.projectId),
+    fetchFloorTradeMatrix(gridData.projectId),
   ]);
 
   return (
@@ -15,13 +20,15 @@ export default async function SchedulePage() {
       <div className="mb-6">
         <h1 className="text-lg font-semibold text-zinc-100">Schedule</h1>
         <p className="mt-1 text-xs text-zinc-500">
-          Import P6/CSV schedules to enable forecast projections and critical path tracking.
+          Enter planned dates per floor × trade manually, or import a P6/CSV schedule.
         </p>
       </div>
-      <ScheduleUpload
+      <SchedulePageClient
         projectId={gridData.projectId}
         planId={plan.planId}
         existingItems={items}
+        baselines={baselines}
+        matrix={matrix}
       />
     </div>
   );
