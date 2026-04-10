@@ -59,12 +59,11 @@ export async function fetchGanttData(projectId: string): Promise<GanttData> {
       .select('id, trade_name, floor, planned_start, planned_end')
       .eq('project_id', projectId)
       .order('planned_start'),
-    // Also fetch CSV-imported schedule_items (joined with areas to get floor)
+    // Also fetch CSV-imported schedule_items — include ALL rows (area_id may be NULL)
     supabase
       .from('schedule_items')
-      .select('id, trade_name, planned_start, planned_finish, area_id, areas(floor)')
-      .eq('project_id', projectId)
-      .not('area_id', 'is', null),
+      .select('id, trade_name, area_name, planned_start, planned_finish, area_id, areas(floor)')
+      .eq('project_id', projectId),
     supabase
       .from('area_trade_status')
       .select(
@@ -102,9 +101,16 @@ export async function fetchGanttData(projectId: string): Promise<GanttData> {
 
   // Fill from CSV schedule_items (only if no manual baseline exists for that floor×trade)
   for (const item of csvItems) {
+    // Try to get floor from joined area first, fall back to parsing area_name
     const areaData = item.areas as unknown as { floor: string } | null;
-    if (!areaData?.floor) continue;
-    const floor = areaData.floor;
+    let floor = areaData?.floor ?? null;
+    if (!floor) {
+      // Parse floor from area_name pattern: "Trade Name - Floor N"
+      const areaName = (item.area_name as string) ?? '';
+      const floorMatch = areaName.match(/Floor\s+(\S+)/i);
+      if (floorMatch) floor = floorMatch[1];
+    }
+    if (!floor) continue;
     const tradeName = item.trade_name as string;
     const key = `${floor}||${tradeName}`;
 
