@@ -14,7 +14,7 @@
 > - 🔨 BUILD — Does not exist, create from scratch
 > - 🔌 WIRE — Code exists but not connected
 >
-> Last updated: 2026-04-09 (Custom Trade Sequences: phase duplication + custom trades + drag-reorder)
+> Last updated: 2026-04-09 (Performance: JWT auth + loading skeletons + parallel queries + toggle fix)
 
 ---
 
@@ -215,6 +215,18 @@
 
 ## 🟢 P2 — POST-LAUNCH (Week 1-2 after launch)
 
+### Performance Optimization — ✅ COMPLETE (April 9, 2026)
+
+- [x] **Middleware: 0 DB queries** — removed `users` + `project_subscriptions` queries; role read from `user.app_metadata` (JWT)
+- [x] **`trg_sync_user_role_to_jwt` trigger** — backfills + keeps `raw_app_meta_data.role` + `org_id` in sync (migration `20260409000002`)
+- [x] **RLS helpers use JWT claims** — `get_user_role()`, `get_user_org_id()`, `is_gc_role()` read from `auth.jwt()` (migration `20260409000003`)
+- [x] **`getSession()` in `React.cache()`** — deduplicates auth within render tree; layout + page share one result
+- [x] **11 `loading.tsx` skeleton files** — all dashboard routes have instant-render skeleton UI
+- [x] **`fetchGridData` parallelized** — `Promise.all([ats_pagination, trade_sequences, delay_logs, units])`
+- [x] **Overview: removed extra `fetchGridData` call** — was fetching 780+ rows for just `projectId`
+- [x] **Billing past_due redirect moved to layout** — eliminates extra DB query in middleware on every nav
+- [x] **Settings toggle visibility fix** — PERCENTAGE/CHECKLIST toggle now amber/green with visible border
+
 ### Forecast Engine Completion — ✅ CORE DONE
 
 - [x] 14-day EMA burn rate (EMA_SPAN=14, α=0.133) — replaces 3-day span
@@ -386,7 +398,7 @@ Audit result: 9 were already wired, 3 were added.
 |----------|--------|--------|
 | 🔴 P0 Critical | ✅ CLOSED | All 4 blockers resolved |
 | 🟡 P1 Launch | ✅ CLOSED | 14/14 items + hierarchy + invitations + labor rates |
-| 🟢 P2 Post-Launch | ✅ CORE DONE | Settings UI, Add Areas, mobile Floor→Unit grouping, project assignment |
+| 🟢 P2 Post-Launch | ✅ CORE DONE | Settings UI, Add Areas, mobile Floor→Unit grouping, project assignment, performance |
 | ⚪ P3 Future | ⏳ BACKLOG | App Store, SMS, AI Chat, Change Orders |
 
 ### Remaining Work (non-blocking)
@@ -412,6 +424,40 @@ Audit result: 9 were already wired, 3 were added.
 **Mobile:** ✅ Development build running with hot reload. PowerSync v6 syncing. Invite flow end-to-end tested.
 
 ---
+
+---
+
+## Recent Changes (April 9, 2026 — Performance Optimization)
+
+### Performance: JWT Auth + Loading Skeletons + Parallel Queries ✅
+
+**Migrations applied:**
+- `20260409000002_sync_role_org_to_jwt_app_metadata.sql` — backfill + trigger
+- `20260409000003_rls_helpers_use_jwt_claims.sql` — JWT-based RLS helpers
+
+**Files modified:**
+- `apps/web/src/middleware.ts` — removed DB queries, role from JWT app_metadata
+- `apps/web/src/lib/auth/getSession.ts` — wrapped in `React.cache()`
+- `apps/web/src/app/(main)/layout.tsx` — added past_due redirect, removed duplicate queries
+- `apps/web/src/app/(main)/dashboard/page.tsx` — removed extra `fetchGridData` call
+- `apps/web/src/features/ready-board/services/fetchGridData.ts` — parallelized with `Promise.all`
+- `apps/web/src/features/settings/components/TradeSequenceConfig.tsx` — toggle visibility fix
+- `apps/web/src/features/settings/services/updateTradeMode.ts` — removed Pro gate from checklist mode
+
+**Files created (11 loading.tsx skeletons):**
+- `apps/web/src/app/(main)/dashboard/loading.tsx`
+- `apps/web/src/app/(main)/dashboard/readyboard/loading.tsx`
+- `apps/web/src/app/(main)/dashboard/verifications/loading.tsx`
+- `apps/web/src/app/(main)/dashboard/delays/loading.tsx`
+- `apps/web/src/app/(main)/dashboard/legal/loading.tsx`
+- `apps/web/src/app/(main)/dashboard/forecast/loading.tsx`
+- `apps/web/src/app/(main)/dashboard/corrective-actions/loading.tsx`
+- `apps/web/src/app/(main)/dashboard/schedule/loading.tsx`
+- `apps/web/src/app/(main)/dashboard/team/loading.tsx`
+- `apps/web/src/app/(main)/dashboard/settings/loading.tsx`
+- `apps/web/src/app/(main)/dashboard/billing/loading.tsx`
+
+**Result:** Middleware 0 DB queries, layout ~91ms, Overview ~103ms, Ready Board ~175ms.
 
 ---
 

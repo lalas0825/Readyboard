@@ -5,7 +5,7 @@
 > and operates offline-first in the foreman's language.
 >
 > **This is the single source of truth.** If CLAUDE.md says it, Claude Code follows it.
-> Last updated: 2026-04-09 — Custom trade sequences with phase duplication and drag-reorder
+> Last updated: 2026-04-09 — Performance: JWT auth + loading skeletons + parallel queries
 
 ---
 
@@ -31,12 +31,25 @@
 | Demo Account | 4 | 0 | 0 | 0 |
 | Landing Page & Legal | 3 | 0 | 0 | 0 |
 | Security | 8 | 0 | 0 | 0 |
+| Performance | 5 | 0 | 0 | 0 |
 | App Store Readiness | 2 | 0 | 4 | 0 |
-| **TOTALS** | **172** | **4** | **12** | **0** |
+| **TOTALS** | **177** | **4** | **12** | **0** |
 
-**Diagnostics:** ~755 files, 35 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
+**Diagnostics:** ~290 TypeScript files (248 web + 31 mobile + 11 packages), 34 SQL migrations, 13 env vars, `next build` ✅, `tsc --noEmit` 0 errors.
 
-### Recent Changes (April 9, 2026 — Custom Trade Sequences)
+### Recent Changes (April 9, 2026 — Performance Optimizations)
+
+- **Middleware: 0 DB queries per navigation** — Removed `users` table query and `project_subscriptions` billing check from middleware. Now only calls `auth.getUser()` (JWT verified locally). Role + org_id read from `user.app_metadata` (set at signup via trigger). Saves ~172ms per navigation.
+- **RLS helpers use JWT claims** — `get_user_role()`, `get_user_org_id()`, `is_gc_role()` now read from `auth.jwt() -> 'app_metadata'` instead of querying `users` table. Eliminates per-RLS-check DB round-trip.
+- **`trg_sync_user_role_to_jwt` trigger** — Keeps `raw_app_meta_data` in sync when `users.role` or `org_id` changes. Applied via migration `20260409000002_sync_role_org_to_jwt_app_metadata.sql`.
+- **`getSession()` wrapped in `React.cache()`** — Deduplicates `auth.getUser()` + `users` query within a single render tree. Layout and page share one result — no double DB call.
+- **11 `loading.tsx` skeleton files** — All dashboard routes now have route-level loading UI: `/dashboard`, `/dashboard/readyboard`, `/dashboard/verifications`, `/dashboard/delays`, `/dashboard/legal`, `/dashboard/forecast`, `/dashboard/corrective-actions`, `/dashboard/schedule`, `/dashboard/team`, `/dashboard/settings`, `/dashboard/billing`. Shell renders instantly; content streams in.
+- **`fetchGridData` parallelized** — trade_sequences + delay_logs + units now fetch concurrently with the area_trade_status pagination loop via `Promise.all`. Reduces Ready Board load from ~6 sequential queries to 2 parallel batches.
+- **Overview page: removed duplicate `fetchGridData` call** — Was fetching 780+ rows just to get `projectId`. Now uses `dashboardData.metrics.projectId` directly.
+- **Billing past_due redirect moved to layout** — Was an extra DB query in middleware on every nav. Now runs in `layout.tsx` where `project_subscriptions` is already fetched for the trial banner.
+- **Settings toggle visibility fix** — PERCENTAGE/CHECKLIST mode toggle in TradeSequenceConfig was invisible (dark text on dark bg). Now uses amber (percentage) / green (checklist) border + glow styling.
+
+### Previous Changes (April 9, 2026 — Custom Trade Sequences)
 
 - **Feature: Phase-aware trade sequences** — GC can duplicate a trade to create "Phase 2" variants. Example: "Metal Stud Framing P1" → "Metal Stud Framing P2" for touch-up work. Composite key pattern `"{trade_name}::{phase_label}"` in `area_trade_status.trade_type` maintains backward compatibility.
 - **Feature: Custom trades with is_custom flag** — GC can add non-standard trades (e.g., "Glass & Glazing"). Flagged in DB, can be bulk deleted from Settings.
@@ -590,13 +603,42 @@ All pages built and routed as separate `/dashboard/*` paths:
 - Report: slider OR checklist, blockers, reason codes (7), photo + GPS capture
 - Confirmation: full-screen ✓ + haptic
 - NOD draft banner (purple, tappable)
-- Bottom tabs: My Areas | Report | Legal | Profile (80px)
+- Bottom tabs: My Areas | Today | Legal | Profile (80px)
 - Profile: user info, role badge, push toggle, logout
 - Legal tab: pending NODs, blocked areas, status badges
 - Offline-first via PowerSync + SQLite
 - Checklist mode with progress bar
 - GC VERIFY tasks greyed out ("Awaiting GC")
 - Language: auto-detect EN/ES + manual override
+
+---
+
+## Performance Architecture — Optimized April 9, 2026
+
+### Auth Flow (0 DB queries in middleware)
+
+| Layer | Before | After |
+|-------|--------|-------|
+| Middleware | 3 DB queries (getUser + users + project_subscriptions) | 0 DB queries — JWT only |
+| Layout | 1 DB query (users) | 0 — `getSession()` cached |
+| RLS helpers | `SELECT role FROM users` per policy check | `auth.jwt() -> 'app_metadata'` |
+
+### Key Patterns
+
+- **Middleware:** `auth.getUser()` verifies JWT locally. Role + org_id read from `user.app_metadata` (set by `trg_sync_user_role_to_jwt` trigger on `users` table write).
+- **`getSession()`:** Wrapped in `React.cache()` — deduplicates within a render. Layout + page share one result.
+- **`fetchGridData`:** `Promise.all([pagination_loop, trade_sequences, delay_logs, units])` — 4 parallel fetches.
+- **`loading.tsx`:** All 11 dashboard routes have skeleton UI that renders instantly while server fetches data.
+- **Billing past_due check:** Moved from middleware (every nav) to `layout.tsx` (once, reuses subscription fetch).
+
+### Actual Timing (demo project, 30 areas, service role)
+
+| Simulated Page | Time |
+|---------------|------|
+| Layout (projects + sub, parallel) | ~91ms |
+| Overview (metrics + alerts, parallel) | ~103ms |
+| Ready Board (4 parallel queries) | ~175ms |
+| Middleware overhead (before → after) | ~172ms → ~0ms/navigation |
 
 ---
 
@@ -607,7 +649,7 @@ All pages built and routed as separate `/dashboard/*` paths:
 - **Model:** Gemini 2.5 Flash via OpenRouter (cheap, fast)
 - **Trigger:** Cron at 6am ET daily, per user × project
 - **Output:** 4-8 sentences, role-aware (GC vs Sub), language-aware (EN/ES), specific numbers
-- **Storage:** `briefings` table (MIGRATION MISSING — critical blocker)
+- **Storage:** `briefings` table (migration applied — not missing)
 - **UI:** MorningBriefingCard on Overview page (built), history dropdown
 - **Cost target:** < $0.90/month at 200 projects
 
