@@ -13,6 +13,7 @@ import { toggleSafetyBlock } from '../services/toggleSafetyBlock';
 import { acknowledgeCA } from '../services/acknowledgeCA';
 import { resolveCA } from '../services/resolveCA';
 import { addAreaNote } from '../services/addAreaNote';
+import { fetchScheduleForCell, type CellScheduleBaseline } from '../services/fetchScheduleForCell';
 import { REASON_LABELS } from '@/lib/constants';
 
 type GridDetailPanelProps = {
@@ -156,6 +157,7 @@ export function GridDetailPanel({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [newNote, setNewNote] = useState('');
   const [sendingNote, setSendingNote] = useState(false);
+  const [scheduleBaseline, setScheduleBaseline] = useState<CellScheduleBaseline>(null);
   const isSafetyBlocked = cell.delay_reason === 'safety';
   const isBlockedOrHeld = cell.status === 'blocked' || cell.status === 'held';
 
@@ -166,7 +168,18 @@ export function GridDetailPanel({
     setShowCAForm(false);
     setLightboxUrl(null);
     setNewNote('');
+    setScheduleBaseline(null);
   }, [cell.area_id, cell.trade_type]);
+
+  // Lazy-load schedule baseline for this cell's area × trade
+  useEffect(() => {
+    if (!cell.area_id || !cell.trade_type) return;
+    let cancelled = false;
+    fetchScheduleForCell(projectId, cell.area_id, cell.trade_type).then((data) => {
+      if (!cancelled) setScheduleBaseline(data);
+    });
+    return () => { cancelled = true; };
+  }, [projectId, cell.area_id, cell.trade_type]);
 
   // Lazy-load GPS, photos, report history, and notes
   const { data: details, isLoading: detailsLoading, refetch: refetchDetails } = useCellDetails(
@@ -598,6 +611,43 @@ export function GridDetailPanel({
                   </div>
                 );
               })()}
+            </div>
+          )}
+
+          {/* ─── Schedule Baseline ─── */}
+          {scheduleBaseline && (
+            <div className="border-t border-zinc-800 pt-4 space-y-1">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Schedule</h4>
+                {(() => {
+                  if (!scheduleBaseline.plannedEnd || !details?.startedAt) return null;
+                  const actualEnd = details.completedAt ?? new Date().toISOString().slice(0, 10);
+                  const planned = new Date(scheduleBaseline.plannedEnd).getTime();
+                  const actual = new Date(actualEnd).getTime();
+                  const delta = Math.round((actual - planned) / 86400000);
+                  if (delta > 0) return <span className="text-xs font-bold text-red-400">+{delta}d behind</span>;
+                  if (delta < 0) return <span className="text-xs font-bold text-green-400">{delta}d ahead</span>;
+                  return <span className="text-xs text-zinc-500">On track</span>;
+                })()}
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-zinc-500">Plan</span>
+                <span className="text-zinc-300">
+                  {scheduleBaseline.plannedStart
+                    ? new Date(scheduleBaseline.plannedStart).toLocaleDateString()
+                    : '—'}{' '}
+                  →{' '}
+                  {scheduleBaseline.plannedEnd
+                    ? new Date(scheduleBaseline.plannedEnd).toLocaleDateString()
+                    : '—'}
+                </span>
+              </div>
+              <button
+                onClick={() => router.push(`/dashboard/schedule?view=timeline&floor=${scheduleBaseline.floor}`)}
+                className="text-[11px] text-blue-400 hover:underline mt-1"
+              >
+                View in Timeline →
+              </button>
             </div>
           )}
 
