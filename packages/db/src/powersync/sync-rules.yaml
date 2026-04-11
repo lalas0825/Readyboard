@@ -25,6 +25,13 @@ bucket_definitions:
         FROM user_assignments
         WHERE user_id = bucket.user_id
 
+      - SELECT id, project_id, reported_by, reporter_name, reporter_role,
+               type, severity, title, description, app_source, device_info,
+               screenshots, status, admin_notes, admin_response,
+               resolved_at, created_at
+        FROM feedback_reports
+        WHERE reported_by = bucket.user_id
+
   # ── Bucket 2: Project-scoped (bulk data — 1 bucket per project) ──
   # Syncs ALL areas, status, units, trades for the project in ONE bucket.
   # This scales to 2000+ areas without creating thousands of bucket instances.

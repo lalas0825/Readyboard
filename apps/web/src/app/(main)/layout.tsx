@@ -7,6 +7,7 @@ import { TrialBanner } from '@/features/billing/components/TrialBanner';
 import { NotificationBell } from '@/features/dashboard/components/NotificationBell';
 import { LiveIndicator } from '@/features/dashboard/components/LiveIndicator';
 import { TopBarActionsProvider, TopBarActionsSlot } from '@/components/TopBarActionsProvider';
+import { FeedbackButton } from '@/features/feedback/components/FeedbackButton';
 
 export default async function MainLayout({
   children,
@@ -111,6 +112,9 @@ export default async function MainLayout({
         </div>
 
         {children}
+
+        {/* Floating feedback button — visible on all dashboard pages */}
+        <FeedbackButton projectId={projectCtx.currentProjectId ?? undefined} />
       </main>
     </div>
     </TopBarActionsProvider>

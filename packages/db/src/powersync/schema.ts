@@ -186,6 +186,27 @@ const area_tasks = new Table({
   updated_at: column.text,
 }, { indexes: {} });
 
+// --- Feedback reports (write on mobile, read own reports) ---
+
+const feedback_reports = new Table({
+  project_id: column.text,
+  reported_by: column.text,
+  reporter_name: column.text,
+  reporter_role: column.text,
+  type: column.text,    // bug | feature_request | feedback | question
+  severity: column.text,
+  title: column.text,
+  description: column.text,
+  app_source: column.text,
+  device_info: column.text,
+  screenshots: column.text, // JSON string
+  status: column.text,
+  admin_notes: column.text,
+  admin_response: column.text,
+  resolved_at: column.text,
+  created_at: column.text,
+}, { indexes: {} });
+
 // --- Area Notes (per-area communication log) ---
 
 const area_notes = new Table({
@@ -215,6 +236,7 @@ export const AppSchema = new Schema({
   corrective_actions,
   area_tasks,
   area_notes,
+  feedback_reports,
 });
 
 export type Database = (typeof AppSchema)['types'];

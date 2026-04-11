@@ -159,6 +159,24 @@ export default function ProfileTab() {
         <DetailRow label={t('profile.appVersion')} value={`v${appVersion}`} />
       </View>
 
+      {/* Report Issue */}
+      <View style={styles.section}>
+        <Pressable
+          style={styles.reportButton}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/(main)/report-issue');
+          }}
+        >
+          <Text style={styles.reportIcon}>🐛</Text>
+          <View style={styles.reportContent}>
+            <Text style={styles.reportLabel}>Report Issue</Text>
+            <Text style={styles.reportDesc}>Bug reports or feedback</Text>
+          </View>
+          <Text style={styles.reportArrow}>›</Text>
+        </Pressable>
+      </View>
+
       {/* Logout */}
       <View style={styles.logoutSection}>
         <Pressable
@@ -333,6 +351,37 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748b',
     marginTop: 2,
+  },
+  // Report Issue
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#1e293b',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  reportIcon: {
+    fontSize: 22,
+  },
+  reportContent: {
+    flex: 1,
+  },
+  reportLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f8fafc',
+  },
+  reportDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  reportArrow: {
+    fontSize: 20,
+    color: '#475569',
   },
   // Logout
   logoutSection: {
