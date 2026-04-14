@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "next build",
   "framework": "nextjs",
+  "regions": ["iad1"],
   "crons": [
     {
       "path": "/api/forecast/refresh",
@@ -13,11 +14,29 @@
     }
   ],
   "functions": {
-    "app/api/forecast/refresh/route.ts": {
-      "maxDuration": 60
+    "src/app/api/forecast/refresh/route.ts": {
+      "maxDuration": 60,
+      "memory": 3008
     },
-    "app/api/briefing/generate/route.ts": {
-      "maxDuration": 60
+    "src/app/api/briefing/generate/route.ts": {
+      "maxDuration": 60,
+      "memory": 1769
+    },
+    "src/app/(main)/dashboard/readyboard/page.tsx": {
+      "memory": 3008,
+      "maxDuration": 30
+    },
+    "src/app/(main)/dashboard/schedule/page.tsx": {
+      "memory": 3008,
+      "maxDuration": 30
+    },
+    "src/app/(main)/dashboard/forecast/page.tsx": {
+      "memory": 1769,
+      "maxDuration": 30
+    },
+    "src/app/(main)/dashboard/page.tsx": {
+      "memory": 1769,
+      "maxDuration": 30
     }
   }
 }
